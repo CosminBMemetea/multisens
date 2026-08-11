@@ -13,7 +13,7 @@ vendor-specific or dataset-specific code lives in this repo.
 |---|---|---|
 | 0 — Environment & architecture | Container topology, ROS message strategy, video/control-plane split reviewed and decided | ✅ Done |
 | 1 — ROS graph boots in Docker | `ros` container builds on `ros:humble-ros-base` (arm64), boots a two-node graph, cross-process DDS pub/sub verified live (not just node discovery — actual message delivery watched via `ros2 topic echo`) | ✅ Done |
-| 2 — RGB RTSP → ROS image topic | One real sensor, real frames | 🚧 In progress |
+| 2 — RGB RTSP → ROS image topic | One real sensor, real frames | ✅ Done |
 | 3 — Generalize ingestion (RGB+depth+thermal from config) | — | ⬜ Not started |
 | 4 — Diagnostics | — | ⬜ Not started |
 | 5 — Synchronization | — | ⬜ Not started |
@@ -42,7 +42,11 @@ what was checked and how.
 - **Video reaches the browser independently of ROS**: the backend opens its
   own RTSP connection (same config, same URLs) and relays MJPEG over HTTP —
   simple, no signaling/ICE complexity, and the video path works even if ROS
-  is down.
+  is down. Measured evidence this is the right call, not just a guess: a
+  generic `rclpy` subscriber to a single 640x480 `bgr8` image topic
+  (~900KB/frame) could not keep up with the true 30fps publish rate in this
+  setup — publish-side stayed a steady 30fps throughout, the drop was on a
+  second, independent subscriber trying to consume the same raw stream.
 - **No custom ROS messages.** `sensor_msgs/Image`, `sensor_msgs/CameraInfo`,
   and `diagnostic_msgs/DiagnosticArray` cover everything needed for v0.1;
   `DiagnosticArray`'s `KeyValue` list carries modality/source_type/fps/offset
@@ -58,21 +62,39 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 1 (current)
+## Running Phase 2 (current)
+
+Start the sensor simulator on the host first (separate repo:
+[`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
+
+```bash
+mediamtx ./mediamtx.yml     # from the multirtsp checkout
+./stream_macos.sh           # from the multirtsp checkout
+```
+
+Then:
 
 ```bash
 docker compose build ros
 docker compose up -d ros
-docker compose logs -f ros      # watch the placeholder graph exchange messages
+docker compose logs -f ros      # watch real frames get published, ~30fps
 docker compose ps               # should show "healthy"
 docker compose down
 ```
 
-`ros2_ws/src/multisens_ingestion` currently contains a placeholder
-talker/listener pair, not real sensor ingestion yet — Phase 1's job was
-proving the container, launch mechanism, and DDS discovery work reliably on
-Docker Desktop for Mac before anything real is built on top of it. Real RTSP
-ingestion lands in Phase 2.
+`ros2_ws/src/multisens_ingestion` now has a real `rtsp_ingestion_node` that
+opens `rtsp://host.docker.internal:8554/rgb` and publishes genuine camera
+frames as `sensor_msgs/Image` on `/multisens/sensors/rgb/image_raw` — verified
+by pulling an actual frame out of the topic and confirming it's real camera
+content, not a placeholder. Killing the simulator's `ffmpeg` process makes the
+node log a warning and retry every 2s without crashing; restarting the
+simulator resumes publishing automatically, no container restart needed. The
+Phase 1 placeholder talker/listener pair is still in the package (harmless,
+useful for regression-checking DDS itself if that's ever in question) but is
+no longer what the container launches by default.
+
+Depth and thermal, and reading `config/sensors.yaml` instead of
+launch-hardcoded parameters, are Phase 3.
 
 ## Requirements
 

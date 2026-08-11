@@ -8,7 +8,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", ". /opt/ros/humble/setup.sh && . /workspace/install/setup.sh && ros2 node list | grep -q placeholder_listener"]
+      test: ["CMD-SHELL", ". /opt/ros/humble/setup.sh && . /workspace/install/setup.sh && ros2 node list | grep -q rgb_ingestion"]
       interval: 10s
       timeout: 5s
       retries: 5
