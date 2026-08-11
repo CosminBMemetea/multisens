@@ -17,7 +17,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 3 — Generalize ingestion (RGB+depth+thermal from config) | One node type, N instances from `config/sensors.yaml`, no per-sensor code | ✅ Done |
 | 4 — Diagnostics | Per-sensor self-reported diagnostics + global system diagnostics, both real | ✅ Done |
 | 5 — Synchronization | Real cross-sensor skew measurement, missing/stale detection | ✅ Done |
-| 6 — Backend API/bridge | — | ⬜ Not started |
+| 6 — Backend API/bridge | REST + WebSocket bridge, independent MJPEG video relay, separate container | ✅ Done |
 | 7 — Web dashboard | — | ⬜ Not started |
 | 8 — Robustness (disconnect/reconnect) | — | ⬜ Not started |
 | 9 — Docs & v0.1 release | — | ⬜ Not started |
@@ -62,7 +62,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 5 (current)
+## Running Phase 6 (current)
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -75,10 +75,12 @@ mediamtx ./mediamtx.yml     # from the multirtsp checkout
 Then:
 
 ```bash
-docker compose build ros
-docker compose up -d ros
-docker compose logs -f ros      # watch rgb/depth/thermal all publish at ~30fps
-docker compose ps               # should show "healthy"
+docker compose build
+docker compose up -d
+docker compose ps               # both ros and backend should show "healthy"
+curl http://localhost:8000/api/health
+curl http://localhost:8000/api/sensors
+curl http://localhost:8000/api/status
 docker compose down
 ```
 
@@ -202,6 +204,59 @@ current level (`ok`/`warn`/`error`) instead.
 `/multisens/sync/frames` (actual grouped/republished synchronized frame
 bundles, as opposed to status about synchronization) remains out of scope
 for v0.1, as originally planned.
+
+### Backend API/bridge (Phase 6)
+
+New `backend` service — a genuinely separate container from `ros`, per the
+Phase 0 topology decision. FastAPI app with an embedded `rclpy` node running
+in a background thread (kept off the async event loop, since `rclpy.spin()`
+blocks). REST:
+
+- `GET /api/health` — plain liveness check
+- `GET /api/sensors` — the parsed `config/sensors.yaml`
+- `GET /api/status` — current diagnostics/sync snapshot as translated JSON
+- `GET /api/sensors/{id}/stream.mjpeg` — live MJPEG video for one sensor
+
+WebSocket `/ws/status` pushes the same translated snapshot every 500ms.
+"Translated" is the operative word: `ros_bridge.py` is the only place in the
+backend that imports a ROS message type — `DiagnosticStatus`/`KeyValue` get
+flattened into a plain dict there, once, and every REST/WebSocket handler
+only ever touches that plain dict. The browser (once Phase 7 exists) will
+never see a ROS message shape.
+
+Video is a completely separate path from ROS, exactly as designed in Phase 0:
+`video_relay.py` opens its own RTSP connection directly (verified against a
+live stream before writing any server code) using ffmpeg's `mpjpeg` muxer,
+which natively produces a correctly-framed `multipart/x-mixed-replace`
+stream — proxied to the HTTP client as raw bytes, no manual JPEG
+frame-boundary parsing. One ffmpeg subprocess per connected client, started
+on request and terminated on disconnect; verified no orphaned processes
+accumulate across repeated requests. Not fanned out across multiple
+simultaneous viewers of the same sensor — acceptable for a single-dashboard
+v0.1, documented as a known limit rather than silently scaling badly.
+
+Two things resolved for real in this phase, not just designed for:
+
+- **The `ROS_DOMAIN_ID`/`RMW_IMPLEMENTATION` duplication** flagged back in
+  Phase 1 (hardcoded separately in `ros2_ws/Dockerfile` and
+  `docker-compose.yml`) is now genuinely fixed: both live once, in a
+  repo-root `.env` file, referenced by both `ros` and `backend` via
+  `${VAR}` substitution in `docker-compose.yml`. The `ros2_ws/Dockerfile`'s
+  hardcoded `ENV` lines were removed.
+- **Cross-*container* DDS discovery**, deferred all the way from the Phase 0
+  review (Phase 1 only proved DDS worked *within* one container) — verified
+  for real here: `backend`'s `rclpy` node, running in an entirely separate
+  container, correctly discovers and receives `/multisens/diagnostics` and
+  `/multisens/sync/status` from the `ros` container. `curl localhost:8000/api/status`
+  returns live per-sensor and sync data with no special DDS configuration
+  beyond the already-shared `ROS_DOMAIN_ID`/`RMW_IMPLEMENTATION`.
+
+Also verified directly: the WebSocket pushes live-updating data (checked via
+a scripted client, not just "the endpoint exists"); the MJPEG endpoint
+returns correct headers (`multipart/x-mixed-replace; boundary=ffmpeg`) and
+real JPEG frame bytes; requesting a nonexistent sensor's stream returns a
+clean `404` instead of a crash; `backend` correctly waits for `ros` to be
+healthy before starting (`depends_on: condition: service_healthy`).
 
 ## Requirements
 

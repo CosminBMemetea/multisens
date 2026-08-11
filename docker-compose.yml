@@ -3,8 +3,8 @@ services:
     build:
       context: ./ros2_ws
     environment:
-      - ROS_DOMAIN_ID=42
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION}
       - MULTISENS_SENSORS_CONFIG=/config/sensors.yaml
     volumes:
       - ./config/sensors.yaml:/config/sensors.yaml:ro
@@ -20,6 +20,29 @@ services:
          ros2 node list | grep -q system_diagnostics && \
          ros2 node list | grep -q sync_status"
       ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION}
+      - MULTISENS_SENSORS_CONFIG=/config/sensors.yaml
+    volumes:
+      - ./config/sensors.yaml:/config/sensors.yaml:ro
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      ros:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
       interval: 15s
       timeout: 10s
       retries: 5
