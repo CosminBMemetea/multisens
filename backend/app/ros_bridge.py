@@ -67,6 +67,12 @@ class RosBridge:
     def start(self):
         self._thread.start()
 
+    def shutdown(self):
+        if self._node is not None:
+            self._node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
     def snapshot(self) -> dict:
         now = time.monotonic()
         with self._lock:

@@ -7,15 +7,17 @@ default matches the volume mount target) rather than a launch argument,
 because the sensor list has to be known before building the list of Node
 actions this function returns - a launch argument's value isn't resolved
 until launch execution, too late to decide how many nodes to create.
+
+Config loading/validation lives in multisens_ingestion.sensor_config (a
+plain module with no launch_ros/rclpy import) so it's testable without a
+live ROS environment - see ros2_ws/src/multisens_ingestion/test/.
 """
 import os
 
-import yaml
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from multisens_ingestion.sensor_config import DEFAULT_CONFIG_PATH, load_sensors_config, select_usable_sensors
 
-DEFAULT_CONFIG_PATH = '/config/sensors.yaml'
-SUPPORTED_TRANSPORTS = {'rtsp'}
 # Every Node below gets respawn=True: rtsp_ingestion_node's own reconnect
 # loop only covers its RTSP *connection* dying, not its OS process dying
 # (crash, OOM-kill, `kill -9`). Found the gap in Phase 8 by actually killing
@@ -24,14 +26,6 @@ SUPPORTED_TRANSPORTS = {'rtsp'}
 # with no code path to bring it back. respawn is ros2 launch's own answer to
 # exactly this, standard mechanism instead of a hand-rolled supervisor.
 RESPAWN_DELAY_SEC = 2.0
-
-
-def _load_sensors(config_path: str):
-    if not os.path.isfile(config_path):
-        raise FileNotFoundError(f'sensors config not found: {config_path}')
-    with open(config_path) as f:
-        data = yaml.safe_load(f) or {}
-    return data.get('sensors', [])
 
 
 def _make_node(entry: dict) -> Node:
@@ -79,29 +73,13 @@ def _make_sync_status_node() -> Node:
 
 def generate_launch_description():
     config_path = os.environ.get('MULTISENS_SENSORS_CONFIG', DEFAULT_CONFIG_PATH)
-    sensors = _load_sensors(config_path)
+    sensors = load_sensors_config(config_path)
+    usable = select_usable_sensors(sensors, config_path)
 
-    seen_modalities = set()
-    nodes = []
-    for entry in sensors:
-        transport = entry.get('transport', 'rtsp')
-        if transport not in SUPPORTED_TRANSPORTS:
-            print(f"skipping sensor '{entry.get('id')}': "
-                  f"unsupported transport '{transport}' (only rtsp is implemented)")
-            continue
-
-        modality = entry['modality']
-        if modality in seen_modalities:
-            raise ValueError(
-                f"duplicate modality '{modality}' in {config_path} - two sensors "
-                f"would publish to the same /multisens/sensors/{modality}/image_raw topic")
-        seen_modalities.add(modality)
-
-        nodes.append(_make_node(entry))
-
-    if not nodes:
+    if not usable:
         raise RuntimeError(f'no usable sensors found in {config_path}')
 
+    nodes = [_make_node(entry) for entry in usable]
     nodes.append(_make_system_diagnostics_node())
     nodes.append(_make_sync_status_node())
 

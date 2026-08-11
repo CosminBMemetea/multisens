@@ -1,468 +1,170 @@
 # MultiSens
 
-Open-source, vendor-neutral platform for ingesting, synchronizing, and
-visualizing heterogeneous sensor streams (RGB, depth, thermal, and beyond),
-with an eye toward later perception evaluation, sensor ablation, and
-ground-truth comparison. Built to work identically whether a stream comes
-from a webcam-based simulator, a real sensor, or an OEM gateway — no
-vendor-specific or dataset-specific code lives in this repo.
+[![v0.1.0](https://img.shields.io/badge/release-v0.1.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.1.0)
+
+An open-source, vendor-neutral platform for ingesting, synchronizing,
+diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
+whatever else speaks RTSP.
+
+## What MultiSens is
+
+- A generic, **configuration-driven** RTSP ingestion pipeline on ROS 2
+  Humble: one node type, N sensors, no per-sensor code.
+- A real **cross-sensor timestamp synchronization** service, with an
+  evidence-based tolerance, not a guessed one.
+- A **diagnostics system** where every number is either a genuine
+  measurement or explicitly `"unavailable"` — never fabricated.
+- A **dashboard** (React, dark technical UI) showing live video, connection
+  state, FPS, sync skew, and system health, backed by a REST/WebSocket API
+  that never leaks a ROS message type to the browser.
+- Built to work identically whether a stream comes from the reference
+  webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
+
+## What MultiSens is NOT
+
+- **Not a perception or ML platform.** No inference, no NCAP/DMS/OMS logic,
+  no object detection, nothing that interprets *what's in* a frame.
+- **Not a fusion or ground-truth evaluation tool** (yet — see
+  [Roadmap](#roadmap)).
+- **Not tied to any vendor, OEM, or dataset.** No proprietary integration,
+  no hardcoded sensor brand, no code specific to the reference simulator
+  anywhere outside its own config entry.
+- **Not a production-hardened, multi-user, authenticated service.** CORS is
+  wide open, there's no auth, and it assumes a single local dashboard user —
+  all deliberate v0.1 scope, not oversights. See
+  [docs/limitations.md](docs/limitations.md).
+- **Not RViz or Foxglove.** Those remain valid developer tools for
+  inspecting the ROS graph directly; MultiSens's dashboard is the product
+  UI, and doesn't depend on either.
+
+## Architecture
+
+Three containers, one host-side simulator that's explicitly *not* part of
+MultiSens:
+
+```mermaid
+flowchart LR
+    Sim["sensor simulator\n(host)"] ==>|RTSP| Ing["ros container\ningestion + sync + diagnostics"]
+    Sim ==>|RTSP| Backend["backend container\nrclpy bridge + REST/WS + MJPEG relay"]
+    Ing -.->|ROS/DDS metadata| Backend
+    Backend ==>|HTTP MJPEG| Browser["Browser"]
+    Backend -->|REST/WebSocket| Browser
+    Frontend["frontend container\nnginx / React"] --> Browser
+```
+
+Four boundaries, each carrying exactly one kind of traffic — video and
+metadata never share a transport, and ROS/DDS never talks to the browser
+directly. Full diagram, container topology rationale, and the measured
+evidence behind each major decision: [docs/architecture.md](docs/architecture.md).
+
+## Quick start
+
+```bash
+git clone https://github.com/CosminBMemetea/multisens.git
+cd multisens
+docker compose up -d
+docker compose ps          # ros, backend, frontend should all show "healthy"
+open http://localhost:8080 # the dashboard
+```
+
+This alone gets you the ROS graph, the backend, and the dashboard running —
+you still need an RTSP source for it to show anything (see next section).
+
+## Simulator dependency
+
+MultiSens ingests from RTSP; it does not produce sensor data itself. For
+local development, the reference simulator is a separate repository:
+[`multirtsp`](https://github.com/CosminBMemetea/multirtsp) — one MacBook
+webcam, split via `ffmpeg` into three RTSP paths (`rgb`, `depth`, `thermal`)
+served by MediaMTX. Start it before `docker compose up`:
+
+```bash
+# from a checkout of https://github.com/CosminBMemetea/multirtsp
+mediamtx ./mediamtx.yml
+./stream_macos.sh
+```
+
+Nothing in MultiSens's core code (`ros2_ws/`, `backend/`, `frontend/`)
+references this simulator — the only place it appears is as URLs in
+`config/sensors.yaml`. Point that file at real sensors and the simulator is
+never needed.
+
+## Physical vs. simulated — a hard distinction
+
+Every sensor in `config/sensors.yaml` declares `source_type: physical` or
+`source_type: simulated`, and that value flows untouched through
+diagnostics, the ROS graph, and the dashboard's badges. In the reference
+setup: `rgb` is a real webcam feed (`physical`); `depth` and `thermal` are
+FFmpeg `pseudocolor` transforms of that same feed (`simulated`) — visually
+similar to real depth/thermal output, but never claimed to be a physical
+measurement anywhere in the system. This distinction exists specifically so
+a consumer of MultiSens's data can never mistake synthetic data for real
+sensor output. See [docs/connector-api.md](docs/connector-api.md) for the
+full config schema and what happens automatically once a sensor is added.
+
+## Docker requirements
+
+- Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to
+  the VM on an Apple Silicon (M2) host — base images confirmed multi-arch
+  (arm64/v8), no architecture-specific code.
+- Nothing else on the host required. The frontend builds entirely inside
+  its own Docker multi-stage build; Node/npm locally is only useful for
+  faster dev iteration (`cd frontend && npm run dev`), never required for
+  `docker compose up`.
+- See [docs/configuration.md](docs/configuration.md) for every environment
+  variable, port, and volume mount `docker-compose.yml` uses.
+
+## URLs
+
+| What | URL |
+|---|---|
+| Dashboard | http://localhost:8080 |
+| Backend REST | http://localhost:8000/api/* |
+| Backend WebSocket | ws://localhost:8000/ws/status |
+| MJPEG video (per sensor) | http://localhost:8000/api/sensors/{id}/stream.mjpeg |
+
+Full API surface: [docs/connector-api.md](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting).
+
+## ROS topics
+
+| Topic | Type |
+|---|---|
+| `/multisens/sensors/{modality}/image_raw` | `sensor_msgs/Image` |
+| `/multisens/sensors/{modality}/frame_stamp` | `sensor_msgs/TimeReference` |
+| `/multisens/diagnostics` | `diagnostic_msgs/DiagnosticArray` |
+| `/multisens/sync/status` | `diagnostic_msgs/DiagnosticArray` |
+
+No custom `.msg` files anywhere in this repo. Full contract, QoS, and every
+diagnostic field's meaning: [docs/topics.md](docs/topics.md).
+
+## Known limitations
+
+The authoritative, current list — scope boundaries, environment-specific
+assumptions, and honestly-reported gaps (no CI yet, soak testing is real
+but time-bounded, single-dashboard-user scale only) — lives in
+[docs/limitations.md](docs/limitations.md), not duplicated here since it
+changes independently of this README.
+
+## Roadmap
+
+v0.1 is ingestion, synchronization, diagnostics, and visualization. Not yet
+built, deliberately: perception/ML inference, sensor fusion, ground-truth
+comparison, ablation studies, evaluation frameworks, NCAP/DMS/OMS-specific
+logic, real depth/thermal sensor conversion, authentication, cloud
+deployment. See the project's phase-by-phase history in
+[CHANGELOG.md](CHANGELOG.md) for how v0.1 itself was built and verified.
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — system overview, container
-  topology, the control/telemetry-vs-video split, and the rationale behind
-  every major design decision.
-- [`docs/topics.md`](docs/topics.md) — the full ROS topic contract, message
-  types, QoS, and every diagnostic field's meaning.
-- [`docs/connector-api.md`](docs/connector-api.md) — how to add a sensor
-  (it's a `config/sensors.yaml` entry, not a code change) and the backend's
-  REST/WebSocket API surface.
-
-This README stays the project pitch, status snapshot, quick start, and the
-detailed phase-by-phase verification log (real findings and bugs discovered
-along the way, not just what was attempted) — the docs above are the
-standing reference once you're past "how do I run this."
-
-## Status: what's actually running vs. what's designed but not built
-
-| Phase | What it delivers | Status |
-|---|---|---|
-| 0 — Environment & architecture | Container topology, ROS message strategy, video/control-plane split reviewed and decided | ✅ Done |
-| 1 — ROS graph boots in Docker | `ros` container builds on `ros:humble-ros-base` (arm64), boots a two-node graph, cross-process DDS pub/sub verified live (not just node discovery — actual message delivery watched via `ros2 topic echo`) | ✅ Done |
-| 2 — RGB RTSP → ROS image topic | One real sensor, real frames | ✅ Done |
-| 3 — Generalize ingestion (RGB+depth+thermal from config) | One node type, N instances from `config/sensors.yaml`, no per-sensor code | ✅ Done |
-| 4 — Diagnostics | Per-sensor self-reported diagnostics + global system diagnostics, both real | ✅ Done |
-| 5 — Synchronization | Real cross-sensor skew measurement, missing/stale detection | ✅ Done |
-| 6 — Backend API/bridge | REST + WebSocket bridge, independent MJPEG video relay, separate container | ✅ Done |
-| 7 — Web dashboard | Live React dashboard, three video panels, sync/system health, frontend container joins compose | ✅ Done |
-| 8 — Robustness (disconnect/reconnect) | Single-sensor process fault isolation, respawn, backend staleness fix, memory soak | ✅ Done |
-| 9 — Docs & v0.1 release | Architecture/topics/connector docs, full Definition of Done re-verified end to end, tagged | ✅ Done |
-
-Tracked as GitHub issues, one per phase — see [Issues](https://github.com/CosminBMemetea/multisens/issues)
-for what's open vs. closed right now; this table is a snapshot, the issue
-tracker is the live source of truth.
-
-No CI is configured yet. Nothing here has been claimed as verified without
-actually running it — see each phase's closing issue comment for exactly
-what was checked and how.
-
-## Architecture, in brief
-
-- **ROS 2 Humble** is the internal metadata/synchronization/diagnostics layer.
-  It never carries pixels to the browser — DDS-transporting raw video across
-  containers at 30fps would be real CPU load on the 8GB-class machines this
-  targets. ROS's job is timing, identity, and health, not video delivery.
-- **RTSP is the integration boundary.** One generic, configuration-driven
-  ingestion component — never three hardcoded sensor implementations. Adding
-  a fourth sensor is a `config/sensors.yaml` entry, not a code change.
-- **Video reaches the browser independently of ROS**: the backend opens its
-  own RTSP connection (same config, same URLs) and relays MJPEG over HTTP —
-  simple, no signaling/ICE complexity, and the video path works even if ROS
-  is down. Measured evidence this is the right call, not just a guess: a
-  generic `rclpy` subscriber to a single 640x480 `bgr8` image topic
-  (~900KB/frame) could not keep up with the true 30fps publish rate in this
-  setup — publish-side stayed a steady 30fps throughout, the drop was on a
-  second, independent subscriber trying to consume the same raw stream.
-- **No custom ROS messages.** `sensor_msgs/Image`, `sensor_msgs/CameraInfo`,
-  and `diagnostic_msgs/DiagnosticArray` cover everything needed for v0.1;
-  `DiagnosticArray`'s `KeyValue` list carries modality/source_type/fps/offset
-  fields that don't have a dedicated standard message field.
-- **PHYSICAL vs. SIMULATED is a hard distinction, always labeled.** The
-  reference sensor simulator ([`rtspmultistream`](https://github.com/CosminBMemetea/multirtsp))
-  produces one real RGB feed from a webcam and two synthetic depth/thermal
-  visualizations derived from it via FFmpeg's `pseudocolor` filter — those are
-  never presented as physical depth or temperature measurements, in the ROS
-  graph, diagnostics, or UI.
-
-Full phase-by-phase development log lives in the issue tracker; each closed
-issue documents what was actually verified for that phase, not just what was
-attempted.
-
-## Running MultiSens v0.1
-
-Start the sensor simulator on the host first (separate repo:
-[`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
-
-```bash
-mediamtx ./mediamtx.yml     # from the multirtsp checkout
-./stream_macos.sh           # from the multirtsp checkout
-```
-
-Then:
-
-```bash
-docker compose build
-docker compose up -d
-docker compose ps               # ros, backend, and frontend should all show "healthy"
-open http://localhost:8080      # the dashboard
-```
-
-`docker compose down` stops all three cleanly (~8s, verified).
-
-`ingestion.launch.py` reads `config/sensors.yaml` (mounted read-only into the
-container) and instantiates one `rtsp_ingestion_node` per entry — the node
-itself didn't need to change from Phase 2, since sensor identity was already
-fully parameterized. Verified end to end, not just "three topics exist":
-pulled a real frame from each of `/multisens/sensors/{rgb,depth,thermal}/image_raw`
-and scored colorfulness (mean `|R-G|+|G-B|+|R-B|` per pixel) — rgb scored 36
-(a face against a mostly neutral wall), depth scored 372 and thermal scored
-334 (the `pseudocolor` `turbo`/`heat` presets are visibly, measurably applied,
-not passthrough grayscale). `source_type` was read back via `ros2 param get`
-for all three nodes and matches config exactly (`physical` for rgb,
-`simulated` for depth/thermal). The launch file also validates the config
-before launching anything: two sensors declaring the same modality (which
-would silently collide on the same topic) is a hard launch-time error, tested
-directly by feeding it a broken config.
-
-Depth/thermal reconnect behavior (killing the simulator) was covered
-end-to-end for rgb in Phase 2's node — same code path, not re-verified per
-modality here since it's the same node type.
-
-The Phase 1/2 launch files (`phase1_graph.launch.py`, `phase2_rgb.launch.py`)
-are still in the package, unused by the container's default entrypoint —
-harmless historical artifacts, not dead weight worth deleting yet.
-
-### Diagnostics (Phase 4)
-
-Every `rtsp_ingestion_node` self-publishes its own status on
-`/multisens/diagnostics` (`diagnostic_msgs/DiagnosticArray`, one
-`DiagnosticStatus` per publish) every second: `connection_state`,
-`fps_received`, `fps_expected` (from the new optional `expected_fps` field in
-`config/sensors.yaml`), `resolution`, `encoding`, `frames_received`,
-`last_frame_age_ms`, `reconnect_count`, `publish_latency_ms`, `source_type`,
-`modality`. `frames_dropped` is always reported as `"unavailable"` rather than
-a fabricated `0` — OpenCV's FFmpeg backend doesn't expose RTP-level loss
-stats through a simple API, and claiming zero drops would be a metric this
-system hasn't actually measured.
-
-Per-sensor diagnostics are self-reported rather than computed by a separate
-node watching the image topics, on purpose: only the ingestion node itself
-genuinely knows `connection_state`, `reconnect_count`, and true
-resolution/encoding — a passive external subscriber could only guess at
-those from message arrival gaps, which the "don't fabricate metrics" rule
-in this project rules out.
-
-A separate `multisens_diagnostics` package/node publishes *global*
-diagnostics on the same topic every 2s — `cpu_percent`, `memory_percent`,
-`uptime_sec`, `connected_sensor_count`, `total_sensor_count`, and
-`sync_health` (`"unavailable"`, honestly — Phase 5 doesn't exist yet, so
-there is nothing to measure). This is separate because no single sensor owns
-host resource usage or "how many sensors are connected total." Note:
-`cpu_percent`/`memory_percent` are read via `psutil` from inside the
-container on Docker Desktop for Mac, which reflects the Linux VM's overall
-view, not a cgroup-isolated per-container figure — a real, honestly-labeled
-measurement, just not perfectly scoped; worth revisiting if this ever runs
-under a container runtime with proper cgroup accounting.
-
-Verified end to end, including a bug this caught: the system node's first
-version subscribed to the same `/multisens/diagnostics` topic it publishes
-to, so it received its own "system" status back and miscounted it as a 4th
-connected sensor (`connected_sensor_count: 4` with `total_sensor_count: 3`
-— caught by actually reading the field values, not just checking the topic
-existed). Fixed by only counting hardware_ids that are actual configured
-sensors. After the fix: killed the RTSP source, confirmed all three sensors
-flip to `connection_state: disconnected` / diagnostic level `ERROR`,
-`fps_received: 0.0`, and `last_frame_age_ms` growing correctly, while
-`system` correctly reports `0/3 configured sensors connected`. Restarted the
-source and confirmed full recovery with `reconnect_count` incrementing to
-`1` on all three nodes and `system` back to `3/3`.
-
-### Synchronization (Phase 5)
-
-`multisens_sync` publishes `diagnostic_msgs/DiagnosticArray` on
-`/multisens/sync/status` every second: per-sensor `offset_ms_{modality}`
-(each sensor's timestamp offset from the group's mean), `max_skew_ms`,
-`synchronized_group_rate_hz`, `missing_sensors`, `stale_sensors`, and the
-configured `tolerance_ms`. Uses `message_filters.ApproximateTimeSynchronizer`
-— ROS's standard mechanism for matching messages across topics by timestamp
-proximity — instead of hand-rolled frame-matching logic. Compares each
-sensor's ROS *publish* timestamp, not a source capture timestamp, since
-RTSP/H.264 doesn't reliably provide one across independently read streams.
-
-Two real bugs found and fixed during verification, both by actually reading
-the numbers rather than trusting the implementation looked right:
-
-1. Subscribing directly to the `image_raw` topics (~900KB/frame) made
-   `synchronized_group_rate_hz` sit near 0-3Hz against a true ~30Hz sensor
-   rate, with matched skew swinging wildly (1ms to 460ms) — an artifact of
-   the sync node's own processing lag, not real sensor skew. Adding a
-   multi-threaded executor only partially helped, because CPython's GIL
-   means threads don't parallelize CPU-bound message deserialization. Fixed
-   properly: `rtsp_ingestion_node` now also publishes `sensor_msgs/TimeReference`
-   on a new `/multisens/sensors/{modality}/frame_stamp` topic — same header,
-   no pixel payload — and the sync node subscribes to that instead.
-2. First attempt at the lightweight topic used a bare `std_msgs/Header`,
-   which produced exactly 0 synchronized groups, ever, with no error.
-   `message_filters`' synchronizers read `msg.header.stamp` internally,
-   which needs a message with a *nested* header — a bare `Header` only has
-   `.stamp` directly. Switched to `sensor_msgs/TimeReference`, a small
-   standard message that does carry a real header.
-
-After both fixes: `synchronized_group_rate_hz` sits at a genuine ~30Hz, and
-measured `max_skew_ms` across repeated samples was consistently 0.2-3.5ms
-(tighter than the illustrative 7ms figure sometimes used as a rule of thumb
-for this kind of setup) — expected, since all three streams originate from
-one physical camera and one `ffmpeg` process. The default `tolerance_ms`
-(25.0) was set from that measurement, not guessed: roughly 7-100x the
-observed baseline jitter, tight enough to mean something, loose enough not
-to false-positive on normal variation. Verified failure handling too: killed
-the RTSP source and confirmed `stale_sensors: rgb,depth,thermal`, level
-`ERROR`, `synchronized_group_rate_hz: 0.0`, and every offset/skew field
-explicitly `"unavailable"` rather than displaying stale numbers; restarted
-the source and confirmed full recovery (skew settled back to ~0.1ms).
-
-`system_diagnostics_node`'s `sync_health` field (previously a standing
-`"unavailable"` placeholder, since Phase 5 didn't exist when Phase 4 was
-built) now subscribes to `/multisens/sync/status` and reports the real
-current level (`ok`/`warn`/`error`) instead.
-
-`/multisens/sync/frames` (actual grouped/republished synchronized frame
-bundles, as opposed to status about synchronization) remains out of scope
-for v0.1, as originally planned.
-
-### Backend API/bridge (Phase 6)
-
-New `backend` service — a genuinely separate container from `ros`, per the
-Phase 0 topology decision. FastAPI app with an embedded `rclpy` node running
-in a background thread (kept off the async event loop, since `rclpy.spin()`
-blocks). REST:
-
-- `GET /api/health` — plain liveness check
-- `GET /api/sensors` — the parsed `config/sensors.yaml`
-- `GET /api/status` — current diagnostics/sync snapshot as translated JSON
-- `GET /api/sensors/{id}/stream.mjpeg` — live MJPEG video for one sensor
-
-WebSocket `/ws/status` pushes the same translated snapshot every 500ms.
-"Translated" is the operative word: `ros_bridge.py` is the only place in the
-backend that imports a ROS message type — `DiagnosticStatus`/`KeyValue` get
-flattened into a plain dict there, once, and every REST/WebSocket handler
-only ever touches that plain dict. The browser (once Phase 7 exists) will
-never see a ROS message shape.
-
-Video is a completely separate path from ROS, exactly as designed in Phase 0:
-`video_relay.py` opens its own RTSP connection directly (verified against a
-live stream before writing any server code) using ffmpeg's `mpjpeg` muxer,
-which natively produces a correctly-framed `multipart/x-mixed-replace`
-stream — proxied to the HTTP client as raw bytes, no manual JPEG
-frame-boundary parsing. One ffmpeg subprocess per connected client, started
-on request and terminated on disconnect; verified no orphaned processes
-accumulate across repeated requests. Not fanned out across multiple
-simultaneous viewers of the same sensor — acceptable for a single-dashboard
-v0.1, documented as a known limit rather than silently scaling badly.
-
-Two things resolved for real in this phase, not just designed for:
-
-- **The `ROS_DOMAIN_ID`/`RMW_IMPLEMENTATION` duplication** flagged back in
-  Phase 1 (hardcoded separately in `ros2_ws/Dockerfile` and
-  `docker-compose.yml`) is now genuinely fixed: both live once, in a
-  repo-root `.env` file, referenced by both `ros` and `backend` via
-  `${VAR}` substitution in `docker-compose.yml`. The `ros2_ws/Dockerfile`'s
-  hardcoded `ENV` lines were removed.
-- **Cross-*container* DDS discovery**, deferred all the way from the Phase 0
-  review (Phase 1 only proved DDS worked *within* one container) — verified
-  for real here: `backend`'s `rclpy` node, running in an entirely separate
-  container, correctly discovers and receives `/multisens/diagnostics` and
-  `/multisens/sync/status` from the `ros` container. `curl localhost:8000/api/status`
-  returns live per-sensor and sync data with no special DDS configuration
-  beyond the already-shared `ROS_DOMAIN_ID`/`RMW_IMPLEMENTATION`.
-
-Also verified directly: the WebSocket pushes live-updating data (checked via
-a scripted client, not just "the endpoint exists"); the MJPEG endpoint
-returns correct headers (`multipart/x-mixed-replace; boundary=ffmpeg`) and
-real JPEG frame bytes; requesting a nonexistent sensor's stream returns a
-clean `404` instead of a crash; `backend` correctly waits for `ros` to be
-healthy before starting (`depends_on: condition: service_healthy`).
-
-### Web dashboard (Phase 7)
-
-React + TypeScript + Vite + Tailwind, built and served via nginx in its own
-`frontend` container — the frontend joining `docker-compose.yml` for the
-first time, exactly as agreed back in Phase 0 (deliberately not carried as
-an empty container through Phases 1-6). Dark technical dashboard per the
-original design brief: top bar with a LIVE indicator tied to the WebSocket's
-actual connection state, a three-panel sensor grid (video + name + modality
-+ PHYSICAL/SIMULATED badge + FPS + resolution + connection state + last-frame
-age + reconnect count + latency), a sync health panel, and a system health
-panel. Only the Dashboard page exists, as scoped for v0.1 - no other nav
-items.
-
-All calls happen from the browser directly to the backend's host-published
-port (`http://localhost:8000`), not container-to-container - the frontend
-container only ever serves static files, so there's no proxy configuration
-or build-time coupling between the two containers. Added CORS
-(`allow_origins=["*"]`) to the backend for this: a deliberate choice for a
-local-only v0.1 dev tool with no auth or cookies, not something to carry
-into any future deployment reachable from beyond localhost.
-
-Verified with real browser automation (Playwright driving headless
-Chromium), not just "the build succeeded" - screenshotted the dashboard
-against the live stack multiple times through this phase, including:
-
-- A clean `docker compose up` from scratch, all three services reaching
-  `healthy` in the correct dependency order.
-- Real video rendering in all three panels (not placeholders) - confirmed
-  via `img.naturalWidth`/`naturalHeight`/`.complete` in the page, then
-  visually: RGB shows the actual webcam feed, depth and thermal show their
-  distinct `turbo`/`heat` pseudocolor renderings.
-- **A genuine disconnect/reconnect cycle reflected correctly in the UI**:
-  killed the simulator's capture process and confirmed all three cards
-  flip to `DISCONNECTED` with a `NO SIGNAL` placeholder (not a broken-image
-  icon - the `<img>` tag is only mounted when `connection_state ===
-  "connected"`), `fps: 0.0`, growing `last frame` age, sync panel flips to
-  `ERROR` with every offset explicitly `unavailable`, and system health
-  correctly reports `0/3` connected. Restarted the simulator and confirmed
-  full recovery, with `reconnects: 1` visible on every sensor card - an
-  honest count of what actually happened during this test session, not a
-  static zero.
-
-Two real bugs found from that failure-state screenshot, not from reading the
-diff:
-
-1. **A transient but real startup race**: right after a clean `docker compose
-   up`, one snapshot showed `SYSTEM HEALTH: WARN, connected 0/3` while every
-   individual sensor card already showed `CONNECTED`. Traced this to real
-   DDS-discovery timing across the `ros` → `backend` container boundary -
-   `system_diagnostics_node` genuinely hadn't received any per-sensor OK
-   status yet at that instant. Confirmed via direct `curl` that it
-   self-corrects within seconds as discovery completes. Concluded this is
-   *correct* behavior, not a bug to suppress: showing a brief, accurate WARN
-   during real startup is exactly what this project's "never silently drop
-   diagnostics problems" principle calls for - hiding it would be the
-   actual bug.
-2. **A real rendering bug**: the disconnected-state screenshot showed sync
-   offsets as literally `"unavailablems"` - string-concatenating the
-   `"unavailable"` sentinel value with a hardcoded `"ms"` suffix, because the
-   original code only checked JS truthiness (`"unavailable"` is a non-empty,
-   truthy string) rather than checking for that specific sentinel. Same bug
-   existed in three places (`SyncHealthPanel`'s offsets and max skew,
-   `SensorCard`'s last-frame-age and latency). Fixed once with a shared
-   `formatMs()` helper (`frontend/src/format.ts`) instead of patching each
-   call site separately, then re-verified against a real disconnected state
-   that it now renders `unavailable` correctly, with no unit suffix.
-
-Also observed and *not* fixed, because it isn't a bug: `fps_received`
-briefly read 99-111 (well over the declared 30fps) in one snapshot taken
-seconds after a fresh page load spawned three new concurrent MJPEG relay
-connections to the same RTSP source the ROS ingestion nodes were already
-reading - the same backlog-catch-up burst pattern already documented in
-Phase 2, confirmed here to settle back to ~30fps within a few seconds via
-direct polling. Real, measured, transient, self-correcting - not clamped or
-hidden.
-
-### Robustness (Phase 8)
-
-Every previous phase's disconnect/reconnect test killed the *entire*
-simulator process, which takes all three RTSP paths down simultaneously
-(they share one `ffmpeg` process). That never tested the actual scenario
-the master brief calls out by name - "if thermal disappears, RGB and depth
-must continue" - because nothing had ever gone down *alone*. This phase
-tested that directly, plus config-schema robustness and memory stability
-under repeated failure.
-
-**Single-sensor process fault isolation.** Killed only the `thermal_ingestion`
-OS process inside the `ros` container (`kill -9`, not just its RTSP
-connection) and confirmed: `rgb_ingestion`/`depth_ingestion` kept running and
-publishing at a full, undisturbed ~30fps the entire time; the `ros`
-container process itself did not exit (`ros2 launch` doesn't cascade-fail
-when one managed process dies). This found two real gaps, both fixed:
-
-1. **No process-level recovery existed.** `rtsp_ingestion_node`'s own
-   reconnect loop only covers its RTSP *connection* dying - it has nothing
-   to say about its own OS *process* dying, because a dead process can't run
-   its own recovery code. Fixed with `respawn=True` (`respawn_delay=2.0`) on
-   every `Node` action in `ingestion.launch.py` - the standard ROS 2 launch
-   mechanism for exactly this, not a hand-rolled supervisor. Verified: killed
-   `thermal_ingestion` again with the fix in place, and a brand new process
-   (a genuinely different PID) was running and publishing again within
-   seconds, with no manual intervention.
-2. **The backend bridge had no staleness expiry - a real, previously
-   undetected bug.** With `thermal_ingestion` dead, `curl localhost:8000/api/status`
-   kept reporting `thermal` as `"connection_state": "connected"`,
-   `"fps_received": "30.9"`, `"last_frame_age_ms": "2"` - stale data frozen
-   at the instant the process died, presented as if still live, forever
-   (nothing was ever going to arrive to correct it). Meanwhile
-   `system_diagnostics_node` and `sync_status_node` - which both already had
-   explicit staleness watchdogs from Phases 4 and 5 - correctly showed
-   `2/3 connected` and `stale_sensors: thermal` the whole time. The one place
-   that *didn't* replicate that pattern was `backend/app/ros_bridge.py`,
-   which just stored "whatever the last message said" with no expiry.
-   Fixed: `RosBridge` now tracks a last-update timestamp per sensor/system/sync
-   entry and excludes anything older than `STALE_AFTER_SEC` (5.0) from
-   `snapshot()` - a dead sensor now disappears from `/api/status` and the
-   dashboard (which already rendered "no diagnostics for this sensor"
-   correctly as `NO SIGNAL`/`unknown`, so no frontend changes were needed)
-   instead of lying about it indefinitely.
-
-Also honestly noted, not chased further: after `thermal_ingestion` respawned,
-`rgb`/`depth` showed `reconnect_count: 1` even though their own processes
-were never touched - most likely a brief RTSP/`mediamtx`-level contention
-ripple from the sibling process relaunching and reopening a connection to
-the same source at the same moment, which their own existing reconnect
-logic absorbed correctly on its own. Consistent with "the app stays
-responsive and recovers," not a new failure mode.
-
-**Differing FPS across sensors.** Temporarily set `thermal`'s
-`expected_fps` to 15 (all three sensors are genuinely 30fps in this
-simulator, so this was a mechanism test only, reverted immediately after -
-shipping a fabricated `expected_fps` in the committed config would violate
-this project's own "don't fabricate metrics" rule). Confirmed no code
-anywhere assumes uniform FPS across sensors: diagnostics correctly showed
-`thermal: fps_expected=15.0` alongside `rgb/depth: fps_expected=30.0`
-simultaneously, no crash, no cross-sensor interference.
-
-**Short memory-stability soak.** Sampled `docker stats` for all three
-containers every 25s over ~3.75 minutes, with two full RTSP outage/recovery
-cycles injected partway through. `ros`: 281-295 MiB, oscillating with no
-growth trend. `frontend`: flat at 7.0 MiB the entire time. `backend`: a
-small, consistent increase from 49.21 to 49.42 MiB (~0.2 MiB) over the
-window - reported honestly as inconclusive rather than either dismissed or
-called a confirmed leak: too small and the test too short to distinguish a
-genuine slow leak from one-time warmup allocation (e.g. lazy module
-imports, a connection pool settling to steady size). Worth a longer soak
-before a real v0.1 release; not chased further here given the scale of the
-signal relative to test duration.
-
-### Documentation & v0.1 release (Phase 9)
-
-Added the three standing reference docs linked at the top of this file
-([`architecture.md`](docs/architecture.md), [`topics.md`](docs/topics.md),
-[`connector-api.md`](docs/connector-api.md)) and re-verified the full v0.1
-Definition of Done end to end, one more time, from a clean
-`docker compose up` alongside the external simulator - not re-asserting
-what earlier phases already proved, but confirming it all still holds
-*together*, right now, as a whole: all three services reached `healthy`,
-`/api/health`/`/api/sensors` returned correct data, and the dashboard
-showed three live labeled feeds (PHYSICAL/SIMULATED correct), real FPS,
-resolution, sync skew, and CPU/RAM - matching every item in the original
-Definition of Done.
-
-One more real, honest finding from this final pass: killed a single
-sensor's process again (thermal) as a last check of the Phase 8 fixes
-working *together*, and found that `respawn` (~2-3s recovery) now
-completes *faster* than the backend's 5s staleness threshold - meaning a
-process-level crash-and-recover cycle is now genuinely invisible in the
-live dashboard, not just fast. Confirmed the respawn still happened for
-real (a fresh process was serving fresh data), but also noticed
-`reconnect_count` reset to 0 for that sensor - correct, not a bug: it
-counts RTSP-level reconnects within one process's lifetime, and a
-respawned process is honestly a new lifetime with no reconnects yet of its
-own. Worth knowing precisely rather than assuming reconnect_count alone
-tells the whole story of a sensor's history - noted in
-[`topics.md`](docs/topics.md) for the record, not fixed further, since the
-underlying behavior (fast, correct recovery) is exactly what Phase 8 set
-out to build.
-
-## Requirements
-
-- Docker Desktop (tested with 6GB RAM / 7 CPU allocated to the VM)
-- For local sensor simulation: [`rtspmultistream`](https://github.com/CosminBMemetea/multirtsp)
-  (separate repo — the RTSP endpoints are the integration boundary; this repo
-  has no dependency on how they're produced)
-- Nothing else on the host — the frontend builds entirely inside its Docker
-  multi-stage build (Node only exists in the intermediate build stage, not
-  the final nginx image). Node/npm locally is only useful for faster
-  iteration (`cd frontend && npm run dev`), never required for `docker
-  compose up`.
+- [docs/architecture.md](docs/architecture.md) — system design and the
+  reasoning behind it
+- [docs/topics.md](docs/topics.md) — ROS topic/message contract
+- [docs/configuration.md](docs/configuration.md) — every config surface
+- [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model
+- [docs/connector-api.md](docs/connector-api.md) — adding a sensor, backend API
+- [docs/development.md](docs/development.md) — repo layout, tests, dev workflow
+- [docs/limitations.md](docs/limitations.md) — what v0.1 doesn't do, and why
+- [CHANGELOG.md](CHANGELOG.md) — what shipped, what was fixed, verified how
 
 ## License
 

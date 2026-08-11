@@ -40,7 +40,8 @@ def mjpeg_stream(rtsp_url: str) -> Iterator[bytes]:
         '-boundary_tag', 'ffmpeg',
         'pipe:1',
     ]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen(
+        cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     try:
         while True:
             chunk = process.stdout.read(READ_CHUNK_BYTES)
@@ -53,3 +54,5 @@ def mjpeg_stream(rtsp_url: str) -> Iterator[bytes]:
             process.wait(timeout=2)
         except subprocess.TimeoutExpired:
             process.kill()
+            process.wait()
+        process.stdout.close()

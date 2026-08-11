@@ -6,10 +6,12 @@ never a raw ROS message); a per-sensor MJPEG endpoint for video, entirely
 independent of ROS (see video_relay.py for why).
 """
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from app.config import load_sensors
 from app.ros_bridge import RosBridge
@@ -17,7 +19,17 @@ from app.video_relay import mjpeg_stream
 
 WS_PUSH_INTERVAL_SEC = 0.5
 
-app = FastAPI(title='MultiSens Backend')
+bridge = RosBridge()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    bridge.start()
+    yield
+    bridge.shutdown()
+
+
+app = FastAPI(title='MultiSens Backend', lifespan=lifespan)
 
 # Frontend and backend are separate containers/ports (browser reaches both
 # via host-published ports), so REST calls from the dashboard are
@@ -32,31 +44,24 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-bridge = RosBridge()
-
-
-@app.on_event('startup')
-def on_startup():
-    bridge.start()
-
 
 @app.get('/api/health')
-def health():
+def health() -> dict[str, str]:
     return {'status': 'ok'}
 
 
 @app.get('/api/sensors')
-def sensors():
+def sensors() -> list[dict]:
     return load_sensors()
 
 
 @app.get('/api/status')
-def status():
+def status() -> dict:
     return bridge.snapshot()
 
 
 @app.get('/api/sensors/{sensor_id}/stream.mjpeg')
-def sensor_stream(sensor_id: str):
+def sensor_stream(sensor_id: str) -> Response:
     sensors_by_id = {s['id']: s for s in load_sensors()}
     if sensor_id not in sensors_by_id:
         return JSONResponse(status_code=404, content={'error': f"unknown sensor '{sensor_id}'"})
@@ -67,7 +72,7 @@ def sensor_stream(sensor_id: str):
 
 
 @app.websocket('/ws/status')
-async def ws_status(websocket: WebSocket):
+async def ws_status(websocket: WebSocket) -> None:
     await websocket.accept()
     try:
         while True:

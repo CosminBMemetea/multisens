@@ -52,7 +52,7 @@ class RtspIngestionNode(Node):
         self.declare_parameter('sensor_id', 'rgb')
         self.declare_parameter('modality', 'rgb')
         self.declare_parameter('source_type', 'physical')
-        self.declare_parameter('rtsp_url', 'rtsp://host.docker.internal:8554/rgb')
+        self.declare_parameter('rtsp_url', '')
         self.declare_parameter('expected_fps', -1.0)
 
         self._sensor_id = self.get_parameter('sensor_id').value
@@ -64,6 +64,10 @@ class RtspIngestionNode(Node):
         if self._source_type not in ('physical', 'simulated'):
             raise ValueError(
                 f"source_type must be 'physical' or 'simulated', got '{self._source_type}'")
+        if not self._rtsp_url:
+            # No default here on purpose: this node is generic and must not
+            # bake in any particular host or sensor simulator's address.
+            raise ValueError("rtsp_url parameter is required and was not set")
 
         topic = f'/multisens/sensors/{self._modality}/image_raw'
         self._publisher = self.create_publisher(Image, topic, qos_profile_sensor_data)

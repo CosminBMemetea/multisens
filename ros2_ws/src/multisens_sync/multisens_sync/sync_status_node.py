@@ -53,6 +53,14 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import TimeReference
 
+from multisens_sync.sync_logic import compute_sync_status
+
+_LEVEL_TO_DIAGNOSTIC = {
+    'ok': DiagnosticStatus.OK,
+    'warn': DiagnosticStatus.WARN,
+    'error': DiagnosticStatus.ERROR,
+}
+
 DEFAULT_CONFIG_PATH = '/config/sensors.yaml'
 PUBLISH_PERIOD_SEC = 1.0
 STALE_AFTER_SEC = 3.0
@@ -167,46 +175,24 @@ class SyncStatusNode(Node):
             self._last_group_monotonic is not None
             and now - self._last_group_monotonic <= STALE_AFTER_SEC)
 
-        values = [
-            KeyValue(key='tolerance_ms', value=f'{self._tolerance_ms:.1f}'),
-            KeyValue(key='synchronized_group_rate_hz', value=f'{group_rate_hz:.1f}'),
-            KeyValue(key='missing_sensors', value=','.join(missing) if missing else 'none'),
-            KeyValue(key='stale_sensors', value=','.join(stale) if stale else 'none'),
-        ]
-
-        within_tolerance = False
-        if group_is_fresh:
-            within_tolerance = self._last_group_max_skew_ms <= self._tolerance_ms
-            values.append(KeyValue(key='max_skew_ms', value=f'{self._last_group_max_skew_ms:.1f}'))
-            for modality in self._modalities:
-                offset = self._last_group_offsets_ms.get(modality)
-                values.append(KeyValue(
-                    key=f'offset_ms_{modality}',
-                    value=f'{offset:.1f}' if offset is not None else 'unavailable'))
-        else:
-            values.append(KeyValue(key='max_skew_ms', value='unavailable'))
-            for modality in self._modalities:
-                values.append(KeyValue(key=f'offset_ms_{modality}', value='unavailable'))
-
-        if not group_is_fresh:
-            level = DiagnosticStatus.ERROR
-            message = f'no synchronized group in last {STALE_AFTER_SEC:.0f}s (missing: {missing or "none"})'
-        elif missing:
-            level = DiagnosticStatus.ERROR
-            message = f'missing sensors: {missing}'
-        elif stale or not within_tolerance:
-            level = DiagnosticStatus.WARN
-            message = f'stale: {stale or "none"}, within_tolerance={within_tolerance}'
-        else:
-            level = DiagnosticStatus.OK
-            message = f'synchronized within {self._tolerance_ms:.0f}ms tolerance'
+        result = compute_sync_status(
+            modalities=self._modalities,
+            missing=missing,
+            stale=stale,
+            group_is_fresh=group_is_fresh,
+            max_skew_ms=self._last_group_max_skew_ms,
+            offsets_ms=self._last_group_offsets_ms,
+            tolerance_ms=self._tolerance_ms,
+            group_rate_hz=group_rate_hz,
+            stale_after_sec=STALE_AFTER_SEC,
+        )
 
         status = DiagnosticStatus()
         status.name = 'multisens: sync'
         status.hardware_id = 'sync'
-        status.level = level
-        status.message = message
-        status.values = values
+        status.level = _LEVEL_TO_DIAGNOSTIC[result['level']]
+        status.message = result['message']
+        status.values = [KeyValue(key=k, value=v) for k, v in result['fields'].items()]
 
         msg = DiagnosticArray()
         msg.header.stamp = self.get_clock().now().to_msg()

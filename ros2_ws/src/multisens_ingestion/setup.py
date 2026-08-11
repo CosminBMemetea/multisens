@@ -11,8 +11,6 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', [
-            'launch/phase1_graph.launch.py',
-            'launch/phase2_rgb.launch.py',
             'launch/ingestion.launch.py',
         ]),
     ],
@@ -25,8 +23,6 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'placeholder_talker = multisens_ingestion.placeholder_talker:main',
-            'placeholder_listener = multisens_ingestion.placeholder_listener:main',
             'rtsp_ingestion_node = multisens_ingestion.rtsp_ingestion_node:main',
         ],
     },

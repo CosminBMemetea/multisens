@@ -6,32 +6,62 @@ document is the standing "how does it actually work and why" reference.
 
 ## System overview
 
+Four distinct boundaries, each carrying only one kind of traffic - this is
+the single most important thing to take from this diagram. Video and
+metadata never share a transport; ROS/DDS and the browser never talk
+directly.
+
 ```mermaid
 flowchart LR
     subgraph Host["macOS Host"]
-        Cam["Webcam"] --> Sim["multirtsp simulator\n(ffmpeg + MediaMTX)"]
+        Cam["Webcam"] --> Sim["sensor simulator\n(ffmpeg + MediaMTX)"]
         Browser["Browser"]
     end
 
     subgraph Docker["docker compose"]
         subgraph ros["ros container"]
-            Ing["multisens_ingestion\n(N rtsp_ingestion_node)"]
-            Diag["multisens_diagnostics\n(system_diagnostics_node)"]
-            Sync["multisens_sync\n(sync_status_node)"]
+            Ing["multisens_ingestion\nN x rtsp_ingestion_node"]
+            Diag["multisens_diagnostics\nsystem_diagnostics_node"]
+            Sync["multisens_sync\nsync_status_node"]
         end
-        Backend["backend container\nFastAPI + rclpy bridge"]
+        subgraph backend["backend container"]
+            Bridge["rclpy bridge"]
+            Rest["REST + WebSocket"]
+            Relay["MJPEG relay"]
+        end
         Frontend["frontend container\nnginx / React build"]
     end
 
-    Sim -- "RTSP\n(rgb/depth/thermal)" --> Ing
-    Sim -- "RTSP (independent 2nd reader)" --> Backend
-    Ing -- "/multisens/sensors/*/image_raw\n/multisens/sensors/*/frame_stamp\n/multisens/diagnostics" --> Diag
-    Ing --> Sync
-    Diag -- "/multisens/diagnostics" --> Backend
-    Sync -- "/multisens/sync/status" --> Backend
-    Backend -- "REST /api/*\nWebSocket /ws/status\nMJPEG /api/sensors/{id}/stream.mjpeg" --> Browser
-    Frontend -- "static HTML/JS/CSS" --> Browser
+    Sim ==>|"① RTSP video boundary\n(H.264, two independent readers)"| Ing
+    Sim ==>|"① RTSP video boundary"| Relay
+
+    Ing -.->|"② ROS/DDS metadata plane\nimage_raw + frame_stamp + diagnostics"| Diag
+    Ing -.->|"② ROS/DDS metadata plane\nframe_stamp"| Sync
+    Diag -.->|"② ROS/DDS metadata plane\n/multisens/diagnostics"| Bridge
+    Sync -.->|"② ROS/DDS metadata plane\n/multisens/sync/status"| Bridge
+
+    Relay ==>|"③ HTTP MJPEG video plane\nmultipart/x-mixed-replace"| Browser
+
+    Bridge --> Rest
+    Rest -->|"④ REST/WebSocket control plane\nGET /api/*, WS /ws/status"| Browser
+
+    Frontend -->|static HTML/JS/CSS| Browser
 ```
+
+**① RTSP video boundary** - the actual integration boundary between
+MultiSens and any sensor source, physical or simulated. Two independent
+readers of the same URL: the ROS ingestion node (for metadata/sync) and the
+backend's video relay (for the browser) - neither depends on the other.
+
+**② ROS/DDS metadata plane** - small messages only (headers, diagnostic
+key/value pairs). Never carries pixels across this boundary.
+
+**③ HTTP MJPEG video plane** - pixels reach the browser here, entirely
+independent of ROS/DDS. Still alive even if the `ros` container is down.
+
+**④ REST/WebSocket control/diagnostic plane** - the browser's only source
+of truth for diagnostics/sync state, and it's plain JSON: no ROS message
+type crosses this boundary, translated once inside `ros_bridge.py`.
 
 Three containers (`ros`, `backend`, `frontend`), one host-side simulator that
 is explicitly **not** part of MultiSens - the RTSP endpoints it produces are

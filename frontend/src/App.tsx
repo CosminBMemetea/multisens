@@ -13,10 +13,19 @@ function App() {
   const { snapshot, connected } = useStatusSocket();
 
   useEffect(() => {
+    // Refetch whenever the WebSocket (re)connects, not just once on mount:
+    // if the backend wasn't ready yet at initial page load, this was the
+    // only way sensors would ever appear without a manual page reload.
+    // Connecting to the WS also means the backend is definitely reachable,
+    // so this doubles as the retry signal for the one-shot REST call.
+    if (!connected) return;
     fetchSensors()
-      .then(setSensors)
+      .then((result) => {
+        setSensors(result);
+        setConfigError(null);
+      })
       .catch((err) => setConfigError(String(err)));
-  }, []);
+  }, [connected]);
 
   const connectedCount = Object.values(snapshot?.sensors ?? {}).filter(
     (s) => s.connection_state === "connected",
