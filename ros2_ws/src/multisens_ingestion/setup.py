@@ -13,6 +13,7 @@ setup(
         ('share/' + package_name + '/launch', [
             'launch/phase1_graph.launch.py',
             'launch/phase2_rgb.launch.py',
+            'launch/ingestion.launch.py',
         ]),
     ],
     install_requires=['setuptools'],

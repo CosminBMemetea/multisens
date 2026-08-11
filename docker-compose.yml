@@ -5,10 +5,19 @@ services:
     environment:
       - ROS_DOMAIN_ID=42
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - MULTISENS_SENSORS_CONFIG=/config/sensors.yaml
+    volumes:
+      - ./config/sensors.yaml:/config/sensors.yaml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", ". /opt/ros/humble/setup.sh && . /workspace/install/setup.sh && ros2 node list | grep -q rgb_ingestion"]
+      test: [
+        "CMD-SHELL",
+        ". /opt/ros/humble/setup.sh && . /workspace/install/setup.sh && \
+         ros2 node list | grep -q rgb_ingestion && \
+         ros2 node list | grep -q depth_ingestion && \
+         ros2 node list | grep -q thermal_ingestion"
+      ]
       interval: 15s
       timeout: 10s
       retries: 5

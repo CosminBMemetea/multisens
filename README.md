@@ -14,7 +14,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 0 — Environment & architecture | Container topology, ROS message strategy, video/control-plane split reviewed and decided | ✅ Done |
 | 1 — ROS graph boots in Docker | `ros` container builds on `ros:humble-ros-base` (arm64), boots a two-node graph, cross-process DDS pub/sub verified live (not just node discovery — actual message delivery watched via `ros2 topic echo`) | ✅ Done |
 | 2 — RGB RTSP → ROS image topic | One real sensor, real frames | ✅ Done |
-| 3 — Generalize ingestion (RGB+depth+thermal from config) | — | ⬜ Not started |
+| 3 — Generalize ingestion (RGB+depth+thermal from config) | One node type, N instances from `config/sensors.yaml`, no per-sensor code | ✅ Done |
 | 4 — Diagnostics | — | ⬜ Not started |
 | 5 — Synchronization | — | ⬜ Not started |
 | 6 — Backend API/bridge | — | ⬜ Not started |
@@ -62,7 +62,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 2 (current)
+## Running Phase 3 (current)
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -77,24 +77,33 @@ Then:
 ```bash
 docker compose build ros
 docker compose up -d ros
-docker compose logs -f ros      # watch real frames get published, ~30fps
+docker compose logs -f ros      # watch rgb/depth/thermal all publish at ~30fps
 docker compose ps               # should show "healthy"
 docker compose down
 ```
 
-`ros2_ws/src/multisens_ingestion` now has a real `rtsp_ingestion_node` that
-opens `rtsp://host.docker.internal:8554/rgb` and publishes genuine camera
-frames as `sensor_msgs/Image` on `/multisens/sensors/rgb/image_raw` — verified
-by pulling an actual frame out of the topic and confirming it's real camera
-content, not a placeholder. Killing the simulator's `ffmpeg` process makes the
-node log a warning and retry every 2s without crashing; restarting the
-simulator resumes publishing automatically, no container restart needed. The
-Phase 1 placeholder talker/listener pair is still in the package (harmless,
-useful for regression-checking DDS itself if that's ever in question) but is
-no longer what the container launches by default.
+`ingestion.launch.py` reads `config/sensors.yaml` (mounted read-only into the
+container) and instantiates one `rtsp_ingestion_node` per entry — the node
+itself didn't need to change from Phase 2, since sensor identity was already
+fully parameterized. Verified end to end, not just "three topics exist":
+pulled a real frame from each of `/multisens/sensors/{rgb,depth,thermal}/image_raw`
+and scored colorfulness (mean `|R-G|+|G-B|+|R-B|` per pixel) — rgb scored 36
+(a face against a mostly neutral wall), depth scored 372 and thermal scored
+334 (the `pseudocolor` `turbo`/`heat` presets are visibly, measurably applied,
+not passthrough grayscale). `source_type` was read back via `ros2 param get`
+for all three nodes and matches config exactly (`physical` for rgb,
+`simulated` for depth/thermal). The launch file also validates the config
+before launching anything: two sensors declaring the same modality (which
+would silently collide on the same topic) is a hard launch-time error, tested
+directly by feeding it a broken config.
 
-Depth and thermal, and reading `config/sensors.yaml` instead of
-launch-hardcoded parameters, are Phase 3.
+Depth/thermal reconnect behavior (killing the simulator) was covered
+end-to-end for rgb in Phase 2's node — same code path, not re-verified per
+modality here since it's the same node type.
+
+The Phase 1/2 launch files (`phase1_graph.launch.py`, `phase2_rgb.launch.py`)
+are still in the package, unused by the container's default entrypoint —
+harmless historical artifacts, not dead weight worth deleting yet.
 
 ## Requirements
 
