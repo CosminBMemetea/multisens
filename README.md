@@ -7,6 +7,22 @@ ground-truth comparison. Built to work identically whether a stream comes
 from a webcam-based simulator, a real sensor, or an OEM gateway — no
 vendor-specific or dataset-specific code lives in this repo.
 
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md) — system overview, container
+  topology, the control/telemetry-vs-video split, and the rationale behind
+  every major design decision.
+- [`docs/topics.md`](docs/topics.md) — the full ROS topic contract, message
+  types, QoS, and every diagnostic field's meaning.
+- [`docs/connector-api.md`](docs/connector-api.md) — how to add a sensor
+  (it's a `config/sensors.yaml` entry, not a code change) and the backend's
+  REST/WebSocket API surface.
+
+This README stays the project pitch, status snapshot, quick start, and the
+detailed phase-by-phase verification log (real findings and bugs discovered
+along the way, not just what was attempted) — the docs above are the
+standing reference once you're past "how do I run this."
+
 ## Status: what's actually running vs. what's designed but not built
 
 | Phase | What it delivers | Status |
@@ -20,7 +36,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 6 — Backend API/bridge | REST + WebSocket bridge, independent MJPEG video relay, separate container | ✅ Done |
 | 7 — Web dashboard | Live React dashboard, three video panels, sync/system health, frontend container joins compose | ✅ Done |
 | 8 — Robustness (disconnect/reconnect) | Single-sensor process fault isolation, respawn, backend staleness fix, memory soak | ✅ Done |
-| 9 — Docs & v0.1 release | — | ⬜ Not started |
+| 9 — Docs & v0.1 release | Architecture/topics/connector docs, full Definition of Done re-verified end to end, tagged | ✅ Done |
 
 Tracked as GitHub issues, one per phase — see [Issues](https://github.com/CosminBMemetea/multisens/issues)
 for what's open vs. closed right now; this table is a snapshot, the issue
@@ -62,7 +78,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 8 (current)
+## Running MultiSens v0.1
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -405,6 +421,36 @@ genuine slow leak from one-time warmup allocation (e.g. lazy module
 imports, a connection pool settling to steady size). Worth a longer soak
 before a real v0.1 release; not chased further here given the scale of the
 signal relative to test duration.
+
+### Documentation & v0.1 release (Phase 9)
+
+Added the three standing reference docs linked at the top of this file
+([`architecture.md`](docs/architecture.md), [`topics.md`](docs/topics.md),
+[`connector-api.md`](docs/connector-api.md)) and re-verified the full v0.1
+Definition of Done end to end, one more time, from a clean
+`docker compose up` alongside the external simulator - not re-asserting
+what earlier phases already proved, but confirming it all still holds
+*together*, right now, as a whole: all three services reached `healthy`,
+`/api/health`/`/api/sensors` returned correct data, and the dashboard
+showed three live labeled feeds (PHYSICAL/SIMULATED correct), real FPS,
+resolution, sync skew, and CPU/RAM - matching every item in the original
+Definition of Done.
+
+One more real, honest finding from this final pass: killed a single
+sensor's process again (thermal) as a last check of the Phase 8 fixes
+working *together*, and found that `respawn` (~2-3s recovery) now
+completes *faster* than the backend's 5s staleness threshold - meaning a
+process-level crash-and-recover cycle is now genuinely invisible in the
+live dashboard, not just fast. Confirmed the respawn still happened for
+real (a fresh process was serving fresh data), but also noticed
+`reconnect_count` reset to 0 for that sensor - correct, not a bug: it
+counts RTSP-level reconnects within one process's lifetime, and a
+respawned process is honestly a new lifetime with no reconnects yet of its
+own. Worth knowing precisely rather than assuming reconnect_count alone
+tells the whole story of a sensor's history - noted in
+[`topics.md`](docs/topics.md) for the record, not fixed further, since the
+underlying behavior (fast, correct recovery) is exactly what Phase 8 set
+out to build.
 
 ## Requirements
 
