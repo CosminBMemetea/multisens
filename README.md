@@ -16,7 +16,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 2 — RGB RTSP → ROS image topic | One real sensor, real frames | ✅ Done |
 | 3 — Generalize ingestion (RGB+depth+thermal from config) | One node type, N instances from `config/sensors.yaml`, no per-sensor code | ✅ Done |
 | 4 — Diagnostics | Per-sensor self-reported diagnostics + global system diagnostics, both real | ✅ Done |
-| 5 — Synchronization | — | ⬜ Not started |
+| 5 — Synchronization | Real cross-sensor skew measurement, missing/stale detection | ✅ Done |
 | 6 — Backend API/bridge | — | ⬜ Not started |
 | 7 — Web dashboard | — | ⬜ Not started |
 | 8 — Robustness (disconnect/reconnect) | — | ⬜ Not started |
@@ -62,7 +62,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 4 (current)
+## Running Phase 5 (current)
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -149,6 +149,59 @@ flip to `connection_state: disconnected` / diagnostic level `ERROR`,
 `system` correctly reports `0/3 configured sensors connected`. Restarted the
 source and confirmed full recovery with `reconnect_count` incrementing to
 `1` on all three nodes and `system` back to `3/3`.
+
+### Synchronization (Phase 5)
+
+`multisens_sync` publishes `diagnostic_msgs/DiagnosticArray` on
+`/multisens/sync/status` every second: per-sensor `offset_ms_{modality}`
+(each sensor's timestamp offset from the group's mean), `max_skew_ms`,
+`synchronized_group_rate_hz`, `missing_sensors`, `stale_sensors`, and the
+configured `tolerance_ms`. Uses `message_filters.ApproximateTimeSynchronizer`
+— ROS's standard mechanism for matching messages across topics by timestamp
+proximity — instead of hand-rolled frame-matching logic. Compares each
+sensor's ROS *publish* timestamp, not a source capture timestamp, since
+RTSP/H.264 doesn't reliably provide one across independently read streams.
+
+Two real bugs found and fixed during verification, both by actually reading
+the numbers rather than trusting the implementation looked right:
+
+1. Subscribing directly to the `image_raw` topics (~900KB/frame) made
+   `synchronized_group_rate_hz` sit near 0-3Hz against a true ~30Hz sensor
+   rate, with matched skew swinging wildly (1ms to 460ms) — an artifact of
+   the sync node's own processing lag, not real sensor skew. Adding a
+   multi-threaded executor only partially helped, because CPython's GIL
+   means threads don't parallelize CPU-bound message deserialization. Fixed
+   properly: `rtsp_ingestion_node` now also publishes `sensor_msgs/TimeReference`
+   on a new `/multisens/sensors/{modality}/frame_stamp` topic — same header,
+   no pixel payload — and the sync node subscribes to that instead.
+2. First attempt at the lightweight topic used a bare `std_msgs/Header`,
+   which produced exactly 0 synchronized groups, ever, with no error.
+   `message_filters`' synchronizers read `msg.header.stamp` internally,
+   which needs a message with a *nested* header — a bare `Header` only has
+   `.stamp` directly. Switched to `sensor_msgs/TimeReference`, a small
+   standard message that does carry a real header.
+
+After both fixes: `synchronized_group_rate_hz` sits at a genuine ~30Hz, and
+measured `max_skew_ms` across repeated samples was consistently 0.2-3.5ms
+(tighter than the illustrative 7ms figure sometimes used as a rule of thumb
+for this kind of setup) — expected, since all three streams originate from
+one physical camera and one `ffmpeg` process. The default `tolerance_ms`
+(25.0) was set from that measurement, not guessed: roughly 7-100x the
+observed baseline jitter, tight enough to mean something, loose enough not
+to false-positive on normal variation. Verified failure handling too: killed
+the RTSP source and confirmed `stale_sensors: rgb,depth,thermal`, level
+`ERROR`, `synchronized_group_rate_hz: 0.0`, and every offset/skew field
+explicitly `"unavailable"` rather than displaying stale numbers; restarted
+the source and confirmed full recovery (skew settled back to ~0.1ms).
+
+`system_diagnostics_node`'s `sync_health` field (previously a standing
+`"unavailable"` placeholder, since Phase 5 didn't exist when Phase 4 was
+built) now subscribes to `/multisens/sync/status` and reports the real
+current level (`ok`/`warn`/`error`) instead.
+
+`/multisens/sync/frames` (actual grouped/republished synchronized frame
+bundles, as opposed to status about synchronization) remains out of scope
+for v0.1, as originally planned.
 
 ## Requirements
 

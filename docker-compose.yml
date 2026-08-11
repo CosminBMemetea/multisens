@@ -17,7 +17,8 @@ services:
          ros2 node list | grep -q rgb_ingestion && \
          ros2 node list | grep -q depth_ingestion && \
          ros2 node list | grep -q thermal_ingestion && \
-         ros2 node list | grep -q system_diagnostics"
+         ros2 node list | grep -q system_diagnostics && \
+         ros2 node list | grep -q sync_status"
       ]
       interval: 15s
       timeout: 10s

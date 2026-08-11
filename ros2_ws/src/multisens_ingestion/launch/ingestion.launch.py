@@ -54,6 +54,15 @@ def _make_system_diagnostics_node() -> Node:
     )
 
 
+def _make_sync_status_node() -> Node:
+    return Node(
+        package='multisens_sync',
+        executable='sync_status_node',
+        name='sync_status',
+        output='screen',
+    )
+
+
 def generate_launch_description():
     config_path = os.environ.get('MULTISENS_SENSORS_CONFIG', DEFAULT_CONFIG_PATH)
     sensors = _load_sensors(config_path)
@@ -80,5 +89,6 @@ def generate_launch_description():
         raise RuntimeError(f'no usable sensors found in {config_path}')
 
     nodes.append(_make_system_diagnostics_node())
+    nodes.append(_make_sync_status_node())
 
     return LaunchDescription(nodes)

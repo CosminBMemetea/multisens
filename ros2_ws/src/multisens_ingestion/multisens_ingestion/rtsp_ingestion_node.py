@@ -13,9 +13,22 @@ self-reported here rather than computed by a separate node watching the
 image topic. Global diagnostics (CPU/RAM/uptime/sensor count), which no
 single sensor owns, are a separate node - see multisens_diagnostics.
 
+Also publishes sensor_msgs/TimeReference on
+/multisens/sensors/{modality}/frame_stamp, carrying the same header as the
+Image message with no pixel payload. Added for Phase 5 (multisens_sync)
+after measuring that a subscriber processing three concurrent ~900KB raw
+Image topics at 30fps couldn't keep up well enough to measure real
+cross-sensor skew (see multisens_sync) - consumers that only need timing,
+not pixels, should use this instead of image_raw. TimeReference specifically
+(not a bare std_msgs/Header) because message_filters.ApproximateTimeSynchronizer
+expects a message with a *nested* header.stamp - a bare Header only has
+.stamp directly and silently never matches anything (found by testing: 0
+synchronized groups, ever, with a bare Header - not an error, just nothing).
+
 Phase 2 scope: one instantiation, RGB, launch-hardcoded parameters, basic
 reconnect-on-failure. Phase 3 generalized this to N instantiations driven by
 config/sensors.yaml. Phase 4 added the self-diagnostics described above.
+Phase 5 added the frame_stamp topic described above.
 """
 import time
 
@@ -25,7 +38,7 @@ from cv_bridge import CvBridge
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, TimeReference
 
 RECONNECT_BACKOFF_SEC = 2.0
 LOG_EVERY_N_FRAMES = 90
@@ -54,6 +67,9 @@ class RtspIngestionNode(Node):
 
         topic = f'/multisens/sensors/{self._modality}/image_raw'
         self._publisher = self.create_publisher(Image, topic, qos_profile_sensor_data)
+        stamp_topic = f'/multisens/sensors/{self._modality}/frame_stamp'
+        self._stamp_publisher = self.create_publisher(
+            TimeReference, stamp_topic, qos_profile_sensor_data)
         self._diagnostics_pub = self.create_publisher(DiagnosticArray, '/multisens/diagnostics', 10)
         self._bridge = CvBridge()
         self._capture = None
@@ -113,6 +129,12 @@ class RtspIngestionNode(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = f'multisens_{self._sensor_id}'
         self._publisher.publish(msg)
+
+        time_ref_msg = TimeReference()
+        time_ref_msg.header = msg.header
+        time_ref_msg.time_ref = msg.header.stamp
+        time_ref_msg.source = self._sensor_id
+        self._stamp_publisher.publish(time_ref_msg)
 
         self._last_publish_latency_ms = (time.monotonic() - read_done) * 1000.0
         self._last_frame_monotonic = read_done

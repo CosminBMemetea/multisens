@@ -12,9 +12,9 @@ within the last STALE_AFTER_SEC, so a sensor that stops reporting (crashed
 node, not just a lost RTSP source) ages out instead of being stuck "connected"
 forever.
 
-sync_health is reported as "unavailable" - Phase 5 (synchronization) doesn't
-exist yet, and this repo does not fabricate metrics for components that
-haven't been built.
+sync_health mirrors the level most recently published on /multisens/sync/status
+by multisens_sync - "unavailable" only until that node's first status arrives
+(e.g. briefly at startup), not a standing placeholder.
 """
 import os
 import time
@@ -28,6 +28,12 @@ from rclpy.node import Node
 DEFAULT_CONFIG_PATH = '/config/sensors.yaml'
 PUBLISH_PERIOD_SEC = 2.0
 STALE_AFTER_SEC = 3.0
+LEVEL_NAMES = {
+    DiagnosticStatus.OK: 'ok',
+    DiagnosticStatus.WARN: 'warn',
+    DiagnosticStatus.ERROR: 'error',
+    DiagnosticStatus.STALE: 'stale',
+}
 
 
 class SystemDiagnosticsNode(Node):
@@ -37,10 +43,13 @@ class SystemDiagnosticsNode(Node):
         config_path = os.environ.get('MULTISENS_SENSORS_CONFIG', DEFAULT_CONFIG_PATH)
         self._known_sensor_ids = self._load_sensor_ids(config_path)
         self._last_ok_monotonic = {}
+        self._sync_health = 'unavailable'
         self._start_monotonic = time.monotonic()
 
         self.create_subscription(
             DiagnosticArray, '/multisens/diagnostics', self._on_diagnostics, 10)
+        self.create_subscription(
+            DiagnosticArray, '/multisens/sync/status', self._on_sync_status, 10)
         self._publisher = self.create_publisher(DiagnosticArray, '/multisens/diagnostics', 10)
 
         # First psutil.cpu_percent() call always returns 0.0 (no baseline yet);
@@ -70,6 +79,11 @@ class SystemDiagnosticsNode(Node):
             if status.hardware_id in self._known_sensor_ids and status.level == DiagnosticStatus.OK:
                 self._last_ok_monotonic[status.hardware_id] = now
 
+    def _on_sync_status(self, msg: DiagnosticArray):
+        for status in msg.status:
+            if status.hardware_id == 'sync':
+                self._sync_health = LEVEL_NAMES.get(status.level, 'unavailable')
+
     def _connected_sensor_count(self) -> int:
         now = time.monotonic()
         return sum(
@@ -92,7 +106,7 @@ class SystemDiagnosticsNode(Node):
             KeyValue(key='uptime_sec', value=f'{uptime_sec:.0f}'),
             KeyValue(key='connected_sensor_count', value=str(connected)),
             KeyValue(key='total_sensor_count', value=str(total)),
-            KeyValue(key='sync_health', value='unavailable'),
+            KeyValue(key='sync_health', value=self._sync_health),
         ]
 
         msg = DiagnosticArray()

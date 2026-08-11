@@ -3,6 +3,7 @@ FROM ros:humble-ros-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-humble-rmw-cyclonedds-cpp \
         ros-humble-cv-bridge \
+        ros-humble-message-filters \
         python3-colcon-common-extensions \
         python3-yaml \
         python3-psutil \
