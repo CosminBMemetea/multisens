@@ -16,6 +16,14 @@ from launch_ros.actions import Node
 
 DEFAULT_CONFIG_PATH = '/config/sensors.yaml'
 SUPPORTED_TRANSPORTS = {'rtsp'}
+# Every Node below gets respawn=True: rtsp_ingestion_node's own reconnect
+# loop only covers its RTSP *connection* dying, not its OS process dying
+# (crash, OOM-kill, `kill -9`). Found the gap in Phase 8 by actually killing
+# one node's process directly - the other nodes kept running fine (proving
+# launch doesn't cascade-fail), but the dead one just stayed dead forever
+# with no code path to bring it back. respawn is ros2 launch's own answer to
+# exactly this, standard mechanism instead of a hand-rolled supervisor.
+RESPAWN_DELAY_SEC = 2.0
 
 
 def _load_sensors(config_path: str):
@@ -33,6 +41,8 @@ def _make_node(entry: dict) -> Node:
         executable='rtsp_ingestion_node',
         name=f'{sensor_id}_ingestion',
         output='screen',
+        respawn=True,
+        respawn_delay=RESPAWN_DELAY_SEC,
         parameters=[{
             'sensor_id': sensor_id,
             'modality': entry['modality'],
@@ -51,6 +61,8 @@ def _make_system_diagnostics_node() -> Node:
         executable='system_diagnostics_node',
         name='system_diagnostics',
         output='screen',
+        respawn=True,
+        respawn_delay=RESPAWN_DELAY_SEC,
     )
 
 
@@ -60,6 +72,8 @@ def _make_sync_status_node() -> Node:
         executable='sync_status_node',
         name='sync_status',
         output='screen',
+        respawn=True,
+        respawn_delay=RESPAWN_DELAY_SEC,
     )
 
 

@@ -19,7 +19,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 5 — Synchronization | Real cross-sensor skew measurement, missing/stale detection | ✅ Done |
 | 6 — Backend API/bridge | REST + WebSocket bridge, independent MJPEG video relay, separate container | ✅ Done |
 | 7 — Web dashboard | Live React dashboard, three video panels, sync/system health, frontend container joins compose | ✅ Done |
-| 8 — Robustness (disconnect/reconnect) | — | ⬜ Not started |
+| 8 — Robustness (disconnect/reconnect) | Single-sensor process fault isolation, respawn, backend staleness fix, memory soak | ✅ Done |
 | 9 — Docs & v0.1 release | — | ⬜ Not started |
 
 Tracked as GitHub issues, one per phase — see [Issues](https://github.com/CosminBMemetea/multisens/issues)
@@ -62,7 +62,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 7 (current)
+## Running Phase 8 (current)
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -332,6 +332,79 @@ reading - the same backlog-catch-up burst pattern already documented in
 Phase 2, confirmed here to settle back to ~30fps within a few seconds via
 direct polling. Real, measured, transient, self-correcting - not clamped or
 hidden.
+
+### Robustness (Phase 8)
+
+Every previous phase's disconnect/reconnect test killed the *entire*
+simulator process, which takes all three RTSP paths down simultaneously
+(they share one `ffmpeg` process). That never tested the actual scenario
+the master brief calls out by name - "if thermal disappears, RGB and depth
+must continue" - because nothing had ever gone down *alone*. This phase
+tested that directly, plus config-schema robustness and memory stability
+under repeated failure.
+
+**Single-sensor process fault isolation.** Killed only the `thermal_ingestion`
+OS process inside the `ros` container (`kill -9`, not just its RTSP
+connection) and confirmed: `rgb_ingestion`/`depth_ingestion` kept running and
+publishing at a full, undisturbed ~30fps the entire time; the `ros`
+container process itself did not exit (`ros2 launch` doesn't cascade-fail
+when one managed process dies). This found two real gaps, both fixed:
+
+1. **No process-level recovery existed.** `rtsp_ingestion_node`'s own
+   reconnect loop only covers its RTSP *connection* dying - it has nothing
+   to say about its own OS *process* dying, because a dead process can't run
+   its own recovery code. Fixed with `respawn=True` (`respawn_delay=2.0`) on
+   every `Node` action in `ingestion.launch.py` - the standard ROS 2 launch
+   mechanism for exactly this, not a hand-rolled supervisor. Verified: killed
+   `thermal_ingestion` again with the fix in place, and a brand new process
+   (a genuinely different PID) was running and publishing again within
+   seconds, with no manual intervention.
+2. **The backend bridge had no staleness expiry - a real, previously
+   undetected bug.** With `thermal_ingestion` dead, `curl localhost:8000/api/status`
+   kept reporting `thermal` as `"connection_state": "connected"`,
+   `"fps_received": "30.9"`, `"last_frame_age_ms": "2"` - stale data frozen
+   at the instant the process died, presented as if still live, forever
+   (nothing was ever going to arrive to correct it). Meanwhile
+   `system_diagnostics_node` and `sync_status_node` - which both already had
+   explicit staleness watchdogs from Phases 4 and 5 - correctly showed
+   `2/3 connected` and `stale_sensors: thermal` the whole time. The one place
+   that *didn't* replicate that pattern was `backend/app/ros_bridge.py`,
+   which just stored "whatever the last message said" with no expiry.
+   Fixed: `RosBridge` now tracks a last-update timestamp per sensor/system/sync
+   entry and excludes anything older than `STALE_AFTER_SEC` (5.0) from
+   `snapshot()` - a dead sensor now disappears from `/api/status` and the
+   dashboard (which already rendered "no diagnostics for this sensor"
+   correctly as `NO SIGNAL`/`unknown`, so no frontend changes were needed)
+   instead of lying about it indefinitely.
+
+Also honestly noted, not chased further: after `thermal_ingestion` respawned,
+`rgb`/`depth` showed `reconnect_count: 1` even though their own processes
+were never touched - most likely a brief RTSP/`mediamtx`-level contention
+ripple from the sibling process relaunching and reopening a connection to
+the same source at the same moment, which their own existing reconnect
+logic absorbed correctly on its own. Consistent with "the app stays
+responsive and recovers," not a new failure mode.
+
+**Differing FPS across sensors.** Temporarily set `thermal`'s
+`expected_fps` to 15 (all three sensors are genuinely 30fps in this
+simulator, so this was a mechanism test only, reverted immediately after -
+shipping a fabricated `expected_fps` in the committed config would violate
+this project's own "don't fabricate metrics" rule). Confirmed no code
+anywhere assumes uniform FPS across sensors: diagnostics correctly showed
+`thermal: fps_expected=15.0` alongside `rgb/depth: fps_expected=30.0`
+simultaneously, no crash, no cross-sensor interference.
+
+**Short memory-stability soak.** Sampled `docker stats` for all three
+containers every 25s over ~3.75 minutes, with two full RTSP outage/recovery
+cycles injected partway through. `ros`: 281-295 MiB, oscillating with no
+growth trend. `frontend`: flat at 7.0 MiB the entire time. `backend`: a
+small, consistent increase from 49.21 to 49.42 MiB (~0.2 MiB) over the
+window - reported honestly as inconclusive rather than either dismissed or
+called a confirmed leak: too small and the test too short to distinguish a
+genuine slow leak from one-time warmup allocation (e.g. lazy module
+imports, a connection pool settling to steady size). Worth a longer soak
+before a real v0.1 release; not chased further here given the scale of the
+signal relative to test duration.
 
 ## Requirements
 
