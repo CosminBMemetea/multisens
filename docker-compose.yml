@@ -47,3 +47,20 @@ services:
       timeout: 10s
       retries: 5
       start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      # 8080, not the more conventional 3000: 3000-3005 were occupied by an
+      # unrelated process on the dev machine this was built on. Change freely.
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:80 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s

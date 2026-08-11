@@ -8,6 +8,7 @@ independent of ROS (see video_relay.py for why).
 import asyncio
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.config import load_sensors
@@ -17,6 +18,20 @@ from app.video_relay import mjpeg_stream
 WS_PUSH_INTERVAL_SEC = 0.5
 
 app = FastAPI(title='MultiSens Backend')
+
+# Frontend and backend are separate containers/ports (browser reaches both
+# via host-published ports), so REST calls from the dashboard are
+# cross-origin. Wide open is a deliberate choice for v0.1: this is a
+# local-only dev tool with no auth and no cookies/credentials involved, so
+# there's nothing a permissive origin list actually exposes. Revisit before
+# this is ever reachable from anywhere but localhost.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_methods=['GET'],
+    allow_headers=['*'],
+)
+
 bridge = RosBridge()
 
 

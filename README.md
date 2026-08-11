@@ -18,7 +18,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 4 — Diagnostics | Per-sensor self-reported diagnostics + global system diagnostics, both real | ✅ Done |
 | 5 — Synchronization | Real cross-sensor skew measurement, missing/stale detection | ✅ Done |
 | 6 — Backend API/bridge | REST + WebSocket bridge, independent MJPEG video relay, separate container | ✅ Done |
-| 7 — Web dashboard | — | ⬜ Not started |
+| 7 — Web dashboard | Live React dashboard, three video panels, sync/system health, frontend container joins compose | ✅ Done |
 | 8 — Robustness (disconnect/reconnect) | — | ⬜ Not started |
 | 9 — Docs & v0.1 release | — | ⬜ Not started |
 
@@ -62,7 +62,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 6 (current)
+## Running Phase 7 (current)
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -77,12 +77,11 @@ Then:
 ```bash
 docker compose build
 docker compose up -d
-docker compose ps               # both ros and backend should show "healthy"
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/sensors
-curl http://localhost:8000/api/status
-docker compose down
+docker compose ps               # ros, backend, and frontend should all show "healthy"
+open http://localhost:8080      # the dashboard
 ```
+
+`docker compose down` stops all three cleanly (~8s, verified).
 
 `ingestion.launch.py` reads `config/sensors.yaml` (mounted read-only into the
 container) and instantiates one `rtsp_ingestion_node` per entry — the node
@@ -258,12 +257,93 @@ real JPEG frame bytes; requesting a nonexistent sensor's stream returns a
 clean `404` instead of a crash; `backend` correctly waits for `ros` to be
 healthy before starting (`depends_on: condition: service_healthy`).
 
+### Web dashboard (Phase 7)
+
+React + TypeScript + Vite + Tailwind, built and served via nginx in its own
+`frontend` container — the frontend joining `docker-compose.yml` for the
+first time, exactly as agreed back in Phase 0 (deliberately not carried as
+an empty container through Phases 1-6). Dark technical dashboard per the
+original design brief: top bar with a LIVE indicator tied to the WebSocket's
+actual connection state, a three-panel sensor grid (video + name + modality
++ PHYSICAL/SIMULATED badge + FPS + resolution + connection state + last-frame
+age + reconnect count + latency), a sync health panel, and a system health
+panel. Only the Dashboard page exists, as scoped for v0.1 - no other nav
+items.
+
+All calls happen from the browser directly to the backend's host-published
+port (`http://localhost:8000`), not container-to-container - the frontend
+container only ever serves static files, so there's no proxy configuration
+or build-time coupling between the two containers. Added CORS
+(`allow_origins=["*"]`) to the backend for this: a deliberate choice for a
+local-only v0.1 dev tool with no auth or cookies, not something to carry
+into any future deployment reachable from beyond localhost.
+
+Verified with real browser automation (Playwright driving headless
+Chromium), not just "the build succeeded" - screenshotted the dashboard
+against the live stack multiple times through this phase, including:
+
+- A clean `docker compose up` from scratch, all three services reaching
+  `healthy` in the correct dependency order.
+- Real video rendering in all three panels (not placeholders) - confirmed
+  via `img.naturalWidth`/`naturalHeight`/`.complete` in the page, then
+  visually: RGB shows the actual webcam feed, depth and thermal show their
+  distinct `turbo`/`heat` pseudocolor renderings.
+- **A genuine disconnect/reconnect cycle reflected correctly in the UI**:
+  killed the simulator's capture process and confirmed all three cards
+  flip to `DISCONNECTED` with a `NO SIGNAL` placeholder (not a broken-image
+  icon - the `<img>` tag is only mounted when `connection_state ===
+  "connected"`), `fps: 0.0`, growing `last frame` age, sync panel flips to
+  `ERROR` with every offset explicitly `unavailable`, and system health
+  correctly reports `0/3` connected. Restarted the simulator and confirmed
+  full recovery, with `reconnects: 1` visible on every sensor card - an
+  honest count of what actually happened during this test session, not a
+  static zero.
+
+Two real bugs found from that failure-state screenshot, not from reading the
+diff:
+
+1. **A transient but real startup race**: right after a clean `docker compose
+   up`, one snapshot showed `SYSTEM HEALTH: WARN, connected 0/3` while every
+   individual sensor card already showed `CONNECTED`. Traced this to real
+   DDS-discovery timing across the `ros` → `backend` container boundary -
+   `system_diagnostics_node` genuinely hadn't received any per-sensor OK
+   status yet at that instant. Confirmed via direct `curl` that it
+   self-corrects within seconds as discovery completes. Concluded this is
+   *correct* behavior, not a bug to suppress: showing a brief, accurate WARN
+   during real startup is exactly what this project's "never silently drop
+   diagnostics problems" principle calls for - hiding it would be the
+   actual bug.
+2. **A real rendering bug**: the disconnected-state screenshot showed sync
+   offsets as literally `"unavailablems"` - string-concatenating the
+   `"unavailable"` sentinel value with a hardcoded `"ms"` suffix, because the
+   original code only checked JS truthiness (`"unavailable"` is a non-empty,
+   truthy string) rather than checking for that specific sentinel. Same bug
+   existed in three places (`SyncHealthPanel`'s offsets and max skew,
+   `SensorCard`'s last-frame-age and latency). Fixed once with a shared
+   `formatMs()` helper (`frontend/src/format.ts`) instead of patching each
+   call site separately, then re-verified against a real disconnected state
+   that it now renders `unavailable` correctly, with no unit suffix.
+
+Also observed and *not* fixed, because it isn't a bug: `fps_received`
+briefly read 99-111 (well over the declared 30fps) in one snapshot taken
+seconds after a fresh page load spawned three new concurrent MJPEG relay
+connections to the same RTSP source the ROS ingestion nodes were already
+reading - the same backlog-catch-up burst pattern already documented in
+Phase 2, confirmed here to settle back to ~30fps within a few seconds via
+direct polling. Real, measured, transient, self-correcting - not clamped or
+hidden.
+
 ## Requirements
 
 - Docker Desktop (tested with 6GB RAM / 7 CPU allocated to the VM)
 - For local sensor simulation: [`rtspmultistream`](https://github.com/CosminBMemetea/multirtsp)
   (separate repo — the RTSP endpoints are the integration boundary; this repo
   has no dependency on how they're produced)
+- Nothing else on the host — the frontend builds entirely inside its Docker
+  multi-stage build (Node only exists in the intermediate build stage, not
+  the final nginx image). Node/npm locally is only useful for faster
+  iteration (`cd frontend && npm run dev`), never required for `docker
+  compose up`.
 
 ## License
 
