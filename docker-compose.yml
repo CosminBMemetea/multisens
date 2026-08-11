@@ -1,0 +1,15 @@
+services:
+  ros:
+    build:
+      context: ./ros2_ws
+    environment:
+      - ROS_DOMAIN_ID=42
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", ". /opt/ros/humble/setup.sh && . /workspace/install/setup.sh && ros2 node list | grep -q placeholder_listener"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
