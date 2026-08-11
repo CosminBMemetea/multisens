@@ -15,7 +15,7 @@ vendor-specific or dataset-specific code lives in this repo.
 | 1 — ROS graph boots in Docker | `ros` container builds on `ros:humble-ros-base` (arm64), boots a two-node graph, cross-process DDS pub/sub verified live (not just node discovery — actual message delivery watched via `ros2 topic echo`) | ✅ Done |
 | 2 — RGB RTSP → ROS image topic | One real sensor, real frames | ✅ Done |
 | 3 — Generalize ingestion (RGB+depth+thermal from config) | One node type, N instances from `config/sensors.yaml`, no per-sensor code | ✅ Done |
-| 4 — Diagnostics | — | ⬜ Not started |
+| 4 — Diagnostics | Per-sensor self-reported diagnostics + global system diagnostics, both real | ✅ Done |
 | 5 — Synchronization | — | ⬜ Not started |
 | 6 — Backend API/bridge | — | ⬜ Not started |
 | 7 — Web dashboard | — | ⬜ Not started |
@@ -62,7 +62,7 @@ Full phase-by-phase development log lives in the issue tracker; each closed
 issue documents what was actually verified for that phase, not just what was
 attempted.
 
-## Running Phase 3 (current)
+## Running Phase 4 (current)
 
 Start the sensor simulator on the host first (separate repo:
 [`multirtsp`](https://github.com/CosminBMemetea/multirtsp)):
@@ -104,6 +104,51 @@ modality here since it's the same node type.
 The Phase 1/2 launch files (`phase1_graph.launch.py`, `phase2_rgb.launch.py`)
 are still in the package, unused by the container's default entrypoint —
 harmless historical artifacts, not dead weight worth deleting yet.
+
+### Diagnostics (Phase 4)
+
+Every `rtsp_ingestion_node` self-publishes its own status on
+`/multisens/diagnostics` (`diagnostic_msgs/DiagnosticArray`, one
+`DiagnosticStatus` per publish) every second: `connection_state`,
+`fps_received`, `fps_expected` (from the new optional `expected_fps` field in
+`config/sensors.yaml`), `resolution`, `encoding`, `frames_received`,
+`last_frame_age_ms`, `reconnect_count`, `publish_latency_ms`, `source_type`,
+`modality`. `frames_dropped` is always reported as `"unavailable"` rather than
+a fabricated `0` — OpenCV's FFmpeg backend doesn't expose RTP-level loss
+stats through a simple API, and claiming zero drops would be a metric this
+system hasn't actually measured.
+
+Per-sensor diagnostics are self-reported rather than computed by a separate
+node watching the image topics, on purpose: only the ingestion node itself
+genuinely knows `connection_state`, `reconnect_count`, and true
+resolution/encoding — a passive external subscriber could only guess at
+those from message arrival gaps, which the "don't fabricate metrics" rule
+in this project rules out.
+
+A separate `multisens_diagnostics` package/node publishes *global*
+diagnostics on the same topic every 2s — `cpu_percent`, `memory_percent`,
+`uptime_sec`, `connected_sensor_count`, `total_sensor_count`, and
+`sync_health` (`"unavailable"`, honestly — Phase 5 doesn't exist yet, so
+there is nothing to measure). This is separate because no single sensor owns
+host resource usage or "how many sensors are connected total." Note:
+`cpu_percent`/`memory_percent` are read via `psutil` from inside the
+container on Docker Desktop for Mac, which reflects the Linux VM's overall
+view, not a cgroup-isolated per-container figure — a real, honestly-labeled
+measurement, just not perfectly scoped; worth revisiting if this ever runs
+under a container runtime with proper cgroup accounting.
+
+Verified end to end, including a bug this caught: the system node's first
+version subscribed to the same `/multisens/diagnostics` topic it publishes
+to, so it received its own "system" status back and miscounted it as a 4th
+connected sensor (`connected_sensor_count: 4` with `total_sensor_count: 3`
+— caught by actually reading the field values, not just checking the topic
+existed). Fixed by only counting hardware_ids that are actual configured
+sensors. After the fix: killed the RTSP source, confirmed all three sensors
+flip to `connection_state: disconnected` / diagnostic level `ERROR`,
+`fps_received: 0.0`, and `last_frame_age_ms` growing correctly, while
+`system` correctly reports `0/3 configured sensors connected`. Restarted the
+source and confirmed full recovery with `reconnect_count` incrementing to
+`1` on all three nodes and `system` back to `3/3`.
 
 ## Requirements
 

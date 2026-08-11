@@ -38,7 +38,19 @@ def _make_node(entry: dict) -> Node:
             'modality': entry['modality'],
             'source_type': entry['source_type'],
             'rtsp_url': entry['url'],
+            # -1.0 means "not configured" - diagnostics reports "unavailable"
+            # rather than a guessed number.
+            'expected_fps': float(entry.get('expected_fps', -1.0)),
         }],
+    )
+
+
+def _make_system_diagnostics_node() -> Node:
+    return Node(
+        package='multisens_diagnostics',
+        executable='system_diagnostics_node',
+        name='system_diagnostics',
+        output='screen',
     )
 
 
@@ -66,5 +78,7 @@ def generate_launch_description():
 
     if not nodes:
         raise RuntimeError(f'no usable sensors found in {config_path}')
+
+    nodes.append(_make_system_diagnostics_node())
 
     return LaunchDescription(nodes)

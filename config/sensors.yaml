@@ -2,14 +2,19 @@
 # instance. Adding a sensor here is the whole change needed to bring it
 # online - no code changes, no rebuild.
 #
-# id:          unique identifier, used as the ROS node name (<id>_ingestion)
-# modality:    used to derive the topic: /multisens/sensors/<modality>/image_raw
-# source_type: physical | simulated - never implied, always explicit
-# transport:   only "rtsp" is implemented; other values are skipped with a
-#              warning rather than crashing the whole launch
-# url:         host.docker.internal resolves to the Mac host from inside the
-#              ros container (Docker Desktop for Mac only - not portable to
-#              plain Linux Docker without changing this)
+# id:           unique identifier, used as the ROS node name (<id>_ingestion)
+# modality:     used to derive the topic: /multisens/sensors/<modality>/image_raw
+# source_type:  physical | simulated - never implied, always explicit
+# transport:    only "rtsp" is implemented; other values are skipped with a
+#               warning rather than crashing the whole launch
+# url:          host.docker.internal resolves to the Mac host from inside the
+#               ros container (Docker Desktop for Mac only - not portable to
+#               plain Linux Docker without changing this)
+# expected_fps: optional, nominal capture rate for this sensor, purely for
+#               diagnostics comparison against the measured rate - omit it
+#               if genuinely unknown rather than guessing; diagnostics report
+#               "unavailable" for expected_fps when it's absent, not a made-up
+#               number
 
 sensors:
   - id: rgb
@@ -17,15 +22,18 @@ sensors:
     source_type: physical
     transport: rtsp
     url: rtsp://host.docker.internal:8554/rgb
+    expected_fps: 30
 
   - id: depth
     modality: depth
     source_type: simulated
     transport: rtsp
     url: rtsp://host.docker.internal:8554/depth
+    expected_fps: 30
 
   - id: thermal
     modality: thermal
     source_type: simulated
     transport: rtsp
     url: rtsp://host.docker.internal:8554/thermal
+    expected_fps: 30

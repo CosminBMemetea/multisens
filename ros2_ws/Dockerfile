@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-humble-cv-bridge \
         python3-colcon-common-extensions \
         python3-yaml \
+        python3-psutil \
     && rm -rf /var/lib/apt/lists/*
 
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
