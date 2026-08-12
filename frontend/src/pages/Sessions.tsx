@@ -15,6 +15,7 @@ import type { Scenario, Session } from "../types";
 interface SessionRow {
   session: Session;
   scenarioName: string;
+  isSynthetic: boolean;
   groundTruthCount: number;
   configurationIds: string[];
 }
@@ -125,7 +126,7 @@ export function Sessions() {
   async function load() {
     try {
       const [sessions, scenarioList] = await Promise.all([fetchSessions(), fetchScenarios()]);
-      const scenarioNameById = new Map(scenarioList.map((s) => [s.id, s.name]));
+      const scenarioById = new Map(scenarioList.map((s) => [s.id, s]));
 
       const enriched = await Promise.all(
         sessions.map(async (session): Promise<SessionRow> => {
@@ -134,9 +135,11 @@ export function Sessions() {
             fetchSessionPredictions(session.id),
           ]);
           const configurationIds = [...new Set(predictions.map((p) => p.configuration_id))].sort();
+          const scenario = scenarioById.get(session.scenario_id);
           return {
             session,
-            scenarioName: scenarioNameById.get(session.scenario_id) ?? session.scenario_id,
+            scenarioName: scenario?.name ?? session.scenario_id,
+            isSynthetic: scenario?.tags.includes("synthetic") ?? false,
             groundTruthCount: groundTruth.length,
             configurationIds,
           };
@@ -213,14 +216,21 @@ export function Sessions() {
                   </td>
                 </tr>
               )}
-              {rows?.map(({ session, scenarioName, groundTruthCount, configurationIds }) => (
+              {rows?.map(({ session, scenarioName, isSynthetic, groundTruthCount, configurationIds }) => (
                 <tr key={session.id} className="border-b border-slate-800/60 last:border-0 hover:bg-slate-900/40">
                   <td className="px-4 py-2">
                     <Link to={`/sessions/${session.id}`} className="font-medium text-cyan-400 hover:underline">
                       {session.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-slate-300">{scenarioName}</td>
+                  <td className="px-4 py-2 text-slate-300">
+                    {scenarioName}
+                    {isSynthetic && (
+                      <span className="ml-2 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+                        Synthetic
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">
                     <SessionStatusBadge status={session.status} />
                   </td>

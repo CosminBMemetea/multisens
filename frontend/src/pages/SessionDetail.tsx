@@ -113,6 +113,13 @@ export function SessionDetail() {
               <SessionStatusBadge status={session.status} />
             </div>
 
+            {scenario?.tags.includes("synthetic") && (
+              <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-300">
+                ⚠ SYNTHETIC DATA — generated for demonstration only. Does not
+                represent real sensor performance.
+              </div>
+            )}
+
             <section className="rounded border border-slate-800 bg-slate-900/40 p-4">
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Scenario</h2>
               {scenario ? (

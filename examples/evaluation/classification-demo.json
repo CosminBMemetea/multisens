@@ -1,0 +1,5928 @@
+{
+  "format_version": "1.0",
+  "session": {
+    "id": "demo-presence-classification",
+    "name": "Demo Presence Classification",
+    "scenario_id": "synthetic-cabin-demo",
+    "metadata": {
+      "synthetic": true
+    }
+  },
+  "scenario": {
+    "id": "synthetic-cabin-demo",
+    "name": "Synthetic Cabin Demo",
+    "description": "Deterministic synthetic dataset for demonstrating the MultiSens evaluation workflow end to end. Ground truth and predictions are both generated, not measured - see examples/evaluation/README.md. Does NOT represent real sensor performance.",
+    "tags": [
+      "synthetic",
+      "demo",
+      "presence"
+    ],
+    "metadata": {
+      "synthetic": true
+    }
+  },
+  "ground_truth": [
+    {
+      "id": "gt-0000",
+      "timestamp_ms": 0.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0001",
+      "timestamp_ms": 1000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0002",
+      "timestamp_ms": 2000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0003",
+      "timestamp_ms": 3000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0004",
+      "timestamp_ms": 4000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0005",
+      "timestamp_ms": 5000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0006",
+      "timestamp_ms": 6000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0007",
+      "timestamp_ms": 7000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0008",
+      "timestamp_ms": 8000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0009",
+      "timestamp_ms": 9000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0010",
+      "timestamp_ms": 10000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0011",
+      "timestamp_ms": 11000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0012",
+      "timestamp_ms": 12000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0013",
+      "timestamp_ms": 13000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0014",
+      "timestamp_ms": 14000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0015",
+      "timestamp_ms": 15000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0016",
+      "timestamp_ms": 16000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0017",
+      "timestamp_ms": 17000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0018",
+      "timestamp_ms": 18000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0019",
+      "timestamp_ms": 19000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0020",
+      "timestamp_ms": 20000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0021",
+      "timestamp_ms": 21000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0022",
+      "timestamp_ms": 22000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0023",
+      "timestamp_ms": 23000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0024",
+      "timestamp_ms": 24000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0025",
+      "timestamp_ms": 25000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0026",
+      "timestamp_ms": 26000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0027",
+      "timestamp_ms": 27000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0028",
+      "timestamp_ms": 28000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0029",
+      "timestamp_ms": 29000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0030",
+      "timestamp_ms": 30000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0031",
+      "timestamp_ms": 31000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0032",
+      "timestamp_ms": 32000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0033",
+      "timestamp_ms": 33000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0034",
+      "timestamp_ms": 34000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0035",
+      "timestamp_ms": 35000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0036",
+      "timestamp_ms": 36000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0037",
+      "timestamp_ms": 37000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0038",
+      "timestamp_ms": 38000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0039",
+      "timestamp_ms": 39000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0040",
+      "timestamp_ms": 40000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0041",
+      "timestamp_ms": 41000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0042",
+      "timestamp_ms": 42000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0043",
+      "timestamp_ms": 43000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0044",
+      "timestamp_ms": 44000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0045",
+      "timestamp_ms": 45000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0046",
+      "timestamp_ms": 46000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0047",
+      "timestamp_ms": 47000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0048",
+      "timestamp_ms": 48000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0049",
+      "timestamp_ms": 49000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0050",
+      "timestamp_ms": 50000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0051",
+      "timestamp_ms": 51000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0052",
+      "timestamp_ms": 52000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0053",
+      "timestamp_ms": 53000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0054",
+      "timestamp_ms": 54000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0055",
+      "timestamp_ms": 55000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0056",
+      "timestamp_ms": 56000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0057",
+      "timestamp_ms": 57000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0058",
+      "timestamp_ms": 58000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0059",
+      "timestamp_ms": 59000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0060",
+      "timestamp_ms": 60000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0061",
+      "timestamp_ms": 61000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0062",
+      "timestamp_ms": 62000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0063",
+      "timestamp_ms": 63000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0064",
+      "timestamp_ms": 64000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0065",
+      "timestamp_ms": 65000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0066",
+      "timestamp_ms": 66000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0067",
+      "timestamp_ms": 67000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0068",
+      "timestamp_ms": 68000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0069",
+      "timestamp_ms": 69000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0070",
+      "timestamp_ms": 70000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0071",
+      "timestamp_ms": 71000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0072",
+      "timestamp_ms": 72000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0073",
+      "timestamp_ms": 73000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0074",
+      "timestamp_ms": 74000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0075",
+      "timestamp_ms": 75000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0076",
+      "timestamp_ms": 76000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0077",
+      "timestamp_ms": 77000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0078",
+      "timestamp_ms": 78000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0079",
+      "timestamp_ms": 79000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0080",
+      "timestamp_ms": 80000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0081",
+      "timestamp_ms": 81000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0082",
+      "timestamp_ms": 82000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0083",
+      "timestamp_ms": 83000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0084",
+      "timestamp_ms": 84000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0085",
+      "timestamp_ms": 85000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0086",
+      "timestamp_ms": 86000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0087",
+      "timestamp_ms": 87000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0088",
+      "timestamp_ms": 88000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0089",
+      "timestamp_ms": 89000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0090",
+      "timestamp_ms": 90000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0091",
+      "timestamp_ms": 91000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0092",
+      "timestamp_ms": 92000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0093",
+      "timestamp_ms": 93000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0094",
+      "timestamp_ms": 94000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0095",
+      "timestamp_ms": 95000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0096",
+      "timestamp_ms": 96000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0097",
+      "timestamp_ms": 97000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0098",
+      "timestamp_ms": 98000.0,
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "gt-0099",
+      "timestamp_ms": 99000.0,
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "metadata": {
+        "synthetic": true
+      }
+    }
+  ],
+  "predictions": [
+    {
+      "id": "pred-rgb-0000",
+      "timestamp_ms": 2.1540897335250246,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0001",
+      "timestamp_ms": 1001.8495070734333,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0002",
+      "timestamp_ms": 2001.2814219372046,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0003",
+      "timestamp_ms": 3001.3554542793395,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0004",
+      "timestamp_ms": 4002.46605989908,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0005",
+      "timestamp_ms": 5002.304113067354,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0006",
+      "timestamp_ms": 6002.615577322909,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0007",
+      "timestamp_ms": 7002.72061614596,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0008",
+      "timestamp_ms": 8001.443196584352,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0009",
+      "timestamp_ms": 9003.720587978618,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0010",
+      "timestamp_ms": 10004.529786266903,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0011",
+      "timestamp_ms": 11002.517113334809,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0012",
+      "timestamp_ms": 12002.618217728867,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0013",
+      "timestamp_ms": 13001.026074405665,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0014",
+      "timestamp_ms": 14003.140334281168,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0015",
+      "timestamp_ms": 15001.087464641658,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0016",
+      "timestamp_ms": 16001.037775434914,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0017",
+      "timestamp_ms": 17001.613466828632,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0018",
+      "timestamp_ms": 18001.723367788723,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0019",
+      "timestamp_ms": 19001.603034955402,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0020",
+      "timestamp_ms": 20003.9131054827,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0021",
+      "timestamp_ms": 21003.60955478457,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0022",
+      "timestamp_ms": 22002.99380686414,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0023",
+      "timestamp_ms": 23002.245176490196,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0024",
+      "timestamp_ms": 24003.764321134404,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.63,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0025",
+      "timestamp_ms": 25001.02379089456,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0026",
+      "timestamp_ms": 26001.12797172593,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0027",
+      "timestamp_ms": 27004.7843936891,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.55,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0028",
+      "timestamp_ms": 28004.354302549877,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0029",
+      "timestamp_ms": 29003.822898048456,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0030",
+      "timestamp_ms": 30004.237027360814,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0031",
+      "timestamp_ms": 31001.56126334327,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0032",
+      "timestamp_ms": 32004.17024046781,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0033",
+      "timestamp_ms": 33004.56979765139,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0034",
+      "timestamp_ms": 34004.55828890111,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0035",
+      "timestamp_ms": 35004.828493927416,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0036",
+      "timestamp_ms": 36002.35022641346,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0037",
+      "timestamp_ms": 37003.194147126385,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0038",
+      "timestamp_ms": 38002.40149845073,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0039",
+      "timestamp_ms": 39002.11468203899,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0040",
+      "timestamp_ms": 40001.36251608372,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0041",
+      "timestamp_ms": 41002.00007288057,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0042",
+      "timestamp_ms": 42001.4487705685,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0043",
+      "timestamp_ms": 43004.60420149443,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0044",
+      "timestamp_ms": 44001.38249982239,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0045",
+      "timestamp_ms": 45004.550298874856,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0046",
+      "timestamp_ms": 46003.53218297349,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0047",
+      "timestamp_ms": 47002.83527924585,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0048",
+      "timestamp_ms": 48004.21707461287,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0049",
+      "timestamp_ms": 49002.09298543546,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0050",
+      "timestamp_ms": 50003.209348338634,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0051",
+      "timestamp_ms": 51002.337419570045,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0052",
+      "timestamp_ms": 52002.15260569291,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0053",
+      "timestamp_ms": 53004.576640468935,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0054",
+      "timestamp_ms": 54001.217328272614,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0055",
+      "timestamp_ms": 55001.26516742158,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0056",
+      "timestamp_ms": 56001.481780384354,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0057",
+      "timestamp_ms": 57002.4797333486,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0058",
+      "timestamp_ms": 58003.66037577994,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0059",
+      "timestamp_ms": 59003.74897258947,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0060",
+      "timestamp_ms": 60003.6514446028,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0061",
+      "timestamp_ms": 61001.5100855964,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0062",
+      "timestamp_ms": 62002.27339554728,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0063",
+      "timestamp_ms": 63003.9390987532,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0064",
+      "timestamp_ms": 64002.74050132047,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0065",
+      "timestamp_ms": 65002.18757479642,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0066",
+      "timestamp_ms": 66001.19845666224,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0067",
+      "timestamp_ms": 67003.95972722408,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0068",
+      "timestamp_ms": 68003.66665873086,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0069",
+      "timestamp_ms": 69003.84152424945,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0070",
+      "timestamp_ms": 70004.09286075532,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0071",
+      "timestamp_ms": 71004.93424277361,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0072",
+      "timestamp_ms": 72001.23298382798,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0073",
+      "timestamp_ms": 73002.80828990541,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0074",
+      "timestamp_ms": 74003.46581408246,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0075",
+      "timestamp_ms": 75003.98857849256,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0076",
+      "timestamp_ms": 76001.2463265966,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0077",
+      "timestamp_ms": 77002.06391667141,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0078",
+      "timestamp_ms": 78003.76482817787,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0079",
+      "timestamp_ms": 79004.19227738529,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0080",
+      "timestamp_ms": 80003.92013508298,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0081",
+      "timestamp_ms": 81003.85451114103,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0082",
+      "timestamp_ms": 82002.06071877498,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0083",
+      "timestamp_ms": 83001.86710729134,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0084",
+      "timestamp_ms": 84001.38439434711,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0085",
+      "timestamp_ms": 85001.76915367399,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0086",
+      "timestamp_ms": 86003.9199937557,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0087",
+      "timestamp_ms": 87003.65917461333,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0088",
+      "timestamp_ms": 88002.79492804817,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0089",
+      "timestamp_ms": 89001.75711974192,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0090",
+      "timestamp_ms": 90003.86121543629,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0091",
+      "timestamp_ms": 91003.04479390026,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0092",
+      "timestamp_ms": 92003.37067459605,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0093",
+      "timestamp_ms": 93002.33192223018,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0094",
+      "timestamp_ms": 94004.6152406671,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0095",
+      "timestamp_ms": 95002.92406657063,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0096",
+      "timestamp_ms": 96001.4419432279,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0097",
+      "timestamp_ms": 97003.4455304912,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0098",
+      "timestamp_ms": 98004.97349869052,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-0099",
+      "timestamp_ms": 99004.97512922512,
+      "source_id": "rgb_classifier",
+      "sensor_ids": [
+        "rgb"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0000",
+      "timestamp_ms": 3.171954590668028,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0001",
+      "timestamp_ms": 1004.539933052047,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0002",
+      "timestamp_ms": 2004.1634231322146,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0003",
+      "timestamp_ms": 3003.040389124395,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0004",
+      "timestamp_ms": 4001.2114577200946,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0005",
+      "timestamp_ms": 5003.301384819798,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.53,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0006",
+      "timestamp_ms": 6004.349738962114,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0007",
+      "timestamp_ms": 7003.102554385226,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0008",
+      "timestamp_ms": 8002.648105044072,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0009",
+      "timestamp_ms": 9001.273975320055,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0010",
+      "timestamp_ms": 10004.31394619742,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0011",
+      "timestamp_ms": 11001.777943834957,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0012",
+      "timestamp_ms": 12003.411647124023,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0013",
+      "timestamp_ms": 13001.53376009785,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0014",
+      "timestamp_ms": 14002.453796899537,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0015",
+      "timestamp_ms": 15001.948988545877,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0016",
+      "timestamp_ms": 16001.510765271129,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0017",
+      "timestamp_ms": 17004.858591516873,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0018",
+      "timestamp_ms": 18002.068631882223,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0019",
+      "timestamp_ms": 19003.969407363835,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0020",
+      "timestamp_ms": 20003.145715428804,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0021",
+      "timestamp_ms": 21004.960176463977,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.63,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0022",
+      "timestamp_ms": 22001.829408806287,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0023",
+      "timestamp_ms": 23001.81984179021,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0024",
+      "timestamp_ms": 24003.17169975111,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0025",
+      "timestamp_ms": 25004.34833261293,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0026",
+      "timestamp_ms": 26001.19338382478,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0027",
+      "timestamp_ms": 27002.895765153888,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0028",
+      "timestamp_ms": 28002.229343595278,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0029",
+      "timestamp_ms": 29003.092386450848,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0030",
+      "timestamp_ms": 30003.905017323934,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0031",
+      "timestamp_ms": 31004.550011931064,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0032",
+      "timestamp_ms": 32002.259170664784,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0033",
+      "timestamp_ms": 33001.627231455466,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0034",
+      "timestamp_ms": 34001.54894736835,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0035",
+      "timestamp_ms": 35003.127055413424,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0036",
+      "timestamp_ms": 36001.96650398937,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0037",
+      "timestamp_ms": 37001.46301159617,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0038",
+      "timestamp_ms": 38001.01731659227,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0039",
+      "timestamp_ms": 39002.06714066053,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0040",
+      "timestamp_ms": 40003.97100950012,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0041",
+      "timestamp_ms": 41003.743945696864,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0042",
+      "timestamp_ms": 42003.71895936732,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0043",
+      "timestamp_ms": 43001.750054621894,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0044",
+      "timestamp_ms": 44004.17373518534,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0045",
+      "timestamp_ms": 45001.82823627121,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.59,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0046",
+      "timestamp_ms": 46002.0361319808,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0047",
+      "timestamp_ms": 47004.57699545592,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0048",
+      "timestamp_ms": 48003.67859291546,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0049",
+      "timestamp_ms": 49004.701890585406,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.61,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0050",
+      "timestamp_ms": 50001.557485908495,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0051",
+      "timestamp_ms": 51002.62590653357,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0052",
+      "timestamp_ms": 52002.70761629051,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0053",
+      "timestamp_ms": 53001.945036015066,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0054",
+      "timestamp_ms": 54001.292424608415,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0055",
+      "timestamp_ms": 55001.45015123,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0056",
+      "timestamp_ms": 56003.75940679844,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0057",
+      "timestamp_ms": 57001.748568769304,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0058",
+      "timestamp_ms": 58003.78040615286,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0059",
+      "timestamp_ms": 59004.67988124913,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0060",
+      "timestamp_ms": 60003.83928595787,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0061",
+      "timestamp_ms": 61003.96306106088,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0062",
+      "timestamp_ms": 62004.045343141,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0063",
+      "timestamp_ms": 63002.87380066259,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0064",
+      "timestamp_ms": 64003.726182915234,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0065",
+      "timestamp_ms": 65003.858018011124,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0066",
+      "timestamp_ms": 66004.91662467363,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0067",
+      "timestamp_ms": 67001.60363363994,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0068",
+      "timestamp_ms": 68004.94396433096,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0069",
+      "timestamp_ms": 69001.35952877277,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0070",
+      "timestamp_ms": 70001.80999100086,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.58,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0071",
+      "timestamp_ms": 71002.02877800187,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0072",
+      "timestamp_ms": 72003.31734668011,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.57,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0073",
+      "timestamp_ms": 73002.01559779861,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0074",
+      "timestamp_ms": 74003.77557602161,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.51,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0075",
+      "timestamp_ms": 75001.73648574826,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0076",
+      "timestamp_ms": 76004.6206206107,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0077",
+      "timestamp_ms": 77003.78251850918,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0078",
+      "timestamp_ms": 78004.25697242166,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0079",
+      "timestamp_ms": 79004.67796266533,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0080",
+      "timestamp_ms": 80003.80837318828,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0081",
+      "timestamp_ms": 81002.58850298011,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0082",
+      "timestamp_ms": 82002.68571728868,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0083",
+      "timestamp_ms": 83004.00246526218,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0084",
+      "timestamp_ms": 84002.04342073096,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0085",
+      "timestamp_ms": 85001.83220709811,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0086",
+      "timestamp_ms": 86002.57299381819,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0087",
+      "timestamp_ms": 87003.65136654196,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0088",
+      "timestamp_ms": 88003.1470752565,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0089",
+      "timestamp_ms": 89003.38439628645,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0090",
+      "timestamp_ms": 90002.82203999143,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0091",
+      "timestamp_ms": 91004.79161451614,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.53,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0092",
+      "timestamp_ms": 92001.4517965267,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0093",
+      "timestamp_ms": 93002.20230038551,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0094",
+      "timestamp_ms": 94001.08761865068,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0095",
+      "timestamp_ms": 95004.86290901445,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0096",
+      "timestamp_ms": 96001.24029652597,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0097",
+      "timestamp_ms": 97003.9237894529,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0098",
+      "timestamp_ms": 98004.79999053397,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-0099",
+      "timestamp_ms": 99002.0164872802,
+      "source_id": "depth_classifier",
+      "sensor_ids": [
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0000",
+      "timestamp_ms": 4.488601168253803,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0001",
+      "timestamp_ms": 1001.3289358357231,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0002",
+      "timestamp_ms": 2004.3123644582313,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0003",
+      "timestamp_ms": 3001.9007313836155,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0004",
+      "timestamp_ms": 4001.510552990651,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0005",
+      "timestamp_ms": 5001.733726940926,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0006",
+      "timestamp_ms": 6003.932743060015,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0007",
+      "timestamp_ms": 7002.66015032609,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0008",
+      "timestamp_ms": 8003.290030055385,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0009",
+      "timestamp_ms": 9001.995527478637,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0010",
+      "timestamp_ms": 10003.32133997138,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0011",
+      "timestamp_ms": 11003.473359719213,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0012",
+      "timestamp_ms": 12002.003832957505,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0013",
+      "timestamp_ms": 13001.863146774702,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0014",
+      "timestamp_ms": 14004.546341323952,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0015",
+      "timestamp_ms": 15003.11427558044,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.63,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0016",
+      "timestamp_ms": 16002.185956598563,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0017",
+      "timestamp_ms": 17001.582165841195,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0018",
+      "timestamp_ms": 18002.010813412653,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0019",
+      "timestamp_ms": 19004.67777631724,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0020",
+      "timestamp_ms": 20004.25172491842,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0021",
+      "timestamp_ms": 21001.360217610174,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0022",
+      "timestamp_ms": 22004.983457211383,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0023",
+      "timestamp_ms": 23003.253202192966,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0024",
+      "timestamp_ms": 24003.83469901631,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0025",
+      "timestamp_ms": 25003.19974781505,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0026",
+      "timestamp_ms": 26002.57622567956,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0027",
+      "timestamp_ms": 27002.77685425466,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0028",
+      "timestamp_ms": 28001.258745496765,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0029",
+      "timestamp_ms": 29001.177746246,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0030",
+      "timestamp_ms": 30004.490632802546,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0031",
+      "timestamp_ms": 31003.261567987138,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0032",
+      "timestamp_ms": 32001.91620459957,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0033",
+      "timestamp_ms": 33003.314074518814,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0034",
+      "timestamp_ms": 34002.52024975503,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0035",
+      "timestamp_ms": 35002.32315445212,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0036",
+      "timestamp_ms": 36003.70389151678,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0037",
+      "timestamp_ms": 37003.73998760129,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0038",
+      "timestamp_ms": 38003.145752164564,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0039",
+      "timestamp_ms": 39002.23799965968,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0040",
+      "timestamp_ms": 40001.72760386072,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0041",
+      "timestamp_ms": 41004.26741127959,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0042",
+      "timestamp_ms": 42003.45796321744,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0043",
+      "timestamp_ms": 43004.775979121296,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0044",
+      "timestamp_ms": 44002.38223955434,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0045",
+      "timestamp_ms": 45003.52456998075,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0046",
+      "timestamp_ms": 46001.11253483956,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0047",
+      "timestamp_ms": 47003.50760554474,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0048",
+      "timestamp_ms": 48002.71495848372,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0049",
+      "timestamp_ms": 49004.477149808765,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0050",
+      "timestamp_ms": 50003.8976989662,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0051",
+      "timestamp_ms": 51002.275035363855,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0052",
+      "timestamp_ms": 52003.084450007496,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0053",
+      "timestamp_ms": 53003.37592370663,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0054",
+      "timestamp_ms": 54004.178016060454,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0055",
+      "timestamp_ms": 55001.54457239683,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0056",
+      "timestamp_ms": 56004.5801184171,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0057",
+      "timestamp_ms": 57003.18607657136,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0058",
+      "timestamp_ms": 58004.7351794121,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.63,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0059",
+      "timestamp_ms": 59002.9507802701,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.5,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0060",
+      "timestamp_ms": 60002.334096495855,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0061",
+      "timestamp_ms": 61002.84552948795,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0062",
+      "timestamp_ms": 62004.4433978831,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0063",
+      "timestamp_ms": 63001.04694344546,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0064",
+      "timestamp_ms": 64004.12848125957,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0065",
+      "timestamp_ms": 65001.44956766411,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0066",
+      "timestamp_ms": 66004.73651794031,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0067",
+      "timestamp_ms": 67004.44018265013,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0068",
+      "timestamp_ms": 68004.00442179684,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0069",
+      "timestamp_ms": 69002.01351710239,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0070",
+      "timestamp_ms": 70002.73484563788,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0071",
+      "timestamp_ms": 71004.17696065587,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0072",
+      "timestamp_ms": 72003.31814115576,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0073",
+      "timestamp_ms": 73001.77700163159,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0074",
+      "timestamp_ms": 74003.61450188095,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0075",
+      "timestamp_ms": 75003.90711175175,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0076",
+      "timestamp_ms": 76004.7743421892,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0077",
+      "timestamp_ms": 77002.1498346827,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0078",
+      "timestamp_ms": 78003.7589030121,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0079",
+      "timestamp_ms": 79004.72308711619,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0080",
+      "timestamp_ms": 80004.0608798179,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0081",
+      "timestamp_ms": 81002.11640952487,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0082",
+      "timestamp_ms": 82004.16419876151,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0083",
+      "timestamp_ms": 83004.81124401395,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.58,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0084",
+      "timestamp_ms": 84002.30005756886,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0085",
+      "timestamp_ms": 85002.5000078478,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0086",
+      "timestamp_ms": 86001.43160125813,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0087",
+      "timestamp_ms": 87002.25535272848,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0088",
+      "timestamp_ms": 88003.83670955674,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.57,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0089",
+      "timestamp_ms": 89002.75898503893,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0090",
+      "timestamp_ms": 90002.29645209658,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0091",
+      "timestamp_ms": 91001.39405532363,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0092",
+      "timestamp_ms": 92001.43919394315,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.56,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0093",
+      "timestamp_ms": 93002.19161588422,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0094",
+      "timestamp_ms": 94002.93089220926,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.64,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0095",
+      "timestamp_ms": 95003.09515486122,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0096",
+      "timestamp_ms": 96003.80290557597,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0097",
+      "timestamp_ms": 97001.1281850249,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0098",
+      "timestamp_ms": 98004.00367817761,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-thermal-0099",
+      "timestamp_ms": 99004.90263978446,
+      "source_id": "thermal_classifier",
+      "sensor_ids": [
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    }
+  ]
+}
