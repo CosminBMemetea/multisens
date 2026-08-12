@@ -124,3 +124,98 @@ class EvaluationResult(BaseModel):
     metrics: dict[str, MetricValue]
     confusion_matrix: dict[str, Any] | None = None
     computed_at: datetime
+
+
+# --- comparison (v0.3, Phase 20) ------------------------------------------
+#
+# Never a causal layer. A PairwiseComparison says configuration A measured
+# differently from configuration B under stated conditions - it does not
+# say why. `relationship` distinguishes a single-sensor change (the
+# closest thing to attributable evidence this project will ever claim)
+# from a general multi-sensor difference (evidence the two configurations
+# differ, nothing more) - see docs/comparison.md once Phase 29 writes it,
+# and PairwiseComparison's own docstring below in the meantime.
+#
+# Deliberately NOT persisted anywhere: every comparison is derived from
+# already-persisted EvaluationResults plus already-persisted ground
+# truth/predictions, recomputed on request. A named `Experiment` entity
+# was considered and rejected for the same reason - a comparison request's
+# own fields (session, task, baseline, candidates) already are what an
+# Experiment would hold, and persisting a second copy of that shape would
+# only add a place for it to drift from the request that actually ran.
+
+
+class ComparisonValidity(BaseModel):
+    """Evidence-quality verdict, never a statistical claim - no p-values,
+    no confidence intervals. `reasons` must be non-empty whenever status
+    isn't 'valid': never silently comparing incomparable configurations
+    means always saying why, not just flagging that something's off."""
+    status: Literal['valid', 'valid_with_warnings', 'invalid']
+    reasons: list[str] = Field(default_factory=list)
+
+    @model_validator(mode='after')
+    def _reasons_required_unless_valid(self) -> ComparisonValidity:
+        if self.status != 'valid' and not self.reasons:
+            raise ValueError(f"status '{self.status}' requires at least one reason")
+        return self
+
+
+class MetricDelta(BaseModel):
+    baseline: MetricValue
+    candidate: MetricValue
+    absolute: MetricValue  # candidate - baseline; None if either side is None
+    # absolute / abs(baseline); None if baseline is None or zero - never a
+    # division by zero, same N/A-not-fabricated rule as MetricValue itself.
+    relative: MetricValue
+
+
+class ComparisonMetrics(BaseModel):
+    sample_count: int
+    matched_samples: int
+    unmatched_predictions: int
+    unmatched_ground_truth: int
+    # matched_samples / sample_count; None when sample_count is 0 - not
+    # 0.0, which would mean "measured, and coverage was zero."
+    coverage: MetricValue
+    metrics: dict[str, MetricValue]
+
+
+class ComparisonSide(BaseModel):
+    """One of the two ways to compare a baseline/candidate pair.
+    `reported` reads persisted EvaluationResults as-is (each side may have
+    been computed with a different tolerance_ms). `common_set` filters
+    both configurations' already-matched pairs down to the ground-truth
+    ids *both* matched, so the comparison is over an identical sample
+    population - see PairwiseComparison.tolerance_ms for which tolerance
+    that filtering uses. Both sides are always computed together; there is
+    no caller-selected either/or mode."""
+    # Only meaningful on the common_set side; None on reported, which
+    # never restricts to a shared population at all.
+    common_sample_count: int | None = None
+    baseline: ComparisonMetrics
+    candidate: ComparisonMetrics
+    metric_deltas: dict[str, MetricDelta]
+    # Percentage POINTS: (candidate.coverage - baseline.coverage) * 100 -
+    # never a relative percentage change of coverage itself, which is a
+    # different and easily-confused quantity.
+    coverage_delta_pp: MetricValue
+    matched_sample_delta: int
+
+
+class PairwiseComparison(BaseModel):
+    session_id: str
+    task: str
+    baseline_configuration_id: str
+    candidate_configuration_id: str
+    tolerance_ms: float
+    # Read from a real Prediction.sensor_ids row for each configuration,
+    # never parsed out of a configuration_id string - see
+    # derive_configuration_id, which documents why that string isn't a
+    # safe thing to reverse-parse.
+    added_sensors: list[str]
+    removed_sensors: list[str]
+    relationship: Literal['direct_addition', 'direct_removal', 'general']
+    reported: ComparisonSide
+    common_set: ComparisonSide
+    validity: ComparisonValidity
+    computed_at: datetime
