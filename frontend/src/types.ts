@@ -59,3 +59,50 @@ export interface SensorConfig {
   url: string;
   expected_fps?: number;
 }
+
+// Mirrors backend/app/domain/models.py (v0.2 evaluation layer). Same rule
+// as above: the backend's Pydantic models are the source of truth, this
+// just describes the JSON shape they serialize to over REST.
+
+export type SessionStatus = "created" | "running" | "completed" | "failed";
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface Session {
+  id: string;
+  name: string;
+  scenario_id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: SessionStatus;
+  metadata: Record<string, unknown>;
+}
+
+export interface GroundTruthEvent {
+  id: string;
+  session_id: string;
+  timestamp_ms: number;
+  task: string;
+  value: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+export interface PredictionEvent {
+  id: string;
+  session_id: string;
+  timestamp_ms: number;
+  source_id: string;
+  sensor_ids: string[];
+  configuration_id: string;
+  task: string;
+  value: Record<string, unknown>;
+  confidence: number | null;
+  latency_ms: number | null;
+  metadata: Record<string, unknown>;
+}

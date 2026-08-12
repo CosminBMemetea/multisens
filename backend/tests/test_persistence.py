@@ -158,3 +158,34 @@ def test_data_persists_across_reconnect(tmp_path):
         assert repo.get_session(conn2, 's1') is not None
     finally:
         conn2.close()
+
+
+def test_connection_usable_from_a_different_thread(tmp_path):
+    # Regression test for a real bug caught via a live browser against a
+    # real running server (not by TestClient, which never reproduced it):
+    # FastAPI's sync generator dependencies (app/api/deps.py get_db) are
+    # not guaranteed to yield and get torn down on the same worker thread
+    # as the endpoint body that actually uses the connection they hand
+    # over. db.connect() must produce a connection safe to hand across
+    # threads sequentially (never concurrently - each request still gets
+    # its own connection).
+    import threading
+
+    conn = db.connect(str(tmp_path / 'cross-thread.db'))
+    repo.create_scenario(conn, Scenario(id='sc1', name='demo'))
+
+    result: dict = {}
+
+    def read_from_other_thread() -> None:
+        try:
+            result['scenario'] = repo.get_scenario(conn, 'sc1')
+        except Exception as e:  # noqa: BLE001 - want to see any exception, not just ProgrammingError
+            result['error'] = e
+
+    thread = threading.Thread(target=read_from_other_thread)
+    thread.start()
+    thread.join()
+    conn.close()
+
+    assert 'error' not in result, result.get('error')
+    assert result['scenario'] is not None

@@ -1,4 +1,10 @@
-import type { SensorConfig } from "./types";
+import type {
+  GroundTruthEvent,
+  PredictionEvent,
+  Scenario,
+  SensorConfig,
+  Session,
+} from "./types";
 
 // Calls happen from the browser, not from inside this container - the
 // frontend container only ever serves static files, so the API base is
@@ -15,10 +21,67 @@ export function sensorStreamUrl(sensorId: string): string {
   return `${API_BASE_URL}/api/sensors/${sensorId}/stream.mjpeg`;
 }
 
-export async function fetchSensors(): Promise<SensorConfig[]> {
-  const res = await fetch(`${API_BASE_URL}/api/sensors`);
+// Callers that need to distinguish "not found" from "backend unreachable"
+// (e.g. session detail rendering a 404 state instead of a generic error)
+// check `.status` rather than string-matching the message.
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`);
   if (!res.ok) {
-    throw new Error(`GET /api/sensors failed: ${res.status}`);
+    throw new ApiError(`GET ${path} failed: ${res.status}`, res.status);
   }
   return res.json();
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const suffix = detail?.detail ? ` - ${detail.detail}` : "";
+    throw new ApiError(`POST ${path} failed: ${res.status}${suffix}`, res.status);
+  }
+  return res.json();
+}
+
+export function fetchSensors(): Promise<SensorConfig[]> {
+  return getJson("/api/sensors");
+}
+
+export function fetchScenarios(): Promise<Scenario[]> {
+  return getJson("/api/scenarios");
+}
+
+export function createScenario(input: { name: string }): Promise<Scenario> {
+  return postJson("/api/scenarios", input);
+}
+
+export function fetchSessions(): Promise<Session[]> {
+  return getJson("/api/sessions");
+}
+
+export function fetchSession(sessionId: string): Promise<Session> {
+  return getJson(`/api/sessions/${sessionId}`);
+}
+
+export function createSession(input: { name: string; scenario_id: string }): Promise<Session> {
+  return postJson("/api/sessions", input);
+}
+
+export function fetchSessionGroundTruth(sessionId: string): Promise<GroundTruthEvent[]> {
+  return getJson(`/api/sessions/${sessionId}/ground-truth`);
+}
+
+export function fetchSessionPredictions(sessionId: string): Promise<PredictionEvent[]> {
+  return getJson(`/api/sessions/${sessionId}/predictions`);
 }

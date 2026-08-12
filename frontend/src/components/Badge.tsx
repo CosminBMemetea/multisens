@@ -1,4 +1,4 @@
-import type { Level } from "../types";
+import type { Level, SessionStatus } from "../types";
 
 const LEVEL_STYLES: Record<Level, string> = {
   ok: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
@@ -27,6 +27,23 @@ export function SourceTypeBadge({ sourceType }: { sourceType: "physical" | "simu
   return (
     <span className={`rounded border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${styles}`}>
       {sourceType}
+    </span>
+  );
+}
+
+const SESSION_STATUS_STYLES: Record<SessionStatus, string> = {
+  created: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  running: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+  completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  failed: "bg-red-500/15 text-red-400 border-red-500/30",
+};
+
+export function SessionStatusBadge({ status }: { status: SessionStatus }) {
+  return (
+    <span
+      className={`rounded border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${SESSION_STATUS_STYLES[status]}`}
+    >
+      {status}
     </span>
   );
 }
