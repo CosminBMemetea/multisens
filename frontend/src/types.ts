@@ -106,3 +106,37 @@ export interface PredictionEvent {
   latency_ms: number | null;
   metadata: Record<string, unknown>;
 }
+
+// Metric values are null (not 0) when they can't be calculated - e.g. a
+// class that was never predicted has undefined precision. Always render
+// null as "N/A", never as "0" - see docs/evaluation.md.
+export interface ConfusionMatrix {
+  labels: string[];
+  counts: number[][]; // counts[actual_index][predicted_index]
+}
+
+export interface EvaluationResult {
+  id: string;
+  session_id: string;
+  configuration_id: string;
+  task: string;
+  format_version: string;
+  tolerance_ms: number;
+  sample_count: number;
+  matched_samples: number;
+  unmatched_predictions: number;
+  unmatched_ground_truth: number;
+  metrics: Record<string, number | null>;
+  confusion_matrix: ConfusionMatrix | null;
+  computed_at: string;
+}
+
+export type TimelineEventKind = "correct" | "incorrect" | "missing_prediction" | "unmatched_prediction";
+
+export interface TimelineEvent {
+  timestamp_ms: number;
+  kind: TimelineEventKind;
+  ground_truth_label: string | null;
+  predicted_label: string | null;
+  delta_ms: number | null;
+}

@@ -147,3 +147,87 @@ def test_evaluate_confusion_matrix_shape_matches_observed_labels(client):
     assert cm['labels'] == ['absent', 'present']
     assert len(cm['counts']) == 2
     assert all(len(row) == 2 for row in cm['counts'])
+
+
+def test_evaluate_missing_label_key_returns_422_not_500(client):
+    _create_scenario(client)
+    _create_session(client)
+    client.post('/api/sessions/s1/ground-truth/batch', json={'items': [
+        {'timestamp_ms': 0.0, 'task': 'presence', 'value': {'not_a_label': 'x'}},
+    ]})
+    client.post('/api/sessions/s1/predictions/batch', json={'items': [
+        {'timestamp_ms': 1.0, 'source_id': 'm', 'sensor_ids': ['rgb'], 'task': 'presence',
+         'value': {'not_a_label': 'x'}},
+    ]})
+    resp = client.post('/api/sessions/s1/evaluate', json={'task': 'presence'})
+    assert resp.status_code == 422
+    assert 'label' in resp.json()['detail']
+
+
+# --- timeline ---------------------------------------------------------------
+
+def test_timeline_all_correct(client):
+    _seed(client)
+    resp = client.get('/api/sessions/s1/timeline', params={'task': 'presence', 'configuration_id': 'cfg-rgb'})
+    assert resp.status_code == 200
+    events = resp.json()
+    assert [e['kind'] for e in events] == ['correct', 'correct', 'correct']
+    assert [e['timestamp_ms'] for e in events] == sorted(e['timestamp_ms'] for e in events)
+
+
+def test_timeline_marks_the_one_incorrect_depth_sample(client):
+    _seed(client)
+    resp = client.get('/api/sessions/s1/timeline', params={'task': 'presence', 'configuration_id': 'cfg-depth'})
+    assert resp.status_code == 200
+    events = resp.json()
+    assert [e['kind'] for e in events] == ['incorrect', 'correct', 'correct']
+    assert events[0]['ground_truth_label'] == 'present'
+    assert events[0]['predicted_label'] == 'absent'
+
+
+def test_timeline_missing_and_unmatched_predictions(client):
+    _create_scenario(client)
+    _create_session(client)
+    client.post('/api/sessions/s1/ground-truth/batch', json={'items': [
+        {'timestamp_ms': 0.0, 'task': 'presence', 'value': {'label': 'present'}},
+    ]})
+    client.post('/api/sessions/s1/predictions/batch', json={'items': [
+        {'timestamp_ms': 5000.0, 'source_id': 'm', 'sensor_ids': ['rgb'], 'task': 'presence',
+         'value': {'label': 'present'}},
+    ]})
+    resp = client.get(
+        '/api/sessions/s1/timeline',
+        params={'task': 'presence', 'configuration_id': 'cfg-rgb', 'tolerance_ms': 10},
+    )
+    assert resp.status_code == 200
+    kinds = {e['kind'] for e in resp.json()}
+    assert kinds == {'missing_prediction', 'unmatched_prediction'}
+
+
+def test_timeline_unknown_session_404(client):
+    resp = client.get('/api/sessions/nope/timeline', params={'task': 'presence', 'configuration_id': 'cfg-rgb'})
+    assert resp.status_code == 404
+
+
+def test_timeline_negative_tolerance_422(client):
+    _create_scenario(client)
+    _create_session(client)
+    resp = client.get(
+        '/api/sessions/s1/timeline',
+        params={'task': 'presence', 'configuration_id': 'cfg-rgb', 'tolerance_ms': -1},
+    )
+    assert resp.status_code == 422
+
+
+def test_timeline_missing_label_key_returns_422_not_500(client):
+    _create_scenario(client)
+    _create_session(client)
+    client.post('/api/sessions/s1/ground-truth/batch', json={'items': [
+        {'timestamp_ms': 0.0, 'task': 'presence', 'value': {'not_a_label': 'x'}},
+    ]})
+    client.post('/api/sessions/s1/predictions/batch', json={'items': [
+        {'timestamp_ms': 1.0, 'source_id': 'm', 'sensor_ids': ['rgb'], 'task': 'presence',
+         'value': {'not_a_label': 'x'}},
+    ]})
+    resp = client.get('/api/sessions/s1/timeline', params={'task': 'presence', 'configuration_id': 'cfg-rgb'})
+    assert resp.status_code == 422

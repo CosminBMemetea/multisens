@@ -1,9 +1,11 @@
 import type {
+  EvaluationResult,
   GroundTruthEvent,
   PredictionEvent,
   Scenario,
   SensorConfig,
   Session,
+  TimelineEvent,
 } from "./types";
 
 // Calls happen from the browser, not from inside this container - the
@@ -84,4 +86,29 @@ export function fetchSessionGroundTruth(sessionId: string): Promise<GroundTruthE
 
 export function fetchSessionPredictions(sessionId: string): Promise<PredictionEvent[]> {
   return getJson(`/api/sessions/${sessionId}/predictions`);
+}
+
+export function fetchSessionEvaluation(sessionId: string): Promise<EvaluationResult[]> {
+  return getJson(`/api/sessions/${sessionId}/evaluation`);
+}
+
+export function runEvaluation(
+  sessionId: string,
+  input: { task: string; tolerance_ms?: number },
+): Promise<EvaluationResult[]> {
+  return postJson(`/api/sessions/${sessionId}/evaluate`, input);
+}
+
+export function fetchSessionTimeline(
+  sessionId: string,
+  params: { task: string; configuration_id: string; tolerance_ms?: number },
+): Promise<TimelineEvent[]> {
+  const query = new URLSearchParams({
+    task: params.task,
+    configuration_id: params.configuration_id,
+  });
+  if (params.tolerance_ms !== undefined) {
+    query.set("tolerance_ms", String(params.tolerance_ms));
+  }
+  return getJson(`/api/sessions/${sessionId}/timeline?${query}`);
 }

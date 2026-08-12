@@ -50,7 +50,7 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
     sample_count = matched_samples + unmatched_ground_truth
 
     pairs = [
-        (_extract_label(m.ground_truth.value, label_key), _extract_label(m.prediction.value, label_key))
+        (extract_label(m.ground_truth.value, label_key), extract_label(m.prediction.value, label_key))
         for m in match_result.matched
     ]
 
@@ -118,7 +118,7 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
     )
 
 
-def _extract_label(value: dict, label_key: str) -> str:
+def extract_label(value: dict, label_key: str) -> str:
     if label_key not in value:
         raise ValueError(f"value {value!r} has no '{label_key}' field - not a classification task?")
     return str(value[label_key])

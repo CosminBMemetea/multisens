@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { SessionStatusBadge, SourceTypeBadge } from "../components/Badge";
+import { EvaluationPanel } from "../components/EvaluationPanel";
 import {
   ApiError,
   fetchScenarios,
@@ -10,7 +11,7 @@ import {
   fetchSessionGroundTruth,
   fetchSessionPredictions,
 } from "../api";
-import type { PredictionEvent, Scenario, SensorConfig, Session } from "../types";
+import type { GroundTruthEvent, PredictionEvent, Scenario, SensorConfig, Session } from "../types";
 
 interface ConfigurationSummary {
   configurationId: string;
@@ -39,11 +40,15 @@ export function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [session, setSession] = useState<Session | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
-  const [groundTruthCount, setGroundTruthCount] = useState(0);
+  const [groundTruth, setGroundTruth] = useState<GroundTruthEvent[]>([]);
   const [configurations, setConfigurations] = useState<ConfigurationSummary[]>([]);
   const [sensorsById, setSensorsById] = useState<Record<string, SensorConfig>>({});
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Stable reference unless the actual task set changes - EvaluationPanel
+  // resyncs its selected task off this array's identity.
+  const tasks = useMemo(() => [...new Set(groundTruth.map((g) => g.task))].sort(), [groundTruth]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -56,14 +61,14 @@ export function SessionDetail() {
         setSession(sessionResult);
         setSensorsById(Object.fromEntries(sensors.map((s) => [s.id, s])));
 
-        const [scenarios, groundTruth, predictions] = await Promise.all([
+        const [scenarios, groundTruthResult, predictions] = await Promise.all([
           fetchScenarios(),
           fetchSessionGroundTruth(id),
           fetchSessionPredictions(id),
         ]);
         if (cancelled) return;
         setScenario(scenarios.find((s) => s.id === sessionResult.scenario_id) ?? null);
-        setGroundTruthCount(groundTruth.length);
+        setGroundTruth(groundTruthResult);
         setConfigurations(summarizeConfigurations(predictions));
         setError(null);
       } catch (err) {
@@ -156,7 +161,7 @@ export function SessionDetail() {
               <dl className="grid grid-cols-2 gap-3 font-mono-data text-sm sm:grid-cols-3">
                 <div>
                   <dt className="text-slate-500">Ground truth</dt>
-                  <dd className="text-slate-200">{groundTruthCount}</dd>
+                  <dd className="text-slate-200">{groundTruth.length}</dd>
                 </div>
                 {configurations.map((c) => (
                   <div key={c.configurationId}>
@@ -166,6 +171,8 @@ export function SessionDetail() {
                 ))}
               </dl>
             </section>
+
+            <EvaluationPanel sessionId={session.id} tasks={tasks} />
           </>
         )}
       </main>
