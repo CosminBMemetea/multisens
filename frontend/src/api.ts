@@ -1,6 +1,8 @@
 import type {
+  ConfigurationSummary,
   EvaluationResult,
   GroundTruthEvent,
+  PairwiseComparison,
   PredictionEvent,
   Scenario,
   SensorConfig,
@@ -111,4 +113,25 @@ export function fetchSessionTimeline(
     query.set("tolerance_ms", String(params.tolerance_ms));
   }
   return getJson(`/api/sessions/${sessionId}/timeline?${query}`);
+}
+
+export function fetchSessionConfigurations(sessionId: string, task: string): Promise<ConfigurationSummary[]> {
+  const query = new URLSearchParams({ task });
+  return getJson(`/api/sessions/${sessionId}/configurations?${query}`);
+}
+
+export function runComparison(
+  sessionId: string,
+  input: {
+    task: string;
+    baseline_configuration_id: string;
+    candidate_configuration_ids?: string[];
+    baseline_source_id?: string;
+    candidate_source_ids?: Record<string, string>;
+    tolerance_ms?: number;
+    coverage_warning_threshold_pp?: number;
+    min_common_sample_count?: number;
+  },
+): Promise<{ comparisons: PairwiseComparison[] }> {
+  return postJson(`/api/sessions/${sessionId}/compare`, input);
 }

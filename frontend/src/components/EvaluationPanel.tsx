@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchSessionEvaluation, fetchSessionTimeline, runEvaluation } from "../api";
 import { formatCoverage, formatMetric } from "../format";
 import type { EvaluationResult, TimelineEvent } from "../types";
@@ -216,6 +217,14 @@ export function EvaluationPanel({ sessionId, tasks }: EvaluationPanelProps) {
           >
             {running ? "Running…" : "Run Evaluation"}
           </button>
+          {taskResults.length >= 2 && (
+            <Link
+              to={`/comparison?session=${sessionId}&task=${encodeURIComponent(selectedTask)}`}
+              className="rounded border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300 hover:border-cyan-500/40 hover:text-cyan-400"
+            >
+              Compare configurations →
+            </Link>
+          )}
         </div>
       </div>
 

@@ -140,3 +140,67 @@ export interface TimelineEvent {
   predicted_label: string | null;
   delta_ms: number | null;
 }
+
+// Mirrors backend/app/domain/models.py's comparison shapes (v0.3). Never a
+// causal layer - see docs/comparison.md once Phase 29 writes it: this says
+// two configurations measured differently, not why.
+
+export interface ConfigurationSummary {
+  configuration_id: string;
+  sensor_ids: string[];
+  source_ids: string[];
+  prediction_count: number;
+  // null (not 0) before /evaluate has run for this configuration/task.
+  sample_count: number | null;
+  matched_samples: number | null;
+}
+
+export interface MetricDelta {
+  baseline: number | null;
+  candidate: number | null;
+  absolute: number | null; // candidate - baseline; null if either side is null
+  relative: number | null; // absolute / abs(baseline); null if baseline is null or zero
+}
+
+export interface ComparisonMetrics {
+  sample_count: number;
+  matched_samples: number;
+  unmatched_predictions: number;
+  unmatched_ground_truth: number;
+  coverage: number | null;
+  metrics: Record<string, number | null>;
+}
+
+export interface ComparisonSide {
+  common_sample_count: number | null; // meaningful only on the common_set side
+  baseline: ComparisonMetrics;
+  candidate: ComparisonMetrics;
+  metric_deltas: Record<string, MetricDelta>;
+  coverage_delta_pp: number | null; // percentage POINTS, never a relative percentage
+  matched_sample_delta: number;
+}
+
+export type ComparisonRelationship = "direct_addition" | "direct_removal" | "general";
+export type ValidityStatus = "valid" | "valid_with_warnings" | "invalid";
+
+export interface ComparisonValidity {
+  status: ValidityStatus;
+  reasons: string[];
+}
+
+export interface PairwiseComparison {
+  session_id: string;
+  task: string;
+  baseline_configuration_id: string;
+  candidate_configuration_id: string;
+  baseline_source_id: string;
+  candidate_source_id: string;
+  tolerance_ms: number;
+  added_sensors: string[];
+  removed_sensors: string[];
+  relationship: ComparisonRelationship;
+  reported: ComparisonSide;
+  common_set: ComparisonSide;
+  validity: ComparisonValidity;
+  computed_at: string;
+}

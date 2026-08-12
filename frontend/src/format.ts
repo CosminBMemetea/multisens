@@ -24,3 +24,22 @@ export function formatCoverage(matched: number, total: number): string {
   if (total === 0) return "N/A";
   return `${Math.round((matched / total) * 100)}%`;
 }
+
+// Comparison deltas (v0.3): a signed value needs its direction visible at
+// a glance - "+0.06" and "-0.06" read very differently, unlike a plain
+// metric. null is still N/A, never a fabricated "+0.000".
+export function formatDelta(value: number | null): string {
+  if (value === null) return "N/A";
+  if (value === 0) return "0.000";
+  return value > 0 ? `+${value.toFixed(3)}` : value.toFixed(3);
+}
+
+// Percentage POINTS, never a relative percentage - matches
+// ComparisonSide.coverage_delta_pp's own contract (see types.ts). The "pp"
+// suffix is deliberate: it's the one thing stopping "-4 pp" from being
+// misread as "-4%", a different and easily-confused quantity.
+export function formatDeltaPp(value: number | null): string {
+  if (value === null) return "N/A";
+  if (value === 0) return "0.0 pp";
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)} pp`;
+}

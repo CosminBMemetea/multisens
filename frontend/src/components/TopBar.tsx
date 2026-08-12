@@ -25,6 +25,9 @@ export function TopBar({ right }: TopBarProps) {
           <NavLink to="/sessions" className={navLinkClass}>
             Sessions
           </NavLink>
+          <NavLink to="/comparison" className={navLinkClass}>
+            Comparison
+          </NavLink>
         </nav>
       </div>
       {right && <div className="flex items-center gap-4 font-mono-data text-sm">{right}</div>}

@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Dashboard } from "./pages/Dashboard";
 import { Sessions } from "./pages/Sessions";
 import { SessionDetail } from "./pages/SessionDetail";
+import { Comparison } from "./pages/Comparison";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/sessions/:sessionId" element={<SessionDetail />} />
+          <Route path="/comparison" element={<Comparison />} />
         </Routes>
       </div>
     </BrowserRouter>

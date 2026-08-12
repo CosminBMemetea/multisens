@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCoverage, formatMetric, formatMs } from "./format";
+import { formatCoverage, formatDelta, formatDeltaPp, formatMetric, formatMs } from "./format";
 
 describe("formatMs", () => {
   it("renders undefined as an em dash", () => {
@@ -63,5 +63,40 @@ describe("formatCoverage", () => {
 
   it("renders full coverage", () => {
     expect(formatCoverage(5, 5)).toBe("100%");
+  });
+});
+
+describe("formatDelta", () => {
+  it("renders null as N/A, not a fabricated zero", () => {
+    expect(formatDelta(null)).toBe("N/A");
+  });
+
+  it("prefixes a positive delta with +", () => {
+    expect(formatDelta(0.06)).toBe("+0.060");
+  });
+
+  it("leaves the sign toFixed already provides on a negative delta", () => {
+    expect(formatDelta(-0.06)).toBe("-0.060");
+  });
+
+  it("renders an exact zero delta without a sign", () => {
+    expect(formatDelta(0)).toBe("0.000");
+  });
+});
+
+describe("formatDeltaPp", () => {
+  it("renders null as N/A", () => {
+    expect(formatDeltaPp(null)).toBe("N/A");
+  });
+
+  it("uses the pp suffix, never a bare percent sign", () => {
+    // The one thing stopping "-4 pp" from being misread as "-4%" - a
+    // different, easily-confused quantity (see docs/comparison.md).
+    expect(formatDeltaPp(-4)).toBe("-4.0 pp");
+    expect(formatDeltaPp(20)).toBe("+20.0 pp");
+  });
+
+  it("renders an exact zero without a sign", () => {
+    expect(formatDeltaPp(0)).toBe("0.0 pp");
   });
 });
