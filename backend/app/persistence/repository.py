@@ -142,6 +142,18 @@ def list_predictions(
     return [_row_to_prediction(row) for row in rows]
 
 
+def list_configuration_ids(conn: sqlite3.Connection, session_id: str, task: str) -> list[str]:
+    """Distinct configuration_ids with at least one prediction for this
+    session/task - lets /evaluate discover what to evaluate when the
+    caller doesn't name specific configurations."""
+    rows = conn.execute(
+        'SELECT DISTINCT configuration_id FROM predictions WHERE session_id = ? AND task = ? '
+        'ORDER BY configuration_id',
+        (session_id, task),
+    ).fetchall()
+    return [row['configuration_id'] for row in rows]
+
+
 def _row_to_prediction(row: sqlite3.Row) -> Prediction:
     return Prediction(
         id=row['id'], session_id=row['session_id'], timestamp_ms=row['timestamp_ms'],
@@ -160,17 +172,17 @@ def upsert_evaluation_result(conn: sqlite3.Connection, result: EvaluationResult)
     result rather than accumulating a history (see docs/evaluation.md)."""
     conn.execute(
         'INSERT INTO evaluation_results '
-        '(id, session_id, configuration_id, task, format_version, sample_count, '
+        '(id, session_id, configuration_id, task, format_version, tolerance_ms, sample_count, '
         'matched_samples, unmatched_predictions, unmatched_ground_truth, metrics, '
-        'confusion_matrix, computed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
+        'confusion_matrix, computed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
         'ON CONFLICT(session_id, configuration_id, task) DO UPDATE SET '
-        'id=excluded.id, format_version=excluded.format_version, '
+        'id=excluded.id, format_version=excluded.format_version, tolerance_ms=excluded.tolerance_ms, '
         'sample_count=excluded.sample_count, matched_samples=excluded.matched_samples, '
         'unmatched_predictions=excluded.unmatched_predictions, '
         'unmatched_ground_truth=excluded.unmatched_ground_truth, metrics=excluded.metrics, '
         'confusion_matrix=excluded.confusion_matrix, computed_at=excluded.computed_at',
         (result.id, result.session_id, result.configuration_id, result.task,
-         result.format_version, result.sample_count, result.matched_samples,
+         result.format_version, result.tolerance_ms, result.sample_count, result.matched_samples,
          result.unmatched_predictions, result.unmatched_ground_truth,
          json.dumps(result.metrics),
          json.dumps(result.confusion_matrix) if result.confusion_matrix is not None else None,
@@ -200,7 +212,8 @@ def list_evaluation_results(conn: sqlite3.Connection, session_id: str) -> list[E
 def _row_to_evaluation_result(row: sqlite3.Row) -> EvaluationResult:
     return EvaluationResult(
         id=row['id'], session_id=row['session_id'], configuration_id=row['configuration_id'],
-        task=row['task'], format_version=row['format_version'], sample_count=row['sample_count'],
+        task=row['task'], format_version=row['format_version'], tolerance_ms=row['tolerance_ms'],
+        sample_count=row['sample_count'],
         matched_samples=row['matched_samples'], unmatched_predictions=row['unmatched_predictions'],
         unmatched_ground_truth=row['unmatched_ground_truth'], metrics=json.loads(row['metrics']),
         confusion_matrix=json.loads(row['confusion_matrix']) if row['confusion_matrix'] else None,

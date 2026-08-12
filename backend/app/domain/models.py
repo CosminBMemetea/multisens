@@ -113,6 +113,10 @@ class EvaluationResult(BaseModel):
     configuration_id: str
     task: str
     format_version: str = '1.0'
+    # Stored, not just passed in at evaluate-time and forgotten: a metric
+    # number is not reproducible/auditable without knowing the tolerance
+    # that produced its matched/unmatched split.
+    tolerance_ms: float
     sample_count: int
     matched_samples: int
     unmatched_predictions: int

@@ -18,9 +18,12 @@ def conn(tmp_path):
 
 
 def test_migration_is_idempotent(conn):
+    before = [row[0] for row in conn.execute('SELECT version FROM schema_migrations')]
     db.migrate(conn)  # already applied once inside db.connect(); must not error or reapply
-    versions = [row[0] for row in conn.execute('SELECT version FROM schema_migrations')]
-    assert versions == [1]
+    after = [row[0] for row in conn.execute('SELECT version FROM schema_migrations')]
+    assert after == before
+    assert len(after) == len(set(after))  # no version applied twice
+    assert after == sorted(after)
 
 
 def test_scenario_round_trip(conn):
@@ -107,15 +110,15 @@ def test_evaluation_result_upsert_overwrites_not_duplicates(conn):
 
     first = EvaluationResult(
         id='e1', session_id='s1', configuration_id='cfg-rgb', task='presence',
-        sample_count=10, matched_samples=10, unmatched_predictions=0, unmatched_ground_truth=0,
-        metrics={'accuracy': 0.5}, computed_at=_now(),
+        tolerance_ms=100.0, sample_count=10, matched_samples=10, unmatched_predictions=0,
+        unmatched_ground_truth=0, metrics={'accuracy': 0.5}, computed_at=_now(),
     )
     repo.upsert_evaluation_result(conn, first)
 
     second = EvaluationResult(
         id='e2', session_id='s1', configuration_id='cfg-rgb', task='presence',
-        sample_count=20, matched_samples=20, unmatched_predictions=1, unmatched_ground_truth=2,
-        metrics={'accuracy': 0.9}, computed_at=_now(),
+        tolerance_ms=100.0, sample_count=20, matched_samples=20, unmatched_predictions=1,
+        unmatched_ground_truth=2, metrics={'accuracy': 0.9}, computed_at=_now(),
     )
     repo.upsert_evaluation_result(conn, second)
 
@@ -131,13 +134,14 @@ def test_evaluation_result_na_metric_round_trips_as_none(conn):
 
     result = EvaluationResult(
         id='e1', session_id='s1', configuration_id='cfg-rgb', task='presence',
-        sample_count=0, matched_samples=0, unmatched_predictions=0, unmatched_ground_truth=0,
-        metrics={'accuracy': None}, computed_at=_now(),
+        tolerance_ms=100.0, sample_count=0, matched_samples=0, unmatched_predictions=0,
+        unmatched_ground_truth=0, metrics={'accuracy': None}, computed_at=_now(),
     )
     repo.upsert_evaluation_result(conn, result)
 
     fetched = repo.get_evaluation_result(conn, 's1', 'cfg-rgb', 'presence')
     assert fetched.metrics['accuracy'] is None
+    assert fetched.tolerance_ms == 100.0
 
 
 def test_data_persists_across_reconnect(tmp_path):

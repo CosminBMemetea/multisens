@@ -23,7 +23,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_session
 from app.domain.models import GroundTruth, Prediction, Session
 from app.persistence import repository as repo
 
@@ -59,13 +59,6 @@ class BatchIngestResponse(BaseModel):
     accepted: int
     rejected: int
     errors: list[BatchItemError]
-
-
-def _require_session(conn: sqlite3.Connection, session_id: str) -> Session:
-    session = repo.get_session(conn, session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail=f"session '{session_id}' not found")
-    return session
 
 
 def _format_validation_error(e: ValidationError) -> str:
@@ -123,28 +116,28 @@ def list_sessions(conn: sqlite3.Connection = Depends(get_db)) -> list[Session]:
 
 @router.get('/{session_id}')
 def get_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -> Session:
-    return _require_session(conn, session_id)
+    return require_session(conn, session_id)
 
 
 @router.post('/{session_id}/start')
 def start_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -> Session:
-    _require_session(conn, session_id)
+    require_session(conn, session_id)
     repo.update_session_status(conn, session_id, 'running')
-    return _require_session(conn, session_id)
+    return require_session(conn, session_id)
 
 
 @router.post('/{session_id}/complete')
 def complete_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -> Session:
-    _require_session(conn, session_id)
+    require_session(conn, session_id)
     repo.update_session_status(conn, session_id, 'completed', ended_at=datetime.now(timezone.utc))
-    return _require_session(conn, session_id)
+    return require_session(conn, session_id)
 
 
 @router.post('/{session_id}/ground-truth/batch', status_code=201)
 def ingest_ground_truth_batch(
     session_id: str, body: GroundTruthBatchRequest, conn: sqlite3.Connection = Depends(get_db),
 ) -> BatchIngestResponse:
-    _require_session(conn, session_id)
+    require_session(conn, session_id)
     if len(body.items) > MAX_BATCH_SIZE:
         raise HTTPException(status_code=422, detail=f'batch too large: {len(body.items)} (max {MAX_BATCH_SIZE})')
 
@@ -169,7 +162,7 @@ def ingest_ground_truth_batch(
 def ingest_predictions_batch(
     session_id: str, body: PredictionBatchRequest, conn: sqlite3.Connection = Depends(get_db),
 ) -> BatchIngestResponse:
-    _require_session(conn, session_id)
+    require_session(conn, session_id)
     if len(body.items) > MAX_BATCH_SIZE:
         raise HTTPException(status_code=422, detail=f'batch too large: {len(body.items)} (max {MAX_BATCH_SIZE})')
 
@@ -196,7 +189,7 @@ def ingest_predictions_batch(
 def list_session_ground_truth(
     session_id: str, task: str | None = None, conn: sqlite3.Connection = Depends(get_db),
 ) -> list[GroundTruth]:
-    _require_session(conn, session_id)
+    require_session(conn, session_id)
     return repo.list_ground_truth(conn, session_id, task=task)
 
 
@@ -205,5 +198,5 @@ def list_session_predictions(
     session_id: str, configuration_id: str | None = None, task: str | None = None,
     conn: sqlite3.Connection = Depends(get_db),
 ) -> list[Prediction]:
-    _require_session(conn, session_id)
+    require_session(conn, session_id)
     return repo.list_predictions(conn, session_id, configuration_id=configuration_id, task=task)

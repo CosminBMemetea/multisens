@@ -102,7 +102,7 @@ def test_evaluation_result_na_metric_is_none_not_zero():
     # An unavailable metric must be distinguishable from a calculated zero.
     result = EvaluationResult(
         id='e1', session_id='s1', configuration_id='cfg-rgb', task='presence',
-        sample_count=0, matched_samples=0, unmatched_predictions=0,
+        tolerance_ms=100.0, sample_count=0, matched_samples=0, unmatched_predictions=0,
         unmatched_ground_truth=0,
         metrics={'accuracy': None, 'precision_macro': 0.0},
         computed_at=_now(),

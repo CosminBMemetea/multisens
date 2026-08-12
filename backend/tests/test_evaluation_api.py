@@ -1,39 +1,9 @@
-"""Evaluation API tests (Phase 12): scenario/session CRUD, ground-truth and
-prediction batch ingestion with partial-failure reporting, and session
-existence validation. Deliberately does NOT use `with TestClient(app)`
-(same reasoning as test_main.py - avoids a live rclpy.init()); the DB
-dependency is overridden directly instead, isolating each test's database
-without touching FastAPI's lifespan at all.
+"""Evaluation ingestion API tests (Phase 12): scenario/session CRUD,
+ground-truth and prediction batch ingestion with partial-failure
+reporting, and session existence validation. The `client` fixture lives in
+conftest.py (shared with test_evaluate_api.py, Phase 14).
 """
-import pytest
-from fastapi.testclient import TestClient
-
-from app.api.deps import get_db
 from app.api.sessions import MAX_BATCH_SIZE
-from app.main import app
-from app.persistence import db as db_module
-
-
-@pytest.fixture
-def client(tmp_path):
-    # Mirrors deps.get_db's real per-request-connection behavior (each
-    # request runs in its own threadpool worker thread - a single shared
-    # connection object raises sqlite3.ProgrammingError across threads),
-    # just pointed at a tmp file instead of MULTISENS_DB_PATH.
-    db_path = str(tmp_path / 'test.db')
-
-    def _get_db():
-        conn = db_module.connect(db_path)
-        try:
-            yield conn
-        finally:
-            conn.close()
-
-    app.dependency_overrides[get_db] = _get_db
-    try:
-        yield TestClient(app)
-    finally:
-        del app.dependency_overrides[get_db]
 
 
 def _create_scenario(client, scenario_id='sc1') -> None:
