@@ -3,29 +3,48 @@
 ## `classification-demo.json`
 
 A deterministic, **entirely synthetic** dataset for exercising the v0.2
-evaluation workflow end to end - 100 `presence` ground-truth samples
-(50/50 `present`/`absent`, seeded shuffle) and 100 predictions each from
-three independent configurations (`cfg-rgb`, `cfg-depth`, `cfg-thermal`),
-each with a different, deliberately-chosen accuracy:
+evaluation workflow and the v0.3 comparison/ablation workflow end to end -
+100 `presence` ground-truth samples (50/50 `present`/`absent`, seeded
+shuffle) and 100 predictions each from seven independent configurations -
+every non-empty subset of `{rgb, depth, thermal}` - each with a
+different, deliberately-chosen accuracy:
 
-| Configuration | Accuracy (by construction) |
-|---|---|
-| `cfg-rgb` | 90% |
-| `cfg-depth` | 83% |
-| `cfg-thermal` | 87% |
+| Configuration | Sensors | Accuracy (by construction) |
+|---|---|---|
+| `cfg-rgb` | rgb | 90% |
+| `cfg-depth` | depth | 83% |
+| `cfg-thermal` | thermal | 87% |
+| `cfg-depth-rgb` | rgb + depth | 93% |
+| `cfg-rgb-thermal` | rgb + thermal | 95% |
+| `cfg-depth-thermal` | depth + thermal | 90% |
+| `cfg-depth-rgb-thermal` | rgb + depth + thermal | 97% |
+
+The targets deliberately form a clean lattice: every configuration
+strictly outperforms every configuration whose sensor set it is a
+superset of (single < pair < all three), so the Comparison page's
+Sensor Addition and Ablation sections always show an improvement/penalty
+in the intuitive direction - there is no "removing a sensor helped" case
+anywhere in this dataset. Every configuration also gets an on-time
+prediction for all 100 ground-truth points, so any pairwise comparison
+between two of these configurations shares the full 100-point common
+set and shows `VALID`, never `VALID_WITH_WARNINGS`, by construction.
 
 These numbers are **generated, not measured** - see
 [`scripts/generate_demo_data.py`](../../scripts/generate_demo_data.py) for
 exactly how (a fixed set of ground-truth indices is deliberately
 mislabeled per configuration, so the resulting accuracy is exact, not a
 probabilistic approximation). They exist only to produce a comparison
-table with three visibly different rows. **Do not read them as a claim
-about real sensor performance** - the depth and thermal "sensors" in this
-project's own reference setup are `ffmpeg` transforms of a webcam feed
-(see the main [README](../../README.md#physical-vs-simulated--a-hard-distinction)),
+table with clearly different, orderable rows. **Do not read them as a
+claim about real sensor performance** - the depth and thermal "sensors"
+in this project's own reference setup are `ffmpeg` transforms of a
+webcam feed (see the main [README](../../README.md#physical-vs-simulated--a-hard-distinction)),
 not real depth/thermal hardware, and even a real depth/thermal sensor's
 accuracy would depend entirely on the actual detection model being
-evaluated, which this dataset has none of.
+evaluated, which this dataset has none of. In particular, the fact that
+removing `rgb` from the full configuration costs more accuracy (-7pp)
+than removing `thermal` (-4pp) is a property of these constructed
+numbers, not a claim that rgb sensors are inherently more valuable than
+thermal ones.
 
 Both the `scenario` and every `ground_truth`/`prediction` entry carry
 `"metadata": {"synthetic": true}`, and the scenario's `tags` include

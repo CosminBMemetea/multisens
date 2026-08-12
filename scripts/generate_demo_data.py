@@ -11,9 +11,17 @@ produced a fixture once. Re-running it reproduces byte-identical output
 (fixed seeds throughout), so there is no ambiguity about what "the demo
 dataset" is.
 
-SYNTHETIC DATA. Accuracy targets below (rgb=90%, depth=83%, thermal=87%)
-are numbers chosen to fall within the ranges used elsewhere in this
-project's planning docs for demonstrating the evaluation UI - they are
+SYNTHETIC DATA. Seven configurations - every non-empty subset of
+{rgb, depth, thermal} - with accuracy targets chosen to form a clean
+lattice (each configuration strictly outperforms every configuration
+whose sensor set it is a superset of: single < pair < all three), so
+the v0.3 comparison/ablation UI has an intuitive story to show and
+never has to explain "removing a sensor helped." All 100 ground-truth
+points get an on-time prediction from every configuration, so
+comparisons between any two configurations share the full 100-point
+common set - comfortably over the default 20-sample and 0pp-coverage-
+difference validity thresholds, so the demo shows VALID throughout,
+never VALID_WITH_WARNINGS, by construction. These numbers are
 generated, not measured, and do not represent any real sensor's
 performance. See examples/evaluation/README.md.
 """
@@ -29,13 +37,19 @@ SAMPLE_COUNT = 100
 TASK = 'presence'
 LABELS = ('present', 'absent')
 
-# (source_id, sensor_id, target_correct_count, rng_seed) - target_correct
+# (source_id, sensor_ids, target_correct_count, rng_seed) - target_correct
 # is chosen, not measured; each configuration gets its own seed so the
-# three error patterns are independent, not mirror images of each other.
+# seven error patterns are independent, not mirror images of each other.
+# rgb/depth/thermal single-sensor targets and seeds are unchanged from
+# the original three-configuration demo (Phase 17) for continuity.
 CONFIGS = [
-    ('rgb_classifier', 'rgb', 90, 101),
-    ('depth_classifier', 'depth', 83, 102),
-    ('thermal_classifier', 'thermal', 87, 103),
+    ('rgb_classifier', ['rgb'], 90, 101),
+    ('depth_classifier', ['depth'], 83, 102),
+    ('thermal_classifier', ['thermal'], 87, 103),
+    ('rgb_depth_classifier', ['rgb', 'depth'], 93, 104),
+    ('rgb_thermal_classifier', ['rgb', 'thermal'], 95, 105),
+    ('depth_thermal_classifier', ['depth', 'thermal'], 90, 106),
+    ('rgb_depth_thermal_classifier', ['rgb', 'depth', 'thermal'], 97, 107),
 ]
 
 
@@ -56,8 +70,9 @@ def build_ground_truth() -> list[dict]:
 
 def build_predictions(ground_truth: list[dict]) -> list[dict]:
     predictions = []
-    for source_id, sensor_id, target_correct, seed in CONFIGS:
+    for source_id, sensor_ids, target_correct, seed in CONFIGS:
         rng = random.Random(seed)
+        config_label = '-'.join(sensor_ids)
         # Exact by construction, not a probabilistic expectation: exactly
         # target_correct of the SAMPLE_COUNT predictions match ground
         # truth, so the resulting accuracy is exactly target_correct/100,
@@ -72,10 +87,10 @@ def build_predictions(ground_truth: list[dict]) -> list[dict]:
                 predicted_label = true_label
                 confidence = round(rng.uniform(0.85, 0.99), 2)
             predictions.append({
-                'id': f'pred-{sensor_id}-{i:04d}',
+                'id': f'pred-{config_label}-{i:04d}',
                 'timestamp_ms': gt['timestamp_ms'] + rng.uniform(1, 5),
                 'source_id': source_id,
-                'sensor_ids': [sensor_id],
+                'sensor_ids': sensor_ids,
                 'task': TASK,
                 'value': {'label': predicted_label},
                 'confidence': confidence,

@@ -5923,6 +5923,6906 @@
       "metadata": {
         "synthetic": true
       }
+    },
+    {
+      "id": "pred-rgb-depth-0000",
+      "timestamp_ms": 1.5004512908074084,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0001",
+      "timestamp_ms": 1004.6499076535313,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0002",
+      "timestamp_ms": 2001.5883191263115,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0003",
+      "timestamp_ms": 3004.013987282804,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0004",
+      "timestamp_ms": 4001.2434411007844,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0005",
+      "timestamp_ms": 5002.027659338449,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0006",
+      "timestamp_ms": 6004.788864750309,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0007",
+      "timestamp_ms": 7002.196452242421,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0008",
+      "timestamp_ms": 8002.781610028038,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0009",
+      "timestamp_ms": 9004.84581944882,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0010",
+      "timestamp_ms": 10001.156264665731,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0011",
+      "timestamp_ms": 11004.142402106578,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0012",
+      "timestamp_ms": 12001.65306548036,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0013",
+      "timestamp_ms": 13002.367478815419,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0014",
+      "timestamp_ms": 14003.492482512938,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0015",
+      "timestamp_ms": 15004.253749485038,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0016",
+      "timestamp_ms": 16003.88834022485,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0017",
+      "timestamp_ms": 17004.157173739302,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0018",
+      "timestamp_ms": 18001.52852460485,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0019",
+      "timestamp_ms": 19001.59432855783,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0020",
+      "timestamp_ms": 20001.7304508996,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0021",
+      "timestamp_ms": 21001.12638020948,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0022",
+      "timestamp_ms": 22001.84831057861,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0023",
+      "timestamp_ms": 23001.248636429133,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0024",
+      "timestamp_ms": 24001.51755690019,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0025",
+      "timestamp_ms": 25001.49337947584,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0026",
+      "timestamp_ms": 26003.24540819876,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0027",
+      "timestamp_ms": 27004.320943908315,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0028",
+      "timestamp_ms": 28001.752161911714,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0029",
+      "timestamp_ms": 29001.103519524415,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.56,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0030",
+      "timestamp_ms": 30001.099809701984,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0031",
+      "timestamp_ms": 31003.89157911657,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0032",
+      "timestamp_ms": 32003.525957599948,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0033",
+      "timestamp_ms": 33001.07501633701,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0034",
+      "timestamp_ms": 34002.015579936415,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0035",
+      "timestamp_ms": 35004.11886618985,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0036",
+      "timestamp_ms": 36001.499568375744,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0037",
+      "timestamp_ms": 37001.97583602638,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0038",
+      "timestamp_ms": 38004.55906217134,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0039",
+      "timestamp_ms": 39001.40922565952,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0040",
+      "timestamp_ms": 40001.66948487272,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0041",
+      "timestamp_ms": 41003.61979642544,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0042",
+      "timestamp_ms": 42004.28712797794,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.56,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0043",
+      "timestamp_ms": 43002.55942002926,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0044",
+      "timestamp_ms": 44001.95693344133,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0045",
+      "timestamp_ms": 45004.41984192224,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0046",
+      "timestamp_ms": 46003.364784473146,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0047",
+      "timestamp_ms": 47003.93699029685,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0048",
+      "timestamp_ms": 48002.545130625556,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0049",
+      "timestamp_ms": 49003.0346594313,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0050",
+      "timestamp_ms": 50002.91864190091,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.64,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0051",
+      "timestamp_ms": 51001.03170153712,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0052",
+      "timestamp_ms": 52002.16175340302,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0053",
+      "timestamp_ms": 53001.90234463065,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0054",
+      "timestamp_ms": 54001.12981580181,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0055",
+      "timestamp_ms": 55004.12130395224,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0056",
+      "timestamp_ms": 56003.45259454172,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0057",
+      "timestamp_ms": 57002.767573901285,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0058",
+      "timestamp_ms": 58003.051597450176,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0059",
+      "timestamp_ms": 59001.16002216268,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0060",
+      "timestamp_ms": 60001.6271073061,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0061",
+      "timestamp_ms": 61001.70199130657,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0062",
+      "timestamp_ms": 62004.545500309156,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0063",
+      "timestamp_ms": 63003.11173352248,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0064",
+      "timestamp_ms": 64003.7819814437,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0065",
+      "timestamp_ms": 65002.949901813205,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0066",
+      "timestamp_ms": 66003.9177904631,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0067",
+      "timestamp_ms": 67002.23500478304,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0068",
+      "timestamp_ms": 68002.33571172116,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0069",
+      "timestamp_ms": 69003.16771163014,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0070",
+      "timestamp_ms": 70001.9633575324,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0071",
+      "timestamp_ms": 71004.4381449839,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0072",
+      "timestamp_ms": 72004.01843688855,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0073",
+      "timestamp_ms": 73002.88714228394,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0074",
+      "timestamp_ms": 74003.86039644397,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0075",
+      "timestamp_ms": 75004.28425893073,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0076",
+      "timestamp_ms": 76003.93361244303,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0077",
+      "timestamp_ms": 77002.48792204738,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0078",
+      "timestamp_ms": 78002.28905585833,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0079",
+      "timestamp_ms": 79002.68977428386,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0080",
+      "timestamp_ms": 80004.56230343044,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0081",
+      "timestamp_ms": 81004.81435758609,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0082",
+      "timestamp_ms": 82001.39859854663,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0083",
+      "timestamp_ms": 83002.44991605206,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0084",
+      "timestamp_ms": 84001.57018975135,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0085",
+      "timestamp_ms": 85004.22356882483,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0086",
+      "timestamp_ms": 86001.86561181294,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0087",
+      "timestamp_ms": 87004.46295515551,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0088",
+      "timestamp_ms": 88002.85261223264,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0089",
+      "timestamp_ms": 89003.22102918911,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0090",
+      "timestamp_ms": 90001.68760785481,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0091",
+      "timestamp_ms": 91002.18013018338,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0092",
+      "timestamp_ms": 92003.46531811461,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0093",
+      "timestamp_ms": 93001.49513148097,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0094",
+      "timestamp_ms": 94001.3589344149,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0095",
+      "timestamp_ms": 95001.97928004437,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0096",
+      "timestamp_ms": 96004.2797034964,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0097",
+      "timestamp_ms": 97001.80382394734,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0098",
+      "timestamp_ms": 98004.88261084311,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-0099",
+      "timestamp_ms": 99002.29252841856,
+      "source_id": "rgb_depth_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0000",
+      "timestamp_ms": 4.073287831857039,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.55,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0001",
+      "timestamp_ms": 1001.6551541939322,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0002",
+      "timestamp_ms": 2004.004912551919,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0003",
+      "timestamp_ms": 3003.6370136259798,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0004",
+      "timestamp_ms": 4001.6761291875478,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0005",
+      "timestamp_ms": 5002.545849765246,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0006",
+      "timestamp_ms": 6004.524498995301,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0007",
+      "timestamp_ms": 7001.908992341371,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0008",
+      "timestamp_ms": 8003.448073634828,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0009",
+      "timestamp_ms": 9004.26703932851,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0010",
+      "timestamp_ms": 10002.003346623813,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0011",
+      "timestamp_ms": 11004.996571923026,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0012",
+      "timestamp_ms": 12001.465810965248,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0013",
+      "timestamp_ms": 13004.061120947377,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.62,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0014",
+      "timestamp_ms": 14004.905285353652,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0015",
+      "timestamp_ms": 15003.944726941956,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0016",
+      "timestamp_ms": 16003.128805991388,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0017",
+      "timestamp_ms": 17004.04163886996,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0018",
+      "timestamp_ms": 18004.30440654218,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0019",
+      "timestamp_ms": 19003.36021182801,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0020",
+      "timestamp_ms": 20004.167351627748,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0021",
+      "timestamp_ms": 21003.795041081412,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0022",
+      "timestamp_ms": 22002.67578838342,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0023",
+      "timestamp_ms": 23002.05048392908,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0024",
+      "timestamp_ms": 24001.44168557382,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0025",
+      "timestamp_ms": 25004.13148681494,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0026",
+      "timestamp_ms": 26004.870315130058,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0027",
+      "timestamp_ms": 27001.057641552325,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0028",
+      "timestamp_ms": 28001.22889231472,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0029",
+      "timestamp_ms": 29002.27945937988,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0030",
+      "timestamp_ms": 30002.804845058276,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0031",
+      "timestamp_ms": 31004.40660912296,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0032",
+      "timestamp_ms": 32001.29927726675,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0033",
+      "timestamp_ms": 33002.42252995286,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0034",
+      "timestamp_ms": 34002.07081075479,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0035",
+      "timestamp_ms": 35004.68981520428,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0036",
+      "timestamp_ms": 36001.33136751841,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0037",
+      "timestamp_ms": 37004.67635134186,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0038",
+      "timestamp_ms": 38001.66873706688,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0039",
+      "timestamp_ms": 39002.35974559448,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0040",
+      "timestamp_ms": 40001.17447713871,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0041",
+      "timestamp_ms": 41001.941221289366,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0042",
+      "timestamp_ms": 42002.45551801282,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0043",
+      "timestamp_ms": 43004.98795868511,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0044",
+      "timestamp_ms": 44003.47007730095,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.53,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0045",
+      "timestamp_ms": 45004.447320434985,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0046",
+      "timestamp_ms": 46003.73463600699,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0047",
+      "timestamp_ms": 47003.139471676615,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0048",
+      "timestamp_ms": 48001.03777839544,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0049",
+      "timestamp_ms": 49003.76941830347,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0050",
+      "timestamp_ms": 50003.31087472117,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0051",
+      "timestamp_ms": 51003.98710717085,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0052",
+      "timestamp_ms": 52004.42432431345,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0053",
+      "timestamp_ms": 53003.65173959063,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0054",
+      "timestamp_ms": 54002.44840768024,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0055",
+      "timestamp_ms": 55003.573685359595,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0056",
+      "timestamp_ms": 56004.237806144556,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0057",
+      "timestamp_ms": 57002.05379146077,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0058",
+      "timestamp_ms": 58002.12010938125,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0059",
+      "timestamp_ms": 59004.3000742559,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0060",
+      "timestamp_ms": 60001.14066177579,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0061",
+      "timestamp_ms": 61003.24997246527,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0062",
+      "timestamp_ms": 62004.76070028816,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0063",
+      "timestamp_ms": 63002.25307529452,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0064",
+      "timestamp_ms": 64002.77018509641,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0065",
+      "timestamp_ms": 65002.90755653896,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0066",
+      "timestamp_ms": 66001.10320477576,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0067",
+      "timestamp_ms": 67002.208575336,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0068",
+      "timestamp_ms": 68001.70515645105,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0069",
+      "timestamp_ms": 69001.28249757596,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0070",
+      "timestamp_ms": 70001.8417111152,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0071",
+      "timestamp_ms": 71003.7304532538,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0072",
+      "timestamp_ms": 72001.36791087824,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0073",
+      "timestamp_ms": 73003.94420134308,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0074",
+      "timestamp_ms": 74002.79891519275,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.61,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0075",
+      "timestamp_ms": 75002.51777842807,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.51,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0076",
+      "timestamp_ms": 76004.56124099302,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0077",
+      "timestamp_ms": 77002.41042889997,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0078",
+      "timestamp_ms": 78003.3013446235,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0079",
+      "timestamp_ms": 79004.41058538949,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0080",
+      "timestamp_ms": 80001.38623231366,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0081",
+      "timestamp_ms": 81003.79393550791,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0082",
+      "timestamp_ms": 82003.098013596,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0083",
+      "timestamp_ms": 83003.58921814161,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0084",
+      "timestamp_ms": 84002.9121561197,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0085",
+      "timestamp_ms": 85004.94598845403,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0086",
+      "timestamp_ms": 86002.85592649334,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0087",
+      "timestamp_ms": 87003.0553517096,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0088",
+      "timestamp_ms": 88003.76454859784,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0089",
+      "timestamp_ms": 89002.05053566994,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0090",
+      "timestamp_ms": 90002.43374569101,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0091",
+      "timestamp_ms": 91004.65183104087,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0092",
+      "timestamp_ms": 92002.88764960336,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0093",
+      "timestamp_ms": 93002.63384787434,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0094",
+      "timestamp_ms": 94002.67491816057,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0095",
+      "timestamp_ms": 95002.2827841662,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0096",
+      "timestamp_ms": 96001.05888623743,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0097",
+      "timestamp_ms": 97004.22728058035,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0098",
+      "timestamp_ms": 98002.69798425974,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-thermal-0099",
+      "timestamp_ms": 99002.89157917498,
+      "source_id": "rgb_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0000",
+      "timestamp_ms": 2.9763874520044,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0001",
+      "timestamp_ms": 1003.9614217476177,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0002",
+      "timestamp_ms": 2001.8911745770733,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0003",
+      "timestamp_ms": 3003.8502319897416,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0004",
+      "timestamp_ms": 4001.725310631836,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0005",
+      "timestamp_ms": 5002.406051906184,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0006",
+      "timestamp_ms": 6002.323428714724,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0007",
+      "timestamp_ms": 7001.5598925779295,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.63,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0008",
+      "timestamp_ms": 8001.372046999261,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.51,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0009",
+      "timestamp_ms": 9003.90114072507,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0010",
+      "timestamp_ms": 10002.493842197724,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0011",
+      "timestamp_ms": 11002.242182541167,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0012",
+      "timestamp_ms": 12002.78833149149,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0013",
+      "timestamp_ms": 13004.565451805061,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0014",
+      "timestamp_ms": 14001.622632779023,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0015",
+      "timestamp_ms": 15003.260027107352,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0016",
+      "timestamp_ms": 16004.937463108632,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0017",
+      "timestamp_ms": 17004.768862340803,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0018",
+      "timestamp_ms": 18004.714515028994,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0019",
+      "timestamp_ms": 19003.509270070597,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0020",
+      "timestamp_ms": 20004.974312080532,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0021",
+      "timestamp_ms": 21001.853507627624,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0022",
+      "timestamp_ms": 22003.517277584182,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0023",
+      "timestamp_ms": 23004.009430577407,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0024",
+      "timestamp_ms": 24004.876934160537,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.56,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0025",
+      "timestamp_ms": 25001.647369044826,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0026",
+      "timestamp_ms": 26002.386549339823,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0027",
+      "timestamp_ms": 27003.843892040673,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0028",
+      "timestamp_ms": 28003.850044301675,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0029",
+      "timestamp_ms": 29003.067793361206,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0030",
+      "timestamp_ms": 30004.640856886606,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0031",
+      "timestamp_ms": 31004.54829018806,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0032",
+      "timestamp_ms": 32002.67248627884,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0033",
+      "timestamp_ms": 33004.24525249879,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.56,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0034",
+      "timestamp_ms": 34001.506117422534,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0035",
+      "timestamp_ms": 35003.175766370754,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0036",
+      "timestamp_ms": 36003.68667491864,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0037",
+      "timestamp_ms": 37004.64110100573,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0038",
+      "timestamp_ms": 38004.25302894299,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0039",
+      "timestamp_ms": 39003.061922447,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0040",
+      "timestamp_ms": 40002.20843217592,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0041",
+      "timestamp_ms": 41002.16264677009,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0042",
+      "timestamp_ms": 42001.85587177535,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0043",
+      "timestamp_ms": 43001.134638089075,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0044",
+      "timestamp_ms": 44003.11759880656,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0045",
+      "timestamp_ms": 45004.208774492974,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0046",
+      "timestamp_ms": 46004.50134357357,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0047",
+      "timestamp_ms": 47001.48703800926,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0048",
+      "timestamp_ms": 48001.13492074093,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0049",
+      "timestamp_ms": 49004.83404930721,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0050",
+      "timestamp_ms": 50001.47236401413,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0051",
+      "timestamp_ms": 51004.736081467716,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0052",
+      "timestamp_ms": 52003.1046286647,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0053",
+      "timestamp_ms": 53002.38258625031,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0054",
+      "timestamp_ms": 54004.14128597576,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0055",
+      "timestamp_ms": 55003.397158794396,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0056",
+      "timestamp_ms": 56002.428920668055,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0057",
+      "timestamp_ms": 57001.030599888836,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0058",
+      "timestamp_ms": 58002.5992539542,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0059",
+      "timestamp_ms": 59003.03833723932,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0060",
+      "timestamp_ms": 60003.10831524362,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0061",
+      "timestamp_ms": 61002.021423752376,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.64,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0062",
+      "timestamp_ms": 62004.13086726859,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0063",
+      "timestamp_ms": 63004.05332427549,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0064",
+      "timestamp_ms": 64004.706001217295,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0065",
+      "timestamp_ms": 65003.91711991929,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0066",
+      "timestamp_ms": 66001.157337436,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0067",
+      "timestamp_ms": 67001.61595446125,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.52,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0068",
+      "timestamp_ms": 68002.83150668278,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0069",
+      "timestamp_ms": 69001.76179366962,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0070",
+      "timestamp_ms": 70001.48568433606,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0071",
+      "timestamp_ms": 71003.83252749106,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.59,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0072",
+      "timestamp_ms": 72004.82201726861,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0073",
+      "timestamp_ms": 73002.87110271039,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0074",
+      "timestamp_ms": 74003.37295786616,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0075",
+      "timestamp_ms": 75004.24216688321,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0076",
+      "timestamp_ms": 76004.58053079907,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0077",
+      "timestamp_ms": 77003.57908943229,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0078",
+      "timestamp_ms": 78003.36908733177,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0079",
+      "timestamp_ms": 79001.2149244052,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0080",
+      "timestamp_ms": 80002.98305076086,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0081",
+      "timestamp_ms": 81003.91036921713,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0082",
+      "timestamp_ms": 82004.47202533751,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0083",
+      "timestamp_ms": 83002.06955763439,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0084",
+      "timestamp_ms": 84002.83014303938,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0085",
+      "timestamp_ms": 85004.068772424,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0086",
+      "timestamp_ms": 86004.66322333281,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0087",
+      "timestamp_ms": 87004.21802613718,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0088",
+      "timestamp_ms": 88003.59726512159,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0089",
+      "timestamp_ms": 89001.02568209577,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0090",
+      "timestamp_ms": 90003.25329154181,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.6,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0091",
+      "timestamp_ms": 91003.14303826836,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0092",
+      "timestamp_ms": 92001.21209111912,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0093",
+      "timestamp_ms": 93003.31545933268,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0094",
+      "timestamp_ms": 94002.2368789733,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0095",
+      "timestamp_ms": 95001.09113994401,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0096",
+      "timestamp_ms": 96004.43706963924,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0097",
+      "timestamp_ms": 97002.33036015465,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0098",
+      "timestamp_ms": 98003.33848369416,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-depth-thermal-0099",
+      "timestamp_ms": 99004.97949948201,
+      "source_id": "depth_thermal_classifier",
+      "sensor_ids": [
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0000",
+      "timestamp_ms": 3.9084526496467755,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0001",
+      "timestamp_ms": 1004.0527940186555,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0002",
+      "timestamp_ms": 2002.6982150077445,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0003",
+      "timestamp_ms": 3001.495710380379,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0004",
+      "timestamp_ms": 4001.1389966222278,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0005",
+      "timestamp_ms": 5004.702068277607,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0006",
+      "timestamp_ms": 6001.761378889897,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0007",
+      "timestamp_ms": 7001.7744761980175,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0008",
+      "timestamp_ms": 8003.138402674782,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0009",
+      "timestamp_ms": 9001.453347595827,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0010",
+      "timestamp_ms": 10001.253315761476,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0011",
+      "timestamp_ms": 11002.832112260776,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0012",
+      "timestamp_ms": 12002.091845942212,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0013",
+      "timestamp_ms": 13004.289696491822,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0014",
+      "timestamp_ms": 14002.235685807467,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0015",
+      "timestamp_ms": 15004.223963776185,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0016",
+      "timestamp_ms": 16001.184968288026,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0017",
+      "timestamp_ms": 17004.931197967795,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0018",
+      "timestamp_ms": 18004.75964693125,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0019",
+      "timestamp_ms": 19001.877403991424,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0020",
+      "timestamp_ms": 20004.99941768601,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0021",
+      "timestamp_ms": 21001.83759873503,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0022",
+      "timestamp_ms": 22004.277253200835,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0023",
+      "timestamp_ms": 23002.173398518542,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0024",
+      "timestamp_ms": 24004.137991005122,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0025",
+      "timestamp_ms": 25004.574427470932,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0026",
+      "timestamp_ms": 26001.02878225985,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0027",
+      "timestamp_ms": 27004.708737271012,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0028",
+      "timestamp_ms": 28004.582736056724,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0029",
+      "timestamp_ms": 29001.457681884905,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0030",
+      "timestamp_ms": 30002.356593399112,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0031",
+      "timestamp_ms": 31001.924177509558,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.54,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0032",
+      "timestamp_ms": 32003.826790706396,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0033",
+      "timestamp_ms": 33002.13683254293,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0034",
+      "timestamp_ms": 34003.53034278336,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0035",
+      "timestamp_ms": 35002.47660398121,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0036",
+      "timestamp_ms": 36003.27399611237,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0037",
+      "timestamp_ms": 37001.96277257549,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0038",
+      "timestamp_ms": 38002.624962745,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.99,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0039",
+      "timestamp_ms": 39001.54834048175,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0040",
+      "timestamp_ms": 40004.175624155,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0041",
+      "timestamp_ms": 41003.27074511861,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0042",
+      "timestamp_ms": 42003.976175966316,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0043",
+      "timestamp_ms": 43001.60543033679,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0044",
+      "timestamp_ms": 44004.948946565404,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0045",
+      "timestamp_ms": 45001.98491219594,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.97,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0046",
+      "timestamp_ms": 46004.69743621808,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0047",
+      "timestamp_ms": 47001.11157628592,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0048",
+      "timestamp_ms": 48004.666364416844,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0049",
+      "timestamp_ms": 49004.63294414692,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0050",
+      "timestamp_ms": 50004.59839964754,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0051",
+      "timestamp_ms": 51001.53234180738,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0052",
+      "timestamp_ms": 52002.77001806685,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0053",
+      "timestamp_ms": 53002.65117125621,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0054",
+      "timestamp_ms": 54004.624278507086,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0055",
+      "timestamp_ms": 55002.19017468718,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0056",
+      "timestamp_ms": 56003.6099092656,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0057",
+      "timestamp_ms": 57003.86717815475,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0058",
+      "timestamp_ms": 58001.04968520349,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0059",
+      "timestamp_ms": 59001.75699564396,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0060",
+      "timestamp_ms": 60002.425404794645,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0061",
+      "timestamp_ms": 61004.42205292895,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0062",
+      "timestamp_ms": 62004.70167352137,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0063",
+      "timestamp_ms": 63001.67459615517,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0064",
+      "timestamp_ms": 64001.73274151207,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0065",
+      "timestamp_ms": 65003.538320960564,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0066",
+      "timestamp_ms": 66001.50202997332,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0067",
+      "timestamp_ms": 67001.23662882956,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0068",
+      "timestamp_ms": 68003.67283148898,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0069",
+      "timestamp_ms": 69002.78638290116,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0070",
+      "timestamp_ms": 70002.46675659285,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0071",
+      "timestamp_ms": 71001.8535991071,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0072",
+      "timestamp_ms": 72002.53436139907,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0073",
+      "timestamp_ms": 73002.73398273041,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0074",
+      "timestamp_ms": 74001.23444992422,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.51,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0075",
+      "timestamp_ms": 75002.88401294405,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0076",
+      "timestamp_ms": 76004.15543907114,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.94,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0077",
+      "timestamp_ms": 77004.82397875085,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0078",
+      "timestamp_ms": 78001.40391442954,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0079",
+      "timestamp_ms": 79003.94456745552,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.51,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0080",
+      "timestamp_ms": 80004.0510748955,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0081",
+      "timestamp_ms": 81002.8875530194,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.95,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0082",
+      "timestamp_ms": 82001.77852482261,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0083",
+      "timestamp_ms": 83002.34412625598,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0084",
+      "timestamp_ms": 84002.49123810137,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0085",
+      "timestamp_ms": 85002.25823921939,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.87,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0086",
+      "timestamp_ms": 86004.1449842307,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.91,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0087",
+      "timestamp_ms": 87002.72614649149,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.9,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0088",
+      "timestamp_ms": 88002.85482811567,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.88,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0089",
+      "timestamp_ms": 89002.62990646104,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0090",
+      "timestamp_ms": 90003.80013860234,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.96,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0091",
+      "timestamp_ms": 91001.88939804742,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.93,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0092",
+      "timestamp_ms": 92004.31369376286,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0093",
+      "timestamp_ms": 93003.14865356655,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0094",
+      "timestamp_ms": 94004.41380122433,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0095",
+      "timestamp_ms": 95003.90314010128,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.98,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0096",
+      "timestamp_ms": 96003.80395745063,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.92,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0097",
+      "timestamp_ms": 97002.60293023125,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.85,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0098",
+      "timestamp_ms": 98002.66294102413,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "present"
+      },
+      "confidence": 0.89,
+      "metadata": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "pred-rgb-depth-thermal-0099",
+      "timestamp_ms": 99002.58706585526,
+      "source_id": "rgb_depth_thermal_classifier",
+      "sensor_ids": [
+        "rgb",
+        "depth",
+        "thermal"
+      ],
+      "task": "presence",
+      "value": {
+        "label": "absent"
+      },
+      "confidence": 0.86,
+      "metadata": {
+        "synthetic": true
+      }
     }
   ]
 }
