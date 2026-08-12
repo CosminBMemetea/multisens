@@ -54,3 +54,12 @@ export function formatRelativeDelta(value: number | null): string {
   if (value === 0) return "0.0%";
   return `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
 }
+
+// GroupCoverage.requirement_coverage/evidence_completeness (v0.4): both
+// are already a fraction (0-1) or null, unlike formatCoverage's raw-count
+// inputs - null means "nothing decided yet" (pass+fail, or the total,
+// is 0), never a fabricated 0%.
+export function formatFractionPercent(value: number | null): string {
+  if (value === null) return "N/A";
+  return `${Math.round(value * 100)}%`;
+}

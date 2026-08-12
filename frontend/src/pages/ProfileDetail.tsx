@@ -1,40 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
-import { ApiError, fetchProfile } from "../api";
-import type { EvaluationProfile, Requirement, RequirementGroup } from "../types";
-
-interface GroupNode {
-  group: RequirementGroup;
-  children: GroupNode[];
-  requirements: Requirement[];
-}
-
-// Builds the group tree from the flat parent_id adjacency list - the
-// wire format is flat (same as the backend's storage), the tree is a
-// pure display-time derivation, never persisted or re-sent.
-function buildGroupTree(groups: RequirementGroup[], requirements: Requirement[]): GroupNode[] {
-  const childrenByParent = new Map<string | null, RequirementGroup[]>();
-  for (const group of groups) {
-    const key = group.parent_id;
-    childrenByParent.set(key, [...(childrenByParent.get(key) ?? []), group]);
-  }
-  const requirementsByGroup = new Map<string, Requirement[]>();
-  for (const requirement of requirements) {
-    const key = requirement.group_id;
-    requirementsByGroup.set(key, [...(requirementsByGroup.get(key) ?? []), requirement]);
-  }
-
-  function build(group: RequirementGroup): GroupNode {
-    return {
-      group,
-      children: (childrenByParent.get(group.id) ?? []).map(build),
-      requirements: requirementsByGroup.get(group.id) ?? [],
-    };
-  }
-
-  return (childrenByParent.get(null) ?? []).map(build);
-}
+import { CoverageMatrix } from "../components/CoverageMatrix";
+import { ApiError, computeProfileCoverage, fetchProfile } from "../api";
+import { buildGroupTree } from "../groupTree";
+import type { GroupNode } from "../groupTree";
+import type { ConfigurationCoverage, EvaluationProfile, Requirement } from "../types";
 
 function ConditionChips({ conditions }: { conditions: Record<string, string | number | boolean> }) {
   const entries = Object.entries(conditions);
@@ -104,6 +75,12 @@ export function ProfileDetail() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [coverages, setCoverages] = useState<ConfigurationCoverage[] | null>(null);
+  const [computing, setComputing] = useState(false);
+  const [coverageError, setCoverageError] = useState<string | null>(null);
+  const [selectedConfigIds, setSelectedConfigIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+
   useEffect(() => {
     if (!profileId) return;
     let cancelled = false;
@@ -131,10 +108,41 @@ export function ProfileDetail() {
     [profile],
   );
 
+  async function handleComputeCoverage() {
+    if (!profileId) return;
+    setComputing(true);
+    setCoverageError(null);
+    try {
+      const result = await computeProfileCoverage(profileId, {});
+      setCoverages(result.configuration_coverages);
+      // Every discovered configuration starts visible - the caller opts
+      // out via the checkboxes, not in.
+      setSelectedConfigIds(new Set(result.configuration_coverages.map((c) => c.configuration_id)));
+    } catch (err) {
+      setCoverageError(String(err));
+    } finally {
+      setComputing(false);
+    }
+  }
+
+  function toggleConfig(configId: string) {
+    setSelectedConfigIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(configId)) next.delete(configId);
+      else next.add(configId);
+      return next;
+    });
+  }
+
+  const visibleCoverages = useMemo(
+    () => (coverages ?? []).filter((c) => selectedConfigIds.has(c.configuration_id)),
+    [coverages, selectedConfigIds],
+  );
+
   return (
     <>
       <TopBar />
-      <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
         <Link to="/profiles" className="w-fit text-sm text-cyan-400 hover:underline">
           ← Profiles
         </Link>
@@ -167,6 +175,62 @@ export function ProfileDetail() {
                 <GroupNodeView key={node.group.id} node={node} depth={0} />
               ))}
             </div>
+
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Coverage</h2>
+                <button
+                  onClick={handleComputeCoverage}
+                  disabled={computing}
+                  className="rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-sm font-medium text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-50"
+                >
+                  {computing ? "Computing…" : coverages ? "Recompute coverage" : "Compute coverage"}
+                </button>
+              </div>
+
+              {coverageError && (
+                <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+                  {coverageError}
+                </div>
+              )}
+
+              {coverages && coverages.length === 0 && (
+                <p className="text-sm text-slate-500">
+                  No evaluated configuration matches this profile's tasks yet - run evaluation on a session first.
+                </p>
+              )}
+
+              {coverages && coverages.length > 0 && (
+                <>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-wrap gap-3">
+                      {coverages.map((c) => (
+                        <label key={c.configuration_id} className="flex items-center gap-1.5 text-xs text-slate-400">
+                          <input
+                            type="checkbox"
+                            checked={selectedConfigIds.has(c.configuration_id)}
+                            onChange={() => toggleConfig(c.configuration_id)}
+                          />
+                          <span className="font-mono-data">{c.configuration_id}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search requirements…"
+                      className="ml-auto rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+                    />
+                  </div>
+
+                  {visibleCoverages.length === 0 ? (
+                    <p className="text-sm text-slate-500">No configurations selected.</p>
+                  ) : (
+                    <CoverageMatrix groupTree={tree} configurationCoverages={visibleCoverages} search={search} />
+                  )}
+                </>
+              )}
+            </section>
           </>
         )}
       </main>

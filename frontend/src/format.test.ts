@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatCoverage, formatDelta, formatDeltaPp, formatMetric, formatMs, formatRelativeDelta } from "./format";
+import {
+  formatCoverage,
+  formatDelta,
+  formatDeltaPp,
+  formatFractionPercent,
+  formatMetric,
+  formatMs,
+  formatRelativeDelta,
+} from "./format";
 
 describe("formatMs", () => {
   it("renders undefined as an em dash", () => {
@@ -118,5 +126,23 @@ describe("formatRelativeDelta", () => {
 
   it("renders an exact zero without a sign", () => {
     expect(formatRelativeDelta(0)).toBe("0.0%");
+  });
+});
+
+describe("formatFractionPercent", () => {
+  it("renders null as N/A, not a fabricated 0%", () => {
+    expect(formatFractionPercent(null)).toBe("N/A");
+  });
+
+  it("renders a real zero fraction as 0%, distinct from N/A", () => {
+    expect(formatFractionPercent(0)).toBe("0%");
+  });
+
+  it("rounds to the nearest whole percent", () => {
+    expect(formatFractionPercent(2 / 3)).toBe("67%");
+  });
+
+  it("renders full coverage", () => {
+    expect(formatFractionPercent(1)).toBe("100%");
   });
 });
