@@ -5,6 +5,107 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [0.3.0] — v0.3 configuration comparison
+
+Built phase by phase (Phase 20 through Phase 28), same discipline as
+v0.1/v0.2: explicit self-review checkpoints per phase, nothing merged
+without running against a real container. Adds a comparison layer
+entirely inside the existing `backend` container, consuming v0.2's
+already-persisted `EvaluationResult`s rather than rewriting anything —
+no v0.1/v0.2 behavior changed. Full domain model, algorithm, and API
+reference: [docs/comparison.md](docs/comparison.md).
+
+### Added
+
+- **Comparison domain model** (`backend/app/domain/models.py`):
+  `PairwiseComparison`, `ComparisonValidity`, `ComparisonSide`,
+  `ComparisonMetrics`, `MetricDelta`. `reported` and `common_set` share
+  one `ComparisonSide` shape and are always both computed together — no
+  caller-selected mode. `ComparisonValidity` enforces its own invariant
+  at construction (`status != 'valid'` requires a non-empty `reasons`),
+  so a silently-flagged-but-unexplained warning can't happen even by
+  omission. `baseline_source_id`/`candidate_source_id` were added after
+  an expanded self-review found the original shape resolved a source
+  internally but never carried it onto the output, breaking full
+  evidence traceability. No `Experiment` entity (a comparison request's
+  own fields already are what one would hold) and no persistence
+  (recomputed fresh from already-persisted evidence on every call) —
+  both decisions recorded directly in the module docstring.
+- **Comparison engine** (`backend/app/domain/comparison.py`): pure
+  functions, zero `fastapi`/`sqlite3`/`rclpy` imports.
+  `classify_relationship` (`direct_addition`/`direct_removal`/`general`
+  via plain `sensor_ids` set difference, never a `configuration_id`
+  string parse); `compute_metric_delta` (absolute/relative, `None` on
+  either missing input or a zero baseline — never a `ZeroDivisionError`);
+  common-set intersection by `GroundTruth.id` on already-matched pairs
+  (deliberately not a re-run of `match_by_timestamp` on a subset, which
+  isn't guaranteed to reproduce the original match); `assess_validity`
+  (invalid on zero common samples or self-comparison, warning on a low
+  common-sample count or large coverage difference — both thresholds
+  heuristic and documented as such).
+- **Comparison API** (`backend/app/api/comparison.py`): `GET
+  .../configurations` (sensor_ids, distinct source_ids, nullable sample
+  counts before evaluation), `POST .../compare` (one derivation route —
+  `mode`, a separate `/ablation`, and an `/evaluate`-then-`/coverage`
+  split were all considered and rejected). A configuration with more
+  than one distinct prediction source for a task is a hard 422 listing
+  every available source — never a guess, never a silent average.
+- **Ablation as a comparison view, not a separate concept.** Baseline =
+  the full configuration; the frontend filters the same `/compare`
+  response by `relationship == 'direct_removal'`. Zero new domain code,
+  zero new endpoint — proven by a dedicated test asserting `GET
+  .../ablation` is a 404.
+- **Comparison UI** (`frontend/src/pages/Comparison.tsx`): session/task/
+  baseline pickers round-tripped through URL search params (so Session
+  Detail's "Compare configurations →" link, shown only when ≥2
+  configurations have results, can pre-fill state); a configuration
+  comparison table; Sensor Addition, Ablation, and General Comparison
+  card sections sharing a `ComparisonMetricTable` component; a metric
+  selector sorting all three sections by delta magnitude. Three
+  deliberately distinct formatters (`formatDelta`/`formatDeltaPp`/
+  `formatRelativeDelta`) keep absolute deltas, percentage-point deltas,
+  and relative-percentage deltas — three different quantities — from
+  ever being confused at a call site, the exact mistake the v0.3
+  specification warned against.
+- **Expanded synthetic demo** (`scripts/generate_demo_data.py`,
+  `examples/evaluation/classification-demo.json`): grown from three
+  single-sensor configurations to all seven non-empty subsets of `{rgb,
+  depth, thermal}`, accuracy targets forming a clean lattice (single <
+  pair < all three) so every comparison in the demo is `VALID` by
+  construction and no sensor removal ever "helps." Cross-checked by a
+  test that hand-verifies the three direct-removal-from-full accuracy
+  deltas (−7pp/−4pp/−2pp) through the real `/compare` API.
+- **172 new backend tests**, **24 new frontend tests** — comparison
+  models, engine, API, ablation-reuse, UI, expanded-demo, and a
+  dedicated robustness pass (zero-ground-truth tasks, the N/A/no-
+  divide-by-zero path through the real API, five malformed-request
+  shapes, and a legacy pre-v0.3 single-configuration session comparing
+  cleanly — proving v0.3 added no migration or field an old session
+  would be missing).
+- `docs/comparison.md` (new); `docs/evaluation.md`, `README.md`,
+  `docs/limitations.md` updated for the comparison layer.
+
+### Fixed
+
+- **Self-comparison wasn't actually rejected.** The Phase 20 architecture
+  review specified that comparing a configuration against itself must
+  always be `invalid`, but Phase 21's engine never implemented the
+  check — found while building the API layer on top of it, fixed at
+  the correct layer (`compare_configurations`) with both a domain-level
+  and an API-level regression test.
+- **Float-precision test failures** (`(1.0 - 0.8) * 100 ==
+  19.999999999999996`, not `20.0`) — fixed with `pytest.approx` on
+  computed values; exact-equality assertions on raw literal values were
+  left as-is since those round-trip exactly through JSON.
+
+### Known limitations
+
+No matched-label-set-divergence or reported-vs-common-set-divergence
+validity checks (both documented gaps, not silent omissions), a
+comparison spans exactly one session, no comparison history (recomputed
+fresh, nothing persisted). Full list:
+[docs/limitations.md](docs/limitations.md).
+
 ## [0.2.0] — v0.2 evaluation core
 
 Built phase by phase (Phase 10 through Phase 19), same discipline as

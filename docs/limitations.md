@@ -7,11 +7,36 @@ release, not silently worked around now.
 
 ## Scope boundaries (by design, not oversight)
 
-- **No perception, no ML inference, no fusion, no ablation analysis, no
-  NCAP/DMS/OMS-specific logic.** v0.1 was ingestion, synchronization,
-  diagnostics, and visualization; v0.2 added ground-truth evaluation
-  (classification only - see below) on top of that. See the project's
-  own original scope statement in the README.
+- **No perception, no ML inference, no sensor fusion, no causal or
+  statistical claims, no NCAP/DMS/OMS-specific logic.** v0.1 was
+  ingestion, synchronization, diagnostics, and visualization; v0.2 added
+  ground-truth evaluation (classification only - see below); v0.3 added
+  configuration comparison (see below) - never a claim about *why* two
+  configurations differ, only *that* they measured differently. See the
+  project's own original scope statement in the README.
+- **Comparison validity does not check matched-label-set divergence.**
+  Two configurations whose matched samples span different label sets
+  (e.g. one config's matched set never saw the "absent" class) would
+  currently not be flagged - this would need confusion-matrix data
+  `ComparisonMetrics` doesn't carry. A documented gap, not a silent
+  omission - see [comparison.md](comparison.md#comparison-validity).
+- **Comparison validity does not check reported-vs-common-set
+  divergence.** No threshold has been justified yet for how much a
+  reported-mode delta may differ from the common-set-mode delta before
+  it's worth flagging - deferred rather than adding an
+  under-justified number.
+- **A comparison spans exactly one session.** `/compare` never spans
+  multiple sessions even if a caller wanted to compare "this
+  configuration in session A" against "that configuration in session B"
+  - both sides are always evaluated within the same session/task.
+- **No comparison history.** Like `/evaluate`, `/compare` recomputes
+  fresh on every call and persists nothing - there is no way to see how
+  a comparison's numbers looked before underlying evaluation data
+  changed, only the current state.
+- **`min_common_sample_count` (default 20) and
+  `coverage_warning_threshold_pp` (default 5.0) are heuristic, not
+  evidence-based** - same honesty treatment as `tolerance_ms`'s default
+  (see [comparison.md](comparison.md#comparison-validity)).
 - **Evaluation is classification-only (v0.2).** `GroundTruth`/
   `Prediction.value` are intentionally generic dicts (see
   [evaluation.md](evaluation.md#task-values-generic-by-design)), but the

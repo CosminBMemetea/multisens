@@ -4,8 +4,10 @@ The authoritative reference for MultiSens's evaluation layer: the domain
 model, the timestamp-matching algorithm, classification metric semantics,
 the API surface, persistence, and the import format. See
 [architecture.md](architecture.md) for where this layer sits relative to
-v0.1's ingestion/sync/diagnostics stack, and
-[limitations.md](limitations.md) for what it deliberately doesn't do yet.
+v0.1's ingestion/sync/diagnostics stack, [comparison.md](comparison.md)
+for the configuration-comparison layer (v0.3) built directly on top of
+this one's `EvaluationResult`s, and [limitations.md](limitations.md) for
+what this layer deliberately doesn't do yet.
 
 ## What this layer answers
 

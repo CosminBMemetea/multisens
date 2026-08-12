@@ -24,6 +24,13 @@ whatever else speaks RTSP.
   macro/micro precision/recall/F1, a dynamic confusion matrix) — every
   unavailable metric shown as `N/A`, never a fabricated zero. Full
   contract: [docs/evaluation.md](docs/evaluation.md).
+- A **configuration comparison layer** (v0.3): what changed when a
+  sensor was added or removed, reported two ways (as-persisted and over
+  a common matched population), with an evidence-quality validity
+  verdict and never a causal claim — "configuration B measured +0.07 F1
+  higher than A," never "sensor X caused a +7% improvement." Ablation is
+  a comparison view (baseline = the full configuration), not a separate
+  concept. Full contract: [docs/comparison.md](docs/comparison.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
 
@@ -34,9 +41,11 @@ whatever else speaks RTSP.
   produce them — a prediction may come from ROS, REST, an imported file,
   another computer, or proprietary software, and MultiSens doesn't need
   to know which.
-- **Not a sensor-fusion or ablation-scoring tool** (yet — see
-  [Roadmap](#roadmap)). v0.2 evaluates one configuration at a time; it
-  does not yet compare configurations against each other automatically.
+- **Not a sensor-fusion tool, and not a causal-attribution tool.**
+  MultiSens never runs fusion algorithms, and v0.3's comparison layer
+  never claims a sensor *caused* a change — only that two configurations
+  *measured* differently under stated conditions. See
+  [docs/comparison.md](docs/comparison.md#non-causal-by-design).
 - **Evaluation is classification-only** (v0.2) — the domain model is
   deliberately generic (see
   [docs/evaluation.md](docs/evaluation.md#task-values-generic-by-design)),
@@ -121,8 +130,10 @@ full config schema and what happens automatically once a sensor is added.
 
 Independent of the live dashboard above — works with or without an RTSP
 source connected. Loads a deterministic, clearly-labeled **synthetic**
-dataset (100 ground-truth samples, three prediction configurations at
-different accuracies) through the ordinary REST API:
+dataset (100 ground-truth samples, seven prediction configurations —
+every non-empty subset of `{rgb, depth, thermal}` — at exact-by-
+construction accuracies forming a clean lattice) through the ordinary
+REST API:
 
 ```bash
 docker compose up -d
@@ -134,6 +145,22 @@ See [examples/evaluation/README.md](examples/evaluation/README.md) for
 exactly what the dataset is (and isn't — it does not represent real
 sensor performance) and [docs/evaluation.md](docs/evaluation.md) for the
 full domain model, matching algorithm, metric semantics, and API surface.
+
+## Comparison quick start (v0.3)
+
+Uses the same demo session as above — evaluate at least two
+configurations first, then:
+
+```bash
+open http://localhost:8080/comparison
+```
+
+Pick a session, task, and baseline configuration, hit **Compare**. The
+seven-configuration demo above is deliberately built so every comparison
+between two of its configurations is `VALID` and no sensor removal ever
+shows an improvement — a clean first look at the Sensor Addition,
+Ablation, and General Comparison sections. Full contract:
+[docs/comparison.md](docs/comparison.md).
 
 ## Docker requirements
 
@@ -153,12 +180,14 @@ full domain model, matching algorithm, metric semantics, and API surface.
 |---|---|
 | Dashboard | http://localhost:8080 |
 | Sessions / Evaluation (v0.2) | http://localhost:8080/sessions |
+| Comparison (v0.3) | http://localhost:8080/comparison |
 | Backend REST | http://localhost:8000/api/* |
 | Backend WebSocket | ws://localhost:8000/ws/status |
 | MJPEG video (per sensor) | http://localhost:8000/api/sensors/{id}/stream.mjpeg |
 
 Full v0.1 API surface: [docs/connector-api.md](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting).
 Full evaluation API surface: [docs/evaluation.md](docs/evaluation.md#api-surface).
+Full comparison API surface: [docs/comparison.md](docs/comparison.md#api-surface).
 
 ## ROS topics
 
@@ -186,16 +215,21 @@ v0.1 delivered ingestion, synchronization, diagnostics, and visualization.
 v0.2 added the evaluation layer on top: sessions, scenarios, ground-truth/
 prediction ingestion from any source, timestamp matching, and
 classification metrics (comparison table, confusion matrix, timeline) —
-see [docs/evaluation.md](docs/evaluation.md).
+see [docs/evaluation.md](docs/evaluation.md). v0.3 added configuration
+comparison on top of that: metric/coverage deltas reported two ways
+(as-persisted and over a common matched population), sensor addition/
+removal relationships, ablation as a comparison view, a non-causal
+evidence-quality validity verdict, and deterministic multi-source
+ambiguity handling — see [docs/comparison.md](docs/comparison.md).
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
-predictions, it does not produce them), sensor fusion or automatic
-ablation scoring across configurations, detection/regression metric
-engines (the domain model already supports them; the evaluators don't
-exist yet), NCAP/DMS/OMS-specific logic, real depth/thermal sensor
-conversion, a file-import API endpoint, authentication, cloud deployment.
-See [CHANGELOG.md](CHANGELOG.md) for how each release was built and
-verified.
+predictions, it does not produce them), sensor fusion, causal/statistical
+claims (no p-values, no confidence intervals, no "sensor X caused Y"),
+detection/regression metric engines (the domain model already supports
+them; the evaluators don't exist yet), NCAP/DMS/OMS-specific logic, real
+depth/thermal sensor conversion, a file-import API endpoint,
+authentication, cloud deployment. See [CHANGELOG.md](CHANGELOG.md) for
+how each release was built and verified.
 
 ## Documentation
 
@@ -203,6 +237,8 @@ verified.
   reasoning behind it
 - [docs/evaluation.md](docs/evaluation.md) — evaluation domain model,
   matching, metrics, API surface (v0.2)
+- [docs/comparison.md](docs/comparison.md) — comparison domain model,
+  validity semantics, ambiguity handling, API surface (v0.3)
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model
