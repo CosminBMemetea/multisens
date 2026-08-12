@@ -160,6 +160,44 @@ def test_data_persists_across_reconnect(tmp_path):
         conn2.close()
 
 
+def test_full_data_model_persists_across_reconnect(tmp_path):
+    # Phase 11's restart test only covered scenario+session; Phase 18
+    # robustness explicitly asks for the full model, since ground truth,
+    # predictions, and evaluation results each round-trip through their
+    # own JSON-column (de)serialization path in repository.py.
+    db_path = str(tmp_path / 'full-restart.db')
+
+    conn1 = db.connect(db_path)
+    repo.create_scenario(conn1, Scenario(id='sc1', name='demo'))
+    repo.create_session(conn1, Session(id='s1', name='demo', scenario_id='sc1', started_at=_now()))
+    repo.insert_ground_truth_batch(conn1, [
+        GroundTruth(id='g1', session_id='s1', timestamp_ms=0.0, task='presence', value={'label': 'present'}),
+    ])
+    repo.insert_predictions_batch(conn1, [
+        Prediction(id='p1', session_id='s1', timestamp_ms=1.0, source_id='m', sensor_ids=['rgb'],
+                   task='presence', value={'label': 'present'}, confidence=0.9),
+    ])
+    repo.upsert_evaluation_result(conn1, EvaluationResult(
+        id='e1', session_id='s1', configuration_id='cfg-rgb', task='presence', tolerance_ms=100.0,
+        sample_count=1, matched_samples=1, unmatched_predictions=0, unmatched_ground_truth=0,
+        metrics={'accuracy': 1.0}, computed_at=_now(),
+    ))
+    conn1.close()  # simulates a container restart: connection gone, file remains
+
+    conn2 = db.connect(db_path)
+    try:
+        assert repo.get_scenario(conn2, 'sc1') is not None
+        assert repo.get_session(conn2, 's1') is not None
+        gt = repo.list_ground_truth(conn2, 's1')
+        assert len(gt) == 1 and gt[0].value == {'label': 'present'}
+        preds = repo.list_predictions(conn2, 's1')
+        assert len(preds) == 1 and preds[0].confidence == 0.9
+        result = repo.get_evaluation_result(conn2, 's1', 'cfg-rgb', 'presence')
+        assert result is not None and result.metrics['accuracy'] == 1.0
+    finally:
+        conn2.close()
+
+
 def test_connection_usable_from_a_different_thread(tmp_path):
     # Regression test for a real bug caught via a live browser against a
     # real running server (not by TestClient, which never reproduced it):
