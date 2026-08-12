@@ -1,4 +1,4 @@
-# MultiSens Architecture (v0.1)
+# MultiSens Architecture
 
 This is the authoritative architecture reference. The main [README](../README.md)
 has the project pitch, phase-by-phase development log, and quick start; this
@@ -86,6 +86,33 @@ held through all nine phases:
 - **`frontend`** deliberately did *not* join `docker-compose.yml` until
   Phase 7, once there was an actual UI to serve - not carried as an empty
   container through Phases 1-6.
+
+## Evaluation layer (v0.2) - inside `backend`, not a new service
+
+Session/scenario management, prediction/ground-truth ingestion, and the
+matching+metrics engine (Phase 10 onward) are a new domain living
+entirely inside the existing `backend` container - no new service, no
+new inter-container boundary. The same "avoid ceremony" review that
+shaped v0.1's three-container topology applied here: a separate
+evaluation microservice was considered and rejected, since nothing about
+the workload (SQLite reads/writes, in-process metric computation) needs
+isolation from the REST/WebSocket/MJPEG code already running there.
+
+Internally, `backend/app/` is layered to keep that decision reversible
+later without a rewrite:
+
+```
+domain/        pure Python - models, matching, metrics. Zero fastapi/
+               sqlite3/rclpy imports, verified by every phase that
+               touched it.
+persistence/   the only code that imports sqlite3 (repository.py, db.py).
+api/           FastAPI routers - the only code that imports fastapi
+               for this layer. Translates HTTP <-> domain objects,
+               same role ros_bridge.py plays for ROS <-> HTTP.
+```
+
+Full contract (domain model, matching algorithm, metric semantics, API
+surface, persistence): [evaluation.md](evaluation.md).
 
 ## The two planes: control/telemetry vs. video
 

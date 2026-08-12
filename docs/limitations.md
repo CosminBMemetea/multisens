@@ -1,16 +1,42 @@
-# Known Limitations (v0.1)
+# Known Limitations
 
 The single authoritative list. Everything here is a deliberate scope
 boundary or an honestly-reported gap - not a hidden defect. If something
-below sounds like it should be fixed, it probably should be, in v0.2+, not
-silently worked around now.
+below sounds like it should be fixed, it probably should be, in a later
+release, not silently worked around now.
 
 ## Scope boundaries (by design, not oversight)
 
-- **No perception, no ML inference, no fusion, no ground-truth evaluation,
-  no ablation analysis, no NCAP/DMS/OMS-specific logic.** v0.1 is
-  ingestion, synchronization, diagnostics, and visualization only - see the
-  project's own original scope statement in the README.
+- **No perception, no ML inference, no fusion, no ablation analysis, no
+  NCAP/DMS/OMS-specific logic.** v0.1 was ingestion, synchronization,
+  diagnostics, and visualization; v0.2 added ground-truth evaluation
+  (classification only - see below) on top of that. See the project's
+  own original scope statement in the README.
+- **Evaluation is classification-only (v0.2).** `GroundTruth`/
+  `Prediction.value` are intentionally generic dicts (see
+  [evaluation.md](evaluation.md#task-values-generic-by-design)), but the
+  only metric engine that exists is `evaluate_classification`. Detection/
+  regression would be new code beside it, not a schema change - but that
+  code doesn't exist yet.
+- **`tolerance_ms` for evaluation matching is not evidence-based**, unlike
+  the ROS/DDS sync tolerance (see
+  [architecture.md](architecture.md#synchronization-measured-not-guessed)).
+  Ground truth and predictions can come from entirely different systems
+  with no shared clock, so there's no equivalent "real skew" to measure -
+  the API default (`100.0`ms) is a starting point to tune per scenario.
+- **`/evaluate` is synchronous** - runs on the request thread, no
+  background job/queue. Fine at "a few thousand events, single dashboard
+  user" scale; would need rework before it could handle much more without
+  risking an HTTP timeout.
+- **No evaluation result history.** Re-running `/evaluate` for the same
+  `(session, configuration, task)` overwrites the previous
+  `EvaluationResult` - there is no way to compare "this run" against "the
+  run before I changed the model," only the latest.
+- **No file-import API endpoint.** Loading
+  `examples/evaluation/classification-demo.json` is four ordinary REST
+  calls via a script (`scripts/load_demo_data.py`), not a dedicated
+  import route - deferred deliberately until a second example file
+  actually needs one (see [evaluation.md](evaluation.md#import-format-format_version-10)).
 - **One sensor per modality.** Topics are keyed by modality
   (`/multisens/sensors/rgb/image_raw`), not by sensor ID. Two cameras
   sharing a modality collide on the same topic - guarded against with a
@@ -65,7 +91,11 @@ silently worked around now.
   not as a permanent guarantee.
 - **No load testing beyond a single dashboard user.** Concurrent-viewer
   behavior for the MJPEG relay (see above) is understood architecturally,
-  not measured under real concurrent load.
+  not measured under real concurrent load. The same applies to the
+  evaluation SQLite database (v0.2+): each request opens its own
+  connection (`check_same_thread=False`, WAL mode), which is correct for
+  sequential per-request access, but genuinely concurrent writes under
+  real multi-user load have not been measured, only reasoned about.
 - **Frontend has no error boundary** for unexpected render exceptions -
   network/data-shape errors are handled (see `docs/diagnostics.md` and the
   dashboard's own `NO SIGNAL`/`WARN` states), but a genuine React render

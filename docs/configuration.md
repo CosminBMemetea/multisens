@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Every configuration surface in MultiSens v0.1, in one place. See
+Every configuration surface in MultiSens, in one place. See
 [architecture.md](architecture.md) for why things are structured this way,
 [connector-api.md](connector-api.md) for the sensor-onboarding workflow this
 config drives.
@@ -47,6 +47,7 @@ rebuild required.
 | `RMW_IMPLEMENTATION` | `.env` (repo root) | `ros`, `backend` | Pinned to `rmw_cyclonedds_cpp` for both - Docker Desktop for Mac's default DDS discovery (multicast) is known to be flaky in this networking setup; CycloneDDS with explicit domain/RMW agreement was verified (Phase 1) to work reliably where the default configuration was a real risk. |
 | `MULTISENS_SENSORS_CONFIG` | `docker-compose.yml`, per-service | `ingestion.launch.py`, `system_diagnostics_node`, `sync_status_node`, `backend/app/config.py` | Path to `sensors.yaml` inside the container. Defaults to `/config/sensors.yaml` in every reader if unset - the env var only needs to be set at all if you change the mount target. |
 | `VITE_API_BASE_URL` | not set by default | `frontend/src/api.ts` | Overrides the backend URL the *browser* uses (default `http://localhost:8000`). Only needed if the backend's published port changes, or the dashboard is served from somewhere other than this repo's default `docker-compose.yml` setup. Build-time (Vite), not runtime - must be set before `docker compose build frontend`. |
+| `MULTISENS_DB_PATH` | `docker-compose.yml`, `backend` only | `backend/app/persistence/db.py` | Path to the evaluation SQLite file (v0.2+: sessions/scenarios/ground truth/predictions/evaluation results). Defaults to `/data/multisens.db` if unset. Points at the `backend-data` named volume in `docker-compose.yml` - see [Docker volumes](#docker-volumes) below. |
 
 `.env` (repo root, committed - contains no secrets, just shared non-sensitive
 config) is the single source for the first two. See
@@ -60,6 +61,13 @@ replaced a real duplication bug).
 | `backend` | `8000` | `8000` | REST + WebSocket + MJPEG, all on one port |
 | `frontend` | `8080` | `80` (nginx) | Dashboard. `8080`, not `3000`, because port `3000` was occupied by an unrelated process on the machine this was developed on - change freely in `docker-compose.yml` if it collides with something on yours |
 | `ros` | none published | - | Nothing outside the Docker network needs to reach it directly; `backend` reaches it over the compose network via DDS |
+
+## Docker volumes
+
+| Volume | Mount | Purpose |
+|---|---|---|
+| `backend-data` (named) | `/data` in `backend` | The evaluation SQLite database (v0.2+) - survives a container rebuild, not just a restart. Reset demo/test data with `docker compose down -v` or `docker volume rm multisense_backend-data`. |
+| `./config/sensors.yaml` (bind, read-only) | `/config/sensors.yaml` in `ros` and `backend` | See [`config/sensors.yaml`](#configsensorsyaml) above. |
 
 ## Node parameters (ROS-level, not files)
 

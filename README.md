@@ -1,6 +1,6 @@
 # MultiSens
 
-[![v0.1.0](https://img.shields.io/badge/release-v0.1.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.1.0)
+[![v0.1.1](https://img.shields.io/badge/release-v0.1.1-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.1.1)
 
 An open-source, vendor-neutral platform for ingesting, synchronizing,
 diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
@@ -17,21 +17,36 @@ whatever else speaks RTSP.
 - A **dashboard** (React, dark technical UI) showing live video, connection
   state, FPS, sync skew, and system health, backed by a REST/WebSocket API
   that never leaks a ROS message type to the browser.
+- An **evaluation layer** (v0.2): sessions, scenarios, ground-truth and
+  prediction ingestion (from anywhere — see
+  [What MultiSens is NOT](#what-multisens-is-not)), timestamp matching
+  with a configurable tolerance, and classification metrics (accuracy,
+  macro/micro precision/recall/F1, a dynamic confusion matrix) — every
+  unavailable metric shown as `N/A`, never a fabricated zero. Full
+  contract: [docs/evaluation.md](docs/evaluation.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
 
 ## What MultiSens is NOT
 
 - **Not a perception or ML platform.** No inference, no NCAP/DMS/OMS logic,
-  no object detection, nothing that interprets *what's in* a frame.
-- **Not a fusion or ground-truth evaluation tool** (yet — see
-  [Roadmap](#roadmap)).
+  no object detection. MultiSens evaluates predictions; it does not
+  produce them — a prediction may come from ROS, REST, an imported file,
+  another computer, or proprietary software, and MultiSens doesn't need
+  to know which.
+- **Not a sensor-fusion or ablation-scoring tool** (yet — see
+  [Roadmap](#roadmap)). v0.2 evaluates one configuration at a time; it
+  does not yet compare configurations against each other automatically.
+- **Evaluation is classification-only** (v0.2) — the domain model is
+  deliberately generic (see
+  [docs/evaluation.md](docs/evaluation.md#task-values-generic-by-design)),
+  but detection/regression metric engines don't exist yet.
 - **Not tied to any vendor, OEM, or dataset.** No proprietary integration,
   no hardcoded sensor brand, no code specific to the reference simulator
   anywhere outside its own config entry.
 - **Not a production-hardened, multi-user, authenticated service.** CORS is
   wide open, there's no auth, and it assumes a single local dashboard user —
-  all deliberate v0.1 scope, not oversights. See
+  all deliberate scope, not oversights. See
   [docs/limitations.md](docs/limitations.md).
 - **Not RViz or Foxglove.** Those remain valid developer tools for
   inspecting the ROS graph directly; MultiSens's dashboard is the product
@@ -102,6 +117,24 @@ a consumer of MultiSens's data can never mistake synthetic data for real
 sensor output. See [docs/connector-api.md](docs/connector-api.md) for the
 full config schema and what happens automatically once a sensor is added.
 
+## Evaluation quick start (v0.2)
+
+Independent of the live dashboard above — works with or without an RTSP
+source connected. Loads a deterministic, clearly-labeled **synthetic**
+dataset (100 ground-truth samples, three prediction configurations at
+different accuracies) through the ordinary REST API:
+
+```bash
+docker compose up -d
+python3 scripts/load_demo_data.py
+open http://localhost:8080/sessions
+```
+
+See [examples/evaluation/README.md](examples/evaluation/README.md) for
+exactly what the dataset is (and isn't — it does not represent real
+sensor performance) and [docs/evaluation.md](docs/evaluation.md) for the
+full domain model, matching algorithm, metric semantics, and API surface.
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to
@@ -119,11 +152,13 @@ full config schema and what happens automatically once a sensor is added.
 | What | URL |
 |---|---|
 | Dashboard | http://localhost:8080 |
+| Sessions / Evaluation (v0.2) | http://localhost:8080/sessions |
 | Backend REST | http://localhost:8000/api/* |
 | Backend WebSocket | ws://localhost:8000/ws/status |
 | MJPEG video (per sensor) | http://localhost:8000/api/sensors/{id}/stream.mjpeg |
 
-Full API surface: [docs/connector-api.md](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting).
+Full v0.1 API surface: [docs/connector-api.md](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting).
+Full evaluation API surface: [docs/evaluation.md](docs/evaluation.md#api-surface).
 
 ## ROS topics
 
@@ -147,23 +182,33 @@ changes independently of this README.
 
 ## Roadmap
 
-v0.1 is ingestion, synchronization, diagnostics, and visualization. Not yet
-built, deliberately: perception/ML inference, sensor fusion, ground-truth
-comparison, ablation studies, evaluation frameworks, NCAP/DMS/OMS-specific
-logic, real depth/thermal sensor conversion, authentication, cloud
-deployment. See the project's phase-by-phase history in
-[CHANGELOG.md](CHANGELOG.md) for how v0.1 itself was built and verified.
+v0.1 delivered ingestion, synchronization, diagnostics, and visualization.
+v0.2 added the evaluation layer on top: sessions, scenarios, ground-truth/
+prediction ingestion from any source, timestamp matching, and
+classification metrics (comparison table, confusion matrix, timeline) —
+see [docs/evaluation.md](docs/evaluation.md).
+
+Not yet built, deliberately: perception/ML inference (MultiSens evaluates
+predictions, it does not produce them), sensor fusion or automatic
+ablation scoring across configurations, detection/regression metric
+engines (the domain model already supports them; the evaluators don't
+exist yet), NCAP/DMS/OMS-specific logic, real depth/thermal sensor
+conversion, a file-import API endpoint, authentication, cloud deployment.
+See [CHANGELOG.md](CHANGELOG.md) for how each release was built and
+verified.
 
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — system design and the
   reasoning behind it
+- [docs/evaluation.md](docs/evaluation.md) — evaluation domain model,
+  matching, metrics, API surface (v0.2)
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model
 - [docs/connector-api.md](docs/connector-api.md) — adding a sensor, backend API
 - [docs/development.md](docs/development.md) — repo layout, tests, dev workflow
-- [docs/limitations.md](docs/limitations.md) — what v0.1 doesn't do, and why
+- [docs/limitations.md](docs/limitations.md) — what MultiSens doesn't do, and why
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, what was fixed, verified how
 
 ## License
