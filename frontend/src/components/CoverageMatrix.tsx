@@ -1,4 +1,5 @@
 import { type ReactNode, useMemo, useState } from "react";
+import { RequirementDrillDown } from "./RequirementDrillDown";
 import { StatusBadge } from "./StatusBadge";
 import { formatFractionPercent } from "../format";
 import type { GroupNode } from "../groupTree";
@@ -44,6 +45,9 @@ const ROW_BASE_PADDING_REM = 0.75;
 
 export function CoverageMatrix({ groupTree, configurationCoverages, search }: CoverageMatrixProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [selectedCell, setSelectedCell] = useState<{ requirement: Requirement; result: RequirementResult } | null>(
+    null,
+  );
 
   const configIds = useMemo(
     () => configurationCoverages.map((c) => c.configuration_id),
@@ -137,7 +141,17 @@ export function CoverageMatrix({ groupTree, configurationCoverages, search }: Co
             const result = resultsByConfig.get(cid)?.get(requirement.id);
             return (
               <td key={cid} className="px-3 py-1.5 text-center">
-                {result ? <StatusBadge status={result.status} reasons={result.reasons} /> : "—"}
+                {result ? (
+                  <button
+                    onClick={() => setSelectedCell({ requirement, result })}
+                    className="cursor-pointer"
+                    aria-label={`${requirement.name} - ${cid} - view evidence`}
+                  >
+                    <StatusBadge status={result.status} reasons={result.reasons} />
+                  </button>
+                ) : (
+                  "—"
+                )}
               </td>
             );
           })}
@@ -153,20 +167,30 @@ export function CoverageMatrix({ groupTree, configurationCoverages, search }: Co
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-800">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-800 bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
-          <tr>
-            <th className="px-3 py-2 font-medium">Requirement</th>
-            {configIds.map((cid) => (
-              <th key={cid} className="px-3 py-2 text-center font-mono-data font-medium normal-case">
-                {cid}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{groupTree.flatMap((node) => renderGroup(node, 0))}</tbody>
-      </table>
-    </div>
+    <>
+      <div className="overflow-x-auto rounded border border-slate-800">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-800 bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-2 font-medium">Requirement</th>
+              {configIds.map((cid) => (
+                <th key={cid} className="px-3 py-2 text-center font-mono-data font-medium normal-case">
+                  {cid}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{groupTree.flatMap((node) => renderGroup(node, 0))}</tbody>
+        </table>
+      </div>
+
+      {selectedCell && (
+        <RequirementDrillDown
+          requirement={selectedCell.requirement}
+          result={selectedCell.result}
+          onClose={() => setSelectedCell(null)}
+        />
+      )}
+    </>
   );
 }
