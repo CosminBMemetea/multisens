@@ -13,6 +13,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from app.api.comparison import router as comparison_router
 from app.api.evaluation import router as evaluation_router
 from app.api.scenarios import router as scenarios_router
 from app.api.sessions import router as sessions_router
@@ -57,6 +58,7 @@ app.add_middleware(
 app.include_router(scenarios_router)
 app.include_router(sessions_router)
 app.include_router(evaluation_router)
+app.include_router(comparison_router)
 
 
 @app.get('/api/health')

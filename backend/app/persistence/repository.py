@@ -127,7 +127,7 @@ def insert_predictions_batch(conn: sqlite3.Connection, items: list[Prediction]) 
 
 def list_predictions(
     conn: sqlite3.Connection, session_id: str,
-    configuration_id: str | None = None, task: str | None = None,
+    configuration_id: str | None = None, task: str | None = None, source_id: str | None = None,
 ) -> list[Prediction]:
     query = 'SELECT * FROM predictions WHERE session_id = ?'
     params: list[str] = [session_id]
@@ -137,6 +137,9 @@ def list_predictions(
     if task is not None:
         query += ' AND task = ?'
         params.append(task)
+    if source_id is not None:
+        query += ' AND source_id = ?'
+        params.append(source_id)
     query += ' ORDER BY timestamp_ms'
     rows = conn.execute(query, params).fetchall()
     return [_row_to_prediction(row) for row in rows]
@@ -152,6 +155,20 @@ def list_configuration_ids(conn: sqlite3.Connection, session_id: str, task: str)
         (session_id, task),
     ).fetchall()
     return [row['configuration_id'] for row in rows]
+
+
+def list_distinct_source_ids(
+    conn: sqlite3.Connection, session_id: str, configuration_id: str, task: str,
+) -> list[str]:
+    """Distinct source_ids with at least one prediction for this
+    session/configuration/task - lets /compare (Phase 22) detect
+    ambiguous prediction sources instead of guessing which one to use."""
+    rows = conn.execute(
+        'SELECT DISTINCT source_id FROM predictions '
+        'WHERE session_id = ? AND configuration_id = ? AND task = ? ORDER BY source_id',
+        (session_id, configuration_id, task),
+    ).fetchall()
+    return [row['source_id'] for row in rows]
 
 
 def _row_to_prediction(row: sqlite3.Row) -> Prediction:

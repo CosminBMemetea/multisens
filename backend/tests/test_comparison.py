@@ -371,3 +371,25 @@ def test_compare_configurations_disjoint_matches_is_invalid():
     assert comparison.relationship == 'general'  # rgb -> depth is a swap, not a direct edge
     assert comparison.common_set.common_sample_count == 0
     assert comparison.validity.status == 'invalid'
+
+
+def test_compare_configurations_self_comparison_is_invalid():
+    # Found while building Phase 22's API layer: the Phase 20 architecture
+    # review said self-comparison should be unconditionally invalid, but
+    # Phase 21 never actually implemented the check. Fixed here.
+    ground_truth = [_gt('g0', 0, 'present'), _gt('g1', 100, 'absent')]
+    predictions = [_pred('p0', 1, 'present', ['rgb']), _pred('p1', 101, 'absent', ['rgb'])]
+    result = _eval_result('cfg-rgb', sample_count=2, matched_samples=2, accuracy=1.0)
+
+    comparison = compare_configurations(
+        session_id='s1', task='presence',
+        baseline_configuration_id='cfg-rgb', candidate_configuration_id='cfg-rgb',
+        baseline_source_id='rgb_model', candidate_source_id='rgb_model',
+        baseline_sensor_ids=['rgb'], candidate_sensor_ids=['rgb'],
+        ground_truth=ground_truth,
+        baseline_predictions=predictions, candidate_predictions=predictions,
+        baseline_evaluation_result=result, candidate_evaluation_result=result,
+        tolerance_ms=50.0,
+    )
+    assert comparison.validity.status == 'invalid'
+    assert 'same configuration' in comparison.validity.reasons[0]

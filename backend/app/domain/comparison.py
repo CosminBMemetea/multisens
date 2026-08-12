@@ -227,7 +227,17 @@ def compare_configurations(
         common_sample_count=len(common_gt_ids),
     )
 
-    validity = assess_validity(reported_side, common_side, coverage_warning_threshold_pp, min_common_sample_count)
+    if baseline_configuration_id == candidate_configuration_id:
+        # A self-comparison is still computed - never hidden, per the
+        # "never silently compare incomparable configurations" rule - but
+        # it isn't a real comparison, so it's unconditionally invalid
+        # regardless of what assess_validity's threshold-based rules
+        # would otherwise conclude.
+        validity = ComparisonValidity(
+            status='invalid', reasons=['baseline and candidate are the same configuration'],
+        )
+    else:
+        validity = assess_validity(reported_side, common_side, coverage_warning_threshold_pp, min_common_sample_count)
 
     return PairwiseComparison(
         session_id=session_id,
