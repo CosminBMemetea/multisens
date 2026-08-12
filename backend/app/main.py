@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from app.config import load_sensors
+from app.persistence import db as db_module
 from app.ros_bridge import RosBridge
 from app.video_relay import mjpeg_stream
 
@@ -23,9 +24,15 @@ bridge = RosBridge()
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     bridge.start()
+    # Opens the evaluation DB and applies any pending migration. No route
+    # uses it yet (that's Phase 12) - wiring it into startup now means a
+    # real path/permission/migration problem surfaces at container boot,
+    # not silently on the first evaluation-API call in a later phase.
+    app.state.db = db_module.connect(db_module.get_db_path())
     yield
+    app.state.db.close()
     bridge.shutdown()
 
 

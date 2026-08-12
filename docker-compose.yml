@@ -32,8 +32,10 @@ services:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
       - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION}
       - MULTISENS_SENSORS_CONFIG=/config/sensors.yaml
+      - MULTISENS_DB_PATH=/data/multisens.db
     volumes:
       - ./config/sensors.yaml:/config/sensors.yaml:ro
+      - backend-data:/data
     ports:
       - "8000:8000"
     extra_hosts:
@@ -64,3 +66,9 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+
+volumes:
+  # SQLite evaluation database (sessions/predictions/ground truth/results,
+  # v0.2+). Reset demo data with `docker compose down -v` or
+  # `docker volume rm multisense_backend-data`.
+  backend-data:
