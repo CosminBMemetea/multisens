@@ -1,6 +1,6 @@
 # MultiSens
 
-[![v0.1.1](https://img.shields.io/badge/release-v0.1.1-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.1.1)
+[![v0.4.0](https://img.shields.io/badge/release-v0.4.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.4.0)
 
 An open-source, vendor-neutral platform for ingesting, synchronizing,
 diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
