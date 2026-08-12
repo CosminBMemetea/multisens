@@ -6,8 +6,12 @@ Phase 34: acceptance engine tests - evaluate_criterion/evaluate_requirement
 - metric lookup (including the synthetic "coverage" key), all five
 operators, N/A-not-fail for unresolvable metrics, and the requirement-
 level status priority (no evidence > any N/A criterion > any failed
-criterion > pass). Aggregation (Phase 35) is not implemented or tested
-here."""
+criterion > pass).
+
+Phase 35: coverage engine tests - compute_requirement_results (wires
+select_evidence + evaluate_requirement across a whole profile) and
+compute_configuration_coverage (recursive leaf-count group aggregation -
+never an average of child percentages, N/A never 0 for an empty group)."""
 from datetime import datetime, timezone
 
 import pytest
@@ -20,12 +24,14 @@ from app.domain.coverage import (
     EvidenceReference,
     GroupCoverage,
     RequirementResult,
+    compute_configuration_coverage,
+    compute_requirement_results,
     evaluate_criterion,
     evaluate_requirement,
 )
-from app.domain.evidence import EvidenceSelection, ResolvedEvidence, SessionCandidate, select_evidence
+from app.domain.evidence import EvidenceBinding, EvidenceSelection, ResolvedEvidence, SessionCandidate, select_evidence
 from app.domain.models import EvaluationResult, Session
-from app.domain.profiles import AcceptanceCriterion, Requirement
+from app.domain.profiles import AcceptanceCriterion, EvaluationProfile, Requirement, RequirementGroup
 
 
 def _criterion_result(**overrides) -> CriterionResult:
@@ -319,3 +325,190 @@ def test_evaluate_requirement_composes_with_select_evidence_end_to_end():
     result = evaluate_requirement(requirement, 'p1', '1.0', 'cfg-rgb', selection)
     assert result.status == 'pass'
     assert result.evidence.evaluation_result_id == 'er1'
+
+
+# --- compute_requirement_results (Phase 35) --------------------------------
+
+def test_compute_requirement_results_one_per_requirement_in_profile_order():
+    profile = EvaluationProfile(
+        id='p1', name='P', version='1.0',
+        groups=[RequirementGroup(id='g1', name='G1')],
+        requirements=[
+            _requirement(id='r1', task='presence'),
+            _requirement(id='r2', task='presence', acceptance=[
+                AcceptanceCriterion(metric='recall_macro', operator='>=', value=0.99),
+            ]),
+        ],
+        created_at=datetime.now(timezone.utc),
+    )
+    candidate = SessionCandidate(session=_session(), evaluation_result=_evaluation_result(), source_ids=['rgb_model'])
+    results = compute_requirement_results(profile, 'cfg-rgb', {'presence': [candidate]})
+    assert [r.requirement_id for r in results] == ['r1', 'r2']
+    assert results[0].status == 'pass'
+    assert results[1].status == 'fail'  # 0.94 < 0.99
+
+
+def test_compute_requirement_results_missing_task_in_candidates_is_na():
+    profile = EvaluationProfile(
+        id='p1', name='P', version='1.0',
+        groups=[RequirementGroup(id='g1', name='G1')],
+        requirements=[_requirement(id='r1', task='drowsiness')],
+        created_at=datetime.now(timezone.utc),
+    )
+    # candidates_by_task has no entry for 'drowsiness' at all.
+    results = compute_requirement_results(profile, 'cfg-rgb', {})
+    assert results[0].status == 'na'
+
+
+def test_compute_requirement_results_binding_resolves_ambiguity():
+    s1 = _session(id='s1', metadata={'illumination': 'night'})
+    s2 = _session(id='s2', metadata={'illumination': 'night'})
+    candidates = [
+        SessionCandidate(session=s1, evaluation_result=_evaluation_result(session_id='s1'), source_ids=['rgb_model']),
+        SessionCandidate(session=s2, evaluation_result=_evaluation_result(session_id='s2'), source_ids=['rgb_model']),
+    ]
+    profile = EvaluationProfile(
+        id='p1', name='P', version='1.0',
+        groups=[RequirementGroup(id='g1', name='G1')],
+        requirements=[_requirement(id='r1', task='presence', conditions={'illumination': 'night'})],
+        created_at=datetime.now(timezone.utc),
+    )
+    without_binding = compute_requirement_results(profile, 'cfg-rgb', {'presence': candidates})
+    assert without_binding[0].status == 'na'  # ambiguous
+
+    with_binding = compute_requirement_results(
+        profile, 'cfg-rgb', {'presence': candidates}, bindings={'r1': EvidenceBinding(session_id='s2')},
+    )
+    assert with_binding[0].status == 'pass'
+    assert with_binding[0].evidence.session_id == 's2'
+
+
+# --- compute_configuration_coverage (Phase 35) -----------------------------
+
+def _result(requirement_id, status, **overrides) -> RequirementResult:
+    defaults = dict(
+        profile_id='p1', profile_version='1.0', requirement_id=requirement_id,
+        configuration_id='cfg-rgb', task='presence', status=status,
+        reasons=[] if status == 'pass' else ['x'], computed_at=datetime.now(timezone.utc),
+    )
+    return RequirementResult(**{**defaults, **overrides})
+
+
+def _three_level_profile() -> EvaluationProfile:
+    # root
+    #   g1 (Function A)              - own requirement r3 (na)
+    #     g1-1 (Use Case A1)         - no own requirements
+    #       g1-1-1 (Variant group)   - own requirements r1 (pass), r2 (fail)
+    #   g2 (Function B)              - empty: no requirements, no children
+    groups = [
+        RequirementGroup(id='g1', name='Function A'),
+        RequirementGroup(id='g1-1', parent_id='g1', name='Use Case A1'),
+        RequirementGroup(id='g1-1-1', parent_id='g1-1', name='Variant group'),
+        RequirementGroup(id='g2', name='Function B'),
+    ]
+    requirements = [
+        _requirement(id='r1', group_id='g1-1-1'),
+        _requirement(id='r2', group_id='g1-1-1'),
+        _requirement(id='r3', group_id='g1'),
+    ]
+    return EvaluationProfile(
+        id='p1', name='Example Profile', version='1.0', groups=groups, requirements=requirements,
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def test_compute_configuration_coverage_nested_groups_aggregate_bottom_up():
+    profile = _three_level_profile()
+    results = [_result('r1', 'pass'), _result('r2', 'fail'), _result('r3', 'na')]
+    coverage = compute_configuration_coverage(profile, 'cfg-rgb', results)
+
+    root = coverage.root
+    g1 = next(g for g in root.children if g.group_id == 'g1')
+    g1_1 = next(g for g in g1.children if g.group_id == 'g1-1')
+    g1_1_1 = next(g for g in g1_1.children if g.group_id == 'g1-1-1')
+    g2 = next(g for g in root.children if g.group_id == 'g2')
+
+    # Leaf group: its own two requirements only.
+    assert (g1_1_1.pass_count, g1_1_1.fail_count, g1_1_1.na_count) == (1, 1, 0)
+    assert g1_1_1.requirement_coverage == pytest.approx(0.5)
+    assert g1_1_1.evidence_completeness == pytest.approx(1.0)
+
+    # Mid group: no own requirements, purely its child's counts.
+    assert (g1_1.pass_count, g1_1.fail_count, g1_1.na_count) == (1, 1, 0)
+
+    # Top group: own r3 (na) plus its descendant's counts.
+    assert (g1.pass_count, g1.fail_count, g1.na_count) == (1, 1, 1)
+    assert g1.requirement_coverage == pytest.approx(0.5)  # 1 / (1+1), na excluded from denominator
+    assert g1.evidence_completeness == pytest.approx(2 / 3)
+
+    # Empty group: N/A, never 0.
+    assert (g2.pass_count, g2.fail_count, g2.na_count) == (0, 0, 0)
+    assert g2.requirement_coverage is None
+    assert g2.evidence_completeness is None
+
+    # Root: sum of both top-level groups (g2 contributes nothing).
+    assert (root.pass_count, root.fail_count, root.na_count) == (1, 1, 1)
+    assert root.requirement_coverage == pytest.approx(0.5)
+    assert root.evidence_completeness == pytest.approx(2 / 3)
+    assert root.group_id is None
+
+
+def test_compute_configuration_coverage_all_pass():
+    profile = _three_level_profile()
+    results = [_result('r1', 'pass'), _result('r2', 'pass'), _result('r3', 'pass')]
+    coverage = compute_configuration_coverage(profile, 'cfg-rgb', results)
+    assert coverage.root.requirement_coverage == pytest.approx(1.0)
+    assert coverage.root.evidence_completeness == pytest.approx(1.0)
+
+
+def test_compute_configuration_coverage_all_fail():
+    profile = _three_level_profile()
+    results = [_result('r1', 'fail'), _result('r2', 'fail'), _result('r3', 'fail')]
+    coverage = compute_configuration_coverage(profile, 'cfg-rgb', results)
+    assert coverage.root.requirement_coverage == pytest.approx(0.0)
+    assert coverage.root.evidence_completeness == pytest.approx(1.0)
+
+
+def test_compute_configuration_coverage_all_na_is_none_not_zero():
+    profile = _three_level_profile()
+    results = [_result('r1', 'na'), _result('r2', 'na'), _result('r3', 'na')]
+    coverage = compute_configuration_coverage(profile, 'cfg-rgb', results)
+    assert coverage.root.requirement_coverage is None
+    assert coverage.root.evidence_completeness == pytest.approx(0.0)
+
+
+def test_compute_configuration_coverage_is_not_an_average_of_child_percentages():
+    # Group A: 1 requirement, 100% coverage. Group B: 10 requirements, 1
+    # pass / 9 fail, 10% coverage. A naive average would report ~55% for
+    # the parent; leaf-count aggregation must report 2/11 ~= 18.2%.
+    groups = [RequirementGroup(id='ga', name='A'), RequirementGroup(id='gb', name='B')]
+    requirements = [_requirement(id='a1', group_id='ga')] + [
+        _requirement(id=f'b{i}', group_id='gb') for i in range(10)
+    ]
+    profile = EvaluationProfile(
+        id='p1', name='P', version='1.0', groups=groups, requirements=requirements,
+        created_at=datetime.now(timezone.utc),
+    )
+    results = [_result('a1', 'pass')] + [_result(f'b{i}', 'pass' if i == 0 else 'fail') for i in range(10)]
+    coverage = compute_configuration_coverage(profile, 'cfg-rgb', results)
+
+    naive_average = (1.0 + 0.1) / 2
+    assert coverage.root.requirement_coverage == pytest.approx(2 / 11)
+    assert coverage.root.requirement_coverage != pytest.approx(naive_average)
+
+
+def test_compute_configuration_coverage_raises_on_missing_result():
+    profile = _three_level_profile()
+    results = [_result('r1', 'pass'), _result('r2', 'fail')]  # r3 missing
+    with pytest.raises(ValueError, match='missing'):
+        compute_configuration_coverage(profile, 'cfg-rgb', results)
+
+
+def test_compute_configuration_coverage_raises_on_unexpected_result():
+    profile = _three_level_profile()
+    results = [
+        _result('r1', 'pass'), _result('r2', 'fail'), _result('r3', 'na'),
+        _result('does-not-exist', 'pass'),
+    ]
+    with pytest.raises(ValueError, match='unexpected'):
+        compute_configuration_coverage(profile, 'cfg-rgb', results)

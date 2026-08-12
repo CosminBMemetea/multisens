@@ -28,9 +28,15 @@ from typing import Callable, Literal
 from pydantic import BaseModel, Field, model_validator
 
 from app.domain.comparison import ComparisonMetrics, comparison_metrics_from_evaluation_result
-from app.domain.evidence import EvidenceSelection
+from app.domain.evidence import EvidenceBinding, EvidenceSelection, SessionCandidate, select_evidence
 from app.domain.models import MetricValue
-from app.domain.profiles import AcceptanceCriterion, AcceptanceOperator, Requirement
+from app.domain.profiles import (
+    AcceptanceCriterion,
+    AcceptanceOperator,
+    EvaluationProfile,
+    Requirement,
+    RequirementGroup,
+)
 
 RequirementStatus = Literal['pass', 'fail', 'na']
 
@@ -221,4 +227,122 @@ def evaluate_requirement(
         profile_id=profile_id, profile_version=profile_version, requirement_id=requirement.id,
         configuration_id=configuration_id, task=requirement.task, status=status, reasons=reasons,
         criteria=criteria_results, evidence=evidence, computed_at=computed_at,
+    )
+
+
+# --- coverage engine (v0.4, Phase 35) --------------------------------------
+#
+# Wires Phases 33+34 together (compute_requirement_results) and performs
+# the recursive group aggregation (compute_configuration_coverage). Both
+# are pure functions over already-fetched data - no sqlite3/fastapi
+# import - matching every other domain module.
+
+def compute_requirement_results(
+    profile: EvaluationProfile,
+    configuration_id: str,
+    candidates_by_task: dict[str, list[SessionCandidate]],
+    bindings: dict[str, EvidenceBinding] | None = None,
+) -> list[RequirementResult]:
+    """One RequirementResult per requirement in the profile, in profile
+    order. `candidates_by_task` is keyed by task (not requirement id) -
+    the caller fetches candidate sessions once per distinct task used
+    across the profile, not once per requirement, since two requirements
+    sharing a task share the same candidate pool. `bindings` is keyed by
+    requirement id and is entirely optional - a requirement with no
+    binding falls through to ordinary discovery."""
+    bindings = bindings or {}
+    results: list[RequirementResult] = []
+    for requirement in profile.requirements:
+        candidates = candidates_by_task.get(requirement.task, [])
+        selection = select_evidence(requirement, candidates, bindings.get(requirement.id))
+        results.append(
+            evaluate_requirement(requirement, profile.id, profile.version, configuration_id, selection)
+        )
+    return results
+
+
+def _status_counts(results: list[RequirementResult]) -> tuple[int, int, int]:
+    pass_count = sum(1 for r in results if r.status == 'pass')
+    fail_count = sum(1 for r in results if r.status == 'fail')
+    na_count = sum(1 for r in results if r.status == 'na')
+    return pass_count, fail_count, na_count
+
+
+def _coverage_and_completeness(pass_count: int, fail_count: int, na_count: int) -> tuple[MetricValue, MetricValue]:
+    decided = pass_count + fail_count
+    total = decided + na_count
+    # None (not 0) when nothing was decided, or nothing exists at all -
+    # an empty group must read as "nothing here," never as "0% coverage,"
+    # which would misrepresent an absence of requirements as a failure.
+    requirement_coverage = (pass_count / decided) if decided > 0 else None
+    evidence_completeness = (decided / total) if total > 0 else None
+    return requirement_coverage, evidence_completeness
+
+
+def _build_group_coverage(
+    group_id: str | None,
+    name: str,
+    results_by_group: dict[str, list[RequirementResult]],
+    child_groups_by_parent: dict[str | None, list[RequirementGroup]],
+) -> GroupCoverage:
+    own_results = results_by_group.get(group_id, [])
+    own_pass, own_fail, own_na = _status_counts(own_results)
+
+    children = [
+        _build_group_coverage(child.id, child.name, results_by_group, child_groups_by_parent)
+        for child in child_groups_by_parent.get(group_id, [])
+    ]
+
+    # Leaf-count aggregation, never an average of child percentages -
+    # a parent with children of very different sizes would otherwise be
+    # misweighted (a 1-requirement 100%-coverage child and a
+    # 99-requirement 10%-coverage child do not average to a meaningful
+    # "55%" for the parent).
+    pass_count = own_pass + sum(c.pass_count for c in children)
+    fail_count = own_fail + sum(c.fail_count for c in children)
+    na_count = own_na + sum(c.na_count for c in children)
+    requirement_coverage, evidence_completeness = _coverage_and_completeness(pass_count, fail_count, na_count)
+
+    return GroupCoverage(
+        group_id=group_id, name=name, pass_count=pass_count, fail_count=fail_count, na_count=na_count,
+        requirement_coverage=requirement_coverage, evidence_completeness=evidence_completeness,
+        children=children,
+    )
+
+
+def compute_configuration_coverage(
+    profile: EvaluationProfile,
+    configuration_id: str,
+    requirement_results: list[RequirementResult],
+) -> ConfigurationCoverage:
+    """requirement_results must contain exactly one result per requirement
+    in the profile - a caller bug that silently omits one would otherwise
+    produce a coverage number that's quietly undercounted rather than
+    visibly wrong, exactly the kind of hidden error this project's N/A
+    discipline exists to prevent."""
+    requirement_ids = {r.id for r in profile.requirements}
+    result_ids = {r.requirement_id for r in requirement_results}
+    if requirement_ids != result_ids:
+        missing = requirement_ids - result_ids
+        unexpected = result_ids - requirement_ids
+        raise ValueError(
+            f'requirement_results must have exactly one result per profile requirement - '
+            f'missing: {sorted(missing)}, unexpected: {sorted(unexpected)}'
+        )
+
+    requirements_by_id = {r.id: r for r in profile.requirements}
+    results_by_group: dict[str, list[RequirementResult]] = {}
+    for result in requirement_results:
+        group_id = requirements_by_id[result.requirement_id].group_id
+        results_by_group.setdefault(group_id, []).append(result)
+
+    child_groups_by_parent: dict[str | None, list[RequirementGroup]] = {}
+    for group in profile.groups:
+        child_groups_by_parent.setdefault(group.parent_id, []).append(group)
+
+    root = _build_group_coverage(None, profile.name, results_by_group, child_groups_by_parent)
+
+    return ConfigurationCoverage(
+        profile_id=profile.id, profile_version=profile.version, configuration_id=configuration_id,
+        requirement_results=requirement_results, root=root,
     )
