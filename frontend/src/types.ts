@@ -256,6 +256,7 @@ export interface ProfileSummary {
   version: string;
   description: string;
   requirement_count: number;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 

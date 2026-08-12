@@ -170,6 +170,14 @@ export function ProfileDetail() {
               </p>
             </div>
 
+            {profile.metadata.synthetic === true && (
+              <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-300">
+                ⚠ SYNTHETIC DATA — generated for demonstration only. Does not
+                represent real sensor performance, and is not a regulatory or
+                compliance claim of any kind.
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               {tree.map((node) => (
                 <GroupNodeView key={node.group.id} node={node} depth={0} />

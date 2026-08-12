@@ -62,6 +62,10 @@ class ProfileSummary(BaseModel):
     version: str
     description: str
     requirement_count: int
+    # Carried through so the list page can show a SYNTHETIC DATA badge
+    # without fetching every full profile document - same convention as
+    # Scenario/Session, whose metadata is likewise exposed at list level.
+    metadata: dict[str, Any]
     created_at: datetime
 
 
@@ -69,7 +73,7 @@ def _to_summary(profile: EvaluationProfile) -> ProfileSummary:
     return ProfileSummary(
         id=profile.id, name=profile.name, version=profile.version,
         description=profile.description, requirement_count=len(profile.requirements),
-        created_at=profile.created_at,
+        metadata=profile.metadata, created_at=profile.created_at,
     )
 
 

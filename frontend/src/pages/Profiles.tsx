@@ -198,6 +198,11 @@ export function Profiles() {
                     <Link to={`/profiles/${p.id}`} className="font-medium text-cyan-400 hover:underline">
                       {p.name}
                     </Link>
+                    {p.metadata.synthetic === true && (
+                      <span className="ml-2 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+                        Synthetic
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 font-mono-data text-slate-400">{p.version}</td>
                   <td className="px-4 py-2 text-slate-400">{p.description || "—"}</td>
