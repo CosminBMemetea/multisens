@@ -9,6 +9,7 @@ import sqlite3
 from datetime import datetime
 
 from app.domain.models import EvaluationResult, GroundTruth, Prediction, Scenario, Session, SessionStatus
+from app.domain.profiles import EvaluationProfile
 
 
 # --- scenarios ---------------------------------------------------------
@@ -236,3 +237,27 @@ def _row_to_evaluation_result(row: sqlite3.Row) -> EvaluationResult:
         confusion_matrix=json.loads(row['confusion_matrix']) if row['confusion_matrix'] else None,
         computed_at=datetime.fromisoformat(row['computed_at']),
     )
+
+
+# --- evaluation profiles (v0.4, Phase 32) ----------------------------------
+#
+# One TEXT column holds the entire validated document - see the
+# migration's own comment for why this isn't normalized. name/version are
+# duplicated into real columns purely for cheap listing/sorting.
+
+def create_profile(conn: sqlite3.Connection, profile: EvaluationProfile) -> None:
+    conn.execute(
+        'INSERT INTO evaluation_profiles (id, name, version, document, created_at) VALUES (?, ?, ?, ?, ?)',
+        (profile.id, profile.name, profile.version, profile.model_dump_json(), profile.created_at.isoformat()),
+    )
+    conn.commit()
+
+
+def get_profile(conn: sqlite3.Connection, profile_id: str) -> EvaluationProfile | None:
+    row = conn.execute('SELECT document FROM evaluation_profiles WHERE id = ?', (profile_id,)).fetchone()
+    return EvaluationProfile.model_validate_json(row['document']) if row else None
+
+
+def list_profiles(conn: sqlite3.Connection) -> list[EvaluationProfile]:
+    rows = conn.execute('SELECT document FROM evaluation_profiles ORDER BY id').fetchall()
+    return [EvaluationProfile.model_validate_json(row['document']) for row in rows]
