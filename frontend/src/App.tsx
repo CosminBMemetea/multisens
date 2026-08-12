@@ -3,6 +3,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { Sessions } from "./pages/Sessions";
 import { SessionDetail } from "./pages/SessionDetail";
 import { Comparison } from "./pages/Comparison";
+import { Profiles } from "./pages/Profiles";
+import { ProfileDetail } from "./pages/ProfileDetail";
 
 function App() {
   return (
@@ -13,6 +15,8 @@ function App() {
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/sessions/:sessionId" element={<SessionDetail />} />
           <Route path="/comparison" element={<Comparison />} />
+          <Route path="/profiles" element={<Profiles />} />
+          <Route path="/profiles/:profileId" element={<ProfileDetail />} />
         </Routes>
       </div>
     </BrowserRouter>

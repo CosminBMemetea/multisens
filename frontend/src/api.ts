@@ -1,9 +1,12 @@
 import type {
+  ConfigurationCoverage,
   ConfigurationSummary,
+  EvaluationProfile,
   EvaluationResult,
   GroundTruthEvent,
   PairwiseComparison,
   PredictionEvent,
+  ProfileSummary,
   Scenario,
   SensorConfig,
   Session,
@@ -134,4 +137,28 @@ export function runComparison(
   },
 ): Promise<{ comparisons: PairwiseComparison[] }> {
   return postJson(`/api/sessions/${sessionId}/compare`, input);
+}
+
+export function fetchProfiles(): Promise<ProfileSummary[]> {
+  return getJson("/api/profiles");
+}
+
+export function fetchProfile(profileId: string): Promise<EvaluationProfile> {
+  return getJson(`/api/profiles/${profileId}`);
+}
+
+// Profile import (Profiles.tsx) deliberately does its own fetch rather
+// than a postJson-based createProfile wrapper here - it needs the parsed
+// `detail` array/object as-is to render one bullet per validation error,
+// not postJson's pre-stringified ApiError message.
+
+export function computeProfileCoverage(
+  profileId: string,
+  input: {
+    configuration_ids?: string[];
+    session_ids?: string[];
+    requirement_bindings?: Record<string, { session_id: string; source_id?: string }>;
+  } = {},
+): Promise<{ configuration_coverages: ConfigurationCoverage[] }> {
+  return postJson(`/api/profiles/${profileId}/coverage`, input);
 }

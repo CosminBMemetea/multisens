@@ -28,6 +28,9 @@ export function TopBar({ right }: TopBarProps) {
           <NavLink to="/comparison" className={navLinkClass}>
             Comparison
           </NavLink>
+          <NavLink to="/profiles" className={navLinkClass}>
+            Profiles
+          </NavLink>
         </nav>
       </div>
       {right && <div className="flex items-center gap-4 font-mono-data text-sm">{right}</div>}

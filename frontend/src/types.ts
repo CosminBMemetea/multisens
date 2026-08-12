@@ -204,3 +204,110 @@ export interface PairwiseComparison {
   validity: ComparisonValidity;
   computed_at: string;
 }
+
+// Mirrors backend/app/domain/profiles.py and coverage.py's shapes (v0.4).
+// A requirement's PASS/FAIL/N/A is a different, not-yet-built-on-top-of
+// judgment than v0.3's ComparisonValidity - never a compliance/
+// certification claim either, see coverage.py's module docstring.
+
+export type AcceptanceOperator = ">=" | "<=" | ">" | "<" | "==";
+export type ConditionValue = string | number | boolean;
+
+export interface AcceptanceCriterion {
+  metric: string;
+  operator: AcceptanceOperator;
+  value: number;
+}
+
+export interface Requirement {
+  id: string;
+  group_id: string;
+  name: string;
+  description: string;
+  task: string;
+  conditions: Record<string, ConditionValue>;
+  acceptance: AcceptanceCriterion[];
+  metadata: Record<string, unknown>;
+}
+
+export interface RequirementGroup {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  description: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface EvaluationProfile {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  format_version: string;
+  groups: RequirementGroup[];
+  requirements: Requirement[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ProfileSummary {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  requirement_count: number;
+  created_at: string;
+}
+
+export type RequirementStatus = "pass" | "fail" | "na";
+
+export interface CriterionResult {
+  metric: string;
+  operator: AcceptanceOperator;
+  threshold: number;
+  observed: number | null;
+  status: RequirementStatus;
+}
+
+export interface EvidenceReference {
+  session_id: string;
+  scenario_id: string;
+  configuration_id: string;
+  source_id: string;
+  evaluation_result_id: string;
+  matched_samples: number;
+  sample_count: number;
+  coverage: number | null;
+}
+
+export interface RequirementResult {
+  profile_id: string;
+  profile_version: string;
+  requirement_id: string;
+  configuration_id: string;
+  task: string;
+  status: RequirementStatus;
+  reasons: string[];
+  criteria: CriterionResult[];
+  evidence: EvidenceReference | null;
+  computed_at: string;
+}
+
+export interface GroupCoverage {
+  group_id: string | null;
+  name: string;
+  pass_count: number;
+  fail_count: number;
+  na_count: number;
+  requirement_coverage: number | null;
+  evidence_completeness: number | null;
+  children: GroupCoverage[];
+}
+
+export interface ConfigurationCoverage {
+  profile_id: string;
+  profile_version: string;
+  configuration_id: string;
+  requirement_results: RequirementResult[];
+  root: GroupCoverage;
+}
