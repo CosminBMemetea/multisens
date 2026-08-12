@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCoverage, formatDelta, formatDeltaPp, formatMetric, formatMs } from "./format";
+import { formatCoverage, formatDelta, formatDeltaPp, formatMetric, formatMs, formatRelativeDelta } from "./format";
 
 describe("formatMs", () => {
   it("renders undefined as an em dash", () => {
@@ -98,5 +98,25 @@ describe("formatDeltaPp", () => {
 
   it("renders an exact zero without a sign", () => {
     expect(formatDeltaPp(0)).toBe("0.0 pp");
+  });
+});
+
+describe("formatRelativeDelta", () => {
+  it("renders null as N/A", () => {
+    expect(formatRelativeDelta(null)).toBe("N/A");
+  });
+
+  it("formats a positive relative change with a % sign, not pp", () => {
+    // Distinct from formatDeltaPp: this is a genuine relative percentage
+    // change, not percentage points of an already-percent quantity.
+    expect(formatRelativeDelta(0.068)).toBe("+6.8%");
+  });
+
+  it("formats a negative relative change", () => {
+    expect(formatRelativeDelta(-0.175)).toBe("-17.5%");
+  });
+
+  it("renders an exact zero without a sign", () => {
+    expect(formatRelativeDelta(0)).toBe("0.0%");
   });
 });

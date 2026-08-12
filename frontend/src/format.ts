@@ -43,3 +43,14 @@ export function formatDeltaPp(value: number | null): string {
   if (value === 0) return "0.0 pp";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)} pp`;
 }
+
+// MetricDelta.relative (a fraction, e.g. 0.068 for "6.8% relative change"
+// vs baseline) - distinct from formatDeltaPp, which is percentage POINTS
+// of an already-percent quantity (coverage). This is a relative change of
+// an arbitrary metric, always shown with a % sign since it genuinely is
+// one - never confuse the two call sites.
+export function formatRelativeDelta(value: number | null): string {
+  if (value === null) return "N/A";
+  if (value === 0) return "0.0%";
+  return `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
+}

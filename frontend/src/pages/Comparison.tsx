@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { ComparisonValidityBadge } from "../components/Badge";
-import { formatDelta, formatDeltaPp } from "../format";
+import { SensorAdditionCard } from "../components/SensorAdditionCard";
+import { formatCoverage, formatDelta, formatMetric } from "../format";
 import {
   fetchSessionConfigurations,
   fetchSessionGroundTruth,
@@ -184,49 +185,102 @@ export function Comparison() {
         )}
 
         {comparisons && (
-          <section className="overflow-x-auto rounded border border-slate-800">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-800 bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Candidate</th>
-                  <th className="px-3 py-2 font-medium">Relationship</th>
-                  <th className="px-3 py-2 font-medium">Observed accuracy Δ</th>
-                  <th className="px-3 py-2 font-medium">Observed F1 Δ</th>
-                  <th className="px-3 py-2 font-medium">Coverage Δ</th>
-                  <th className="px-3 py-2 font-medium">Common samples</th>
-                  <th className="px-3 py-2 font-medium">Validity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisons.length === 0 ? (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Configuration comparison
+            </h2>
+            <div className="overflow-x-auto rounded border border-slate-800">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-800 bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
-                      No comparable configurations found.
-                    </td>
+                    <th className="px-3 py-2 font-medium">Configuration</th>
+                    <th className="px-3 py-2 font-medium">Relationship</th>
+                    <th className="px-3 py-2 font-medium">F1</th>
+                    <th className="px-3 py-2 font-medium">ΔF1</th>
+                    <th className="px-3 py-2 font-medium">Recall</th>
+                    <th className="px-3 py-2 font-medium">ΔRecall</th>
+                    <th className="px-3 py-2 font-medium">Coverage</th>
+                    <th className="px-3 py-2 font-medium">Validity</th>
                   </tr>
-                ) : (
-                  comparisons.map((c) => (
-                    <tr key={c.candidate_configuration_id} className="border-b border-slate-800/60 last:border-0">
-                      <td className="px-3 py-2 font-mono-data text-slate-200">{c.candidate_configuration_id}</td>
-                      <td className="px-3 py-2 text-slate-400">{RELATIONSHIP_LABELS[c.relationship]}</td>
-                      <td className="px-3 py-2 font-mono-data text-slate-200">
-                        {formatDelta(c.reported.metric_deltas.accuracy?.absolute ?? null)}
-                      </td>
-                      <td className="px-3 py-2 font-mono-data text-slate-200">
-                        {formatDelta(c.reported.metric_deltas.f1_macro?.absolute ?? null)}
-                      </td>
-                      <td className="px-3 py-2 font-mono-data text-slate-200">
-                        {formatDeltaPp(c.reported.coverage_delta_pp)}
-                      </td>
-                      <td className="px-3 py-2 font-mono-data text-slate-400">{c.common_set.common_sample_count}</td>
-                      <td className="px-3 py-2">
-                        <ComparisonValidityBadge validity={c.validity} />
+                </thead>
+                <tbody>
+                  {comparisons.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-6 text-center text-slate-500">
+                        No comparable configurations found.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    <>
+                      {/* Baseline itself, once - all comparisons in one run share the
+                          same baseline, so its own metrics are read from the first
+                          comparison's `reported.baseline` rather than re-fetched. */}
+                      <tr className="border-b border-slate-800/60 bg-slate-900/40">
+                        <td className="px-3 py-2 font-mono-data text-slate-200">
+                          {comparisons[0].baseline_configuration_id}
+                          <span className="ml-2 text-[10px] uppercase text-slate-500">baseline</span>
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">—</td>
+                        <td className="px-3 py-2 font-mono-data text-slate-200">
+                          {formatMetric(comparisons[0].reported.baseline.metrics.f1_macro ?? null)}
+                        </td>
+                        <td className="px-3 py-2 font-mono-data text-slate-600">—</td>
+                        <td className="px-3 py-2 font-mono-data text-slate-200">
+                          {formatMetric(comparisons[0].reported.baseline.metrics.recall_macro ?? null)}
+                        </td>
+                        <td className="px-3 py-2 font-mono-data text-slate-600">—</td>
+                        <td className="px-3 py-2 font-mono-data text-slate-200">
+                          {formatCoverage(
+                            comparisons[0].reported.baseline.matched_samples,
+                            comparisons[0].reported.baseline.sample_count,
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">—</td>
+                      </tr>
+                      {comparisons.map((c) => (
+                        <tr key={c.candidate_configuration_id} className="border-b border-slate-800/60 last:border-0">
+                          <td className="px-3 py-2 font-mono-data text-slate-200">
+                            {c.candidate_configuration_id}
+                          </td>
+                          <td className="px-3 py-2 text-slate-400">{RELATIONSHIP_LABELS[c.relationship]}</td>
+                          <td className="px-3 py-2 font-mono-data text-slate-200">
+                            {formatMetric(c.reported.candidate.metrics.f1_macro ?? null)}
+                          </td>
+                          <td className="px-3 py-2 font-mono-data text-slate-200">
+                            {formatDelta(c.reported.metric_deltas.f1_macro?.absolute ?? null)}
+                          </td>
+                          <td className="px-3 py-2 font-mono-data text-slate-200">
+                            {formatMetric(c.reported.candidate.metrics.recall_macro ?? null)}
+                          </td>
+                          <td className="px-3 py-2 font-mono-data text-slate-200">
+                            {formatDelta(c.reported.metric_deltas.recall_macro?.absolute ?? null)}
+                          </td>
+                          <td className="px-3 py-2 font-mono-data text-slate-200">
+                            {formatCoverage(c.reported.candidate.matched_samples, c.reported.candidate.sample_count)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <ComparisonValidityBadge validity={c.validity} />
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {comparisons && comparisons.some((c) => c.relationship === "direct_addition") && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sensor addition</h2>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {comparisons
+                .filter((c) => c.relationship === "direct_addition")
+                .map((c) => (
+                  <SensorAdditionCard key={c.candidate_configuration_id} comparison={c} />
+                ))}
+            </div>
           </section>
         )}
       </main>
