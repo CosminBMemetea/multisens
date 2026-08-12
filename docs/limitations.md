@@ -12,8 +12,11 @@ release, not silently worked around now.
   ingestion, synchronization, diagnostics, and visualization; v0.2 added
   ground-truth evaluation (classification only - see below); v0.3 added
   configuration comparison (see below) - never a claim about *why* two
-  configurations differ, only *that* they measured differently. See the
-  project's own original scope statement in the README.
+  configurations differ, only *that* they measured differently; v0.4
+  added requirement profiles/coverage (see below) - a `PASS`/`FAIL`/
+  `N/A` judgment against caller-defined acceptance criteria, never a
+  compliance or certification claim. See the project's own original
+  scope statement in the README.
 - **Comparison validity does not check matched-label-set divergence.**
   Two configurations whose matched samples span different label sets
   (e.g. one config's matched set never saw the "absent" class) would
@@ -33,6 +36,43 @@ release, not silently worked around now.
   fresh on every call and persists nothing - there is no way to see how
   a comparison's numbers looked before underlying evaluation data
   changed, only the current state.
+- **Requirement conditions are flat scalars only.** `Requirement.
+  conditions` is `dict[str, str | float | bool]`, not an arbitrary
+  nested structure - every example this project has needed fits a flat
+  map, and a nested one would need an ambiguous recursive-subset
+  matching rule for no demonstrated benefit. See
+  [profiles.md](profiles.md#conditions-open-by-design-non-negotiable).
+- **No profile-level `PASS`/`FAIL`/`INCOMPLETE` status.** Only raw
+  pass/fail/N/A counts and the two coverage percentages, at every group
+  level including the root - a single rolled-up status was deliberately
+  rejected as exactly the kind of nuance-hiding shortcut this layer's
+  design works to avoid. See
+  [coverage.md](coverage.md#no-profile-level-status).
+- **No weighted or mandatory-requirement aggregation.** `Requirement`/
+  `RequirementGroup` carry no `weight`/`mandatory` field - neither has
+  an aggregation semantic defined yet, and an unused field would invite
+  premature use before one exists. Additive migration territory for a
+  later release, not a schema change.
+- **`RequirementResult`/`ConfigurationCoverage` are never persisted.**
+  Recomputed fresh on every `/coverage` call from already-persisted
+  evidence, same "recompute, don't persist" decision v0.3 made for
+  `PairwiseComparison`.
+- **An unfiltered `/coverage` call can surface unrelated
+  configurations.** Discovery searches every session in the database
+  for the profile's task(s) unless `session_ids`/`configuration_ids` is
+  given - correctly reported as all-`N/A` for a profile's requirements
+  when the discovered configuration has no evidence matching this
+  profile's own conditions, but visually noisy if other standing demo
+  data shares the database. See
+  [coverage.md](coverage.md#api-surface).
+- **No condition-exploration UI.** The coverage matrix filters by
+  requirement name/task only - filtering by declared condition values
+  (e.g. "show only `illumination=night` requirements") is deferred to a
+  later release; the metadata needed for it already exists.
+- **`metric` lookup is limited to what `ComparisonMetrics` already
+  exposes** (`accuracy`, `precision_macro`, `recall_macro`, `f1_macro`,
+  `precision_micro`, `recall_micro`, `f1_micro`, the synthetic
+  `coverage` key) - no custom-metric registration.
 - **`min_common_sample_count` (default 20) and
   `coverage_warning_threshold_pp` (default 5.0) are heuristic, not
   evidence-based** - same honesty treatment as `tolerance_ms`'s default

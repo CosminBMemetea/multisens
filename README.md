@@ -31,16 +31,33 @@ whatever else speaks RTSP.
   higher than A," never "sensor X caused a +7% improvement." Ablation is
   a comparison view (baseline = the full configuration), not a separate
   concept. Full contract: [docs/comparison.md](docs/comparison.md).
+- A **requirement profile / coverage layer** (v0.4): define generic,
+  hierarchical requirements with open-ended conditions and acceptance
+  criteria (`recall_macro >= 0.90`, `coverage >= 0.95`, ...) against any
+  metric v0.2/v0.3 already produce, and see which sensor configurations
+  satisfy them — `PASS`/`FAIL`/`N/A` per requirement, coverage and
+  evidence-completeness always shown together, every result traceable to
+  its exact evidence. No built-in knowledge of any specific requirement
+  framework (not NCAP, not a DMS/OMS scheme) — external users build
+  those with the same generic shapes this core exposes. Full contract:
+  [docs/profiles.md](docs/profiles.md) /
+  [docs/coverage.md](docs/coverage.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
 
 ## What MultiSens is NOT
 
-- **Not a perception or ML platform.** No inference, no NCAP/DMS/OMS logic,
-  no object detection. MultiSens evaluates predictions; it does not
+- **Not a perception or ML platform, and not a regulatory or
+  certification authority.** No inference, no NCAP/DMS/OMS logic, no
+  object detection, no "compliant"/"certified"/"safety score" claim
+  anywhere in the UI. MultiSens evaluates predictions; it does not
   produce them — a prediction may come from ROS, REST, an imported file,
   another computer, or proprietary software, and MultiSens doesn't need
-  to know which.
+  to know which. v0.4's requirement profiles judge caller-defined
+  acceptance criteria against evidence — a different, narrower claim
+  than any compliance framework's, and one an external user's profile
+  document carries, not the MultiSens core. See
+  [docs/profiles.md](docs/profiles.md#what-this-layer-answers).
 - **Not a sensor-fusion tool, and not a causal-attribution tool.**
   MultiSens never runs fusion algorithms, and v0.3's comparison layer
   never claims a sensor *caused* a change — only that two configurations
@@ -162,6 +179,27 @@ shows an improvement — a clean first look at the Sensor Addition,
 Ablation, and General Comparison sections. Full contract:
 [docs/comparison.md](docs/comparison.md).
 
+## Requirement profile / coverage quick start (v0.4)
+
+A separate, deliberately generic demo — "Generic Cabin Safety Demo," not
+NCAP or any other real framework — four sessions across
+`illumination`/`occlusion` conditions, six requirements, exact-by-
+construction accuracies:
+
+```bash
+docker compose up -d
+python3 scripts/load_profile_demo_data.py
+open http://localhost:8080/profiles
+```
+
+Open "Generic Cabin Safety Demo," hit **Compute coverage**. Every
+configuration passes a genuinely different subset of the six
+requirements (17%/33%/50%/67%/100% coverage) — click any cell to see
+exactly which evidence produced it. See
+[examples/profiles/README.md](examples/profiles/README.md) for the full
+derivation and [docs/profiles.md](docs/profiles.md) /
+[docs/coverage.md](docs/coverage.md) for the domain model and API.
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to
@@ -181,6 +219,7 @@ Ablation, and General Comparison sections. Full contract:
 | Dashboard | http://localhost:8080 |
 | Sessions / Evaluation (v0.2) | http://localhost:8080/sessions |
 | Comparison (v0.3) | http://localhost:8080/comparison |
+| Profiles / Coverage (v0.4) | http://localhost:8080/profiles |
 | Backend REST | http://localhost:8000/api/* |
 | Backend WebSocket | ws://localhost:8000/ws/status |
 | MJPEG video (per sensor) | http://localhost:8000/api/sensors/{id}/stream.mjpeg |
@@ -188,6 +227,7 @@ Ablation, and General Comparison sections. Full contract:
 Full v0.1 API surface: [docs/connector-api.md](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting).
 Full evaluation API surface: [docs/evaluation.md](docs/evaluation.md#api-surface).
 Full comparison API surface: [docs/comparison.md](docs/comparison.md#api-surface).
+Full profile/coverage API surface: [docs/profiles.md](docs/profiles.md#api-surface) / [docs/coverage.md](docs/coverage.md#api-surface).
 
 ## ROS topics
 
@@ -220,16 +260,26 @@ comparison on top of that: metric/coverage deltas reported two ways
 (as-persisted and over a common matched population), sensor addition/
 removal relationships, ablation as a comparison view, a non-causal
 evidence-quality validity verdict, and deterministic multi-source
-ambiguity handling — see [docs/comparison.md](docs/comparison.md).
+ambiguity handling — see [docs/comparison.md](docs/comparison.md). v0.4
+added requirement profiles and coverage on top of that: generic
+hierarchical requirement groups with open-ended conditions, deterministic
+evidence selection (never ambiguous, never guessed), acceptance criteria
+against any existing metric, `PASS`/`FAIL`/`N/A` per requirement, and
+recursive coverage/completeness aggregation that never averages
+percentages or hides N/A behind a flattering number — see
+[docs/profiles.md](docs/profiles.md) / [docs/coverage.md](docs/coverage.md).
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
 claims (no p-values, no confidence intervals, no "sensor X caused Y"),
 detection/regression metric engines (the domain model already supports
-them; the evaluators don't exist yet), NCAP/DMS/OMS-specific logic, real
-depth/thermal sensor conversion, a file-import API endpoint,
-authentication, cloud deployment. See [CHANGELOG.md](CHANGELOG.md) for
-how each release was built and verified.
+them; the evaluators don't exist yet), NCAP/DMS/OMS-specific logic or any
+other built-in regulatory/certification framework, a condition-exploration
+UI (v0.4 preserves the metadata a later release would need), decision
+support ("minimum sufficient configuration"), weighted/mandatory
+requirement aggregation, real depth/thermal sensor conversion, a
+file-import API endpoint, authentication, cloud deployment. See
+[CHANGELOG.md](CHANGELOG.md) for how each release was built and verified.
 
 ## Documentation
 
@@ -239,6 +289,10 @@ how each release was built and verified.
   matching, metrics, API surface (v0.2)
 - [docs/comparison.md](docs/comparison.md) — comparison domain model,
   validity semantics, ambiguity handling, API surface (v0.3)
+- [docs/profiles.md](docs/profiles.md) — requirement profile domain
+  model, validation, storage, API surface (v0.4)
+- [docs/coverage.md](docs/coverage.md) — evidence selection, acceptance
+  engine, coverage aggregation, API surface, frontend (v0.4)
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

@@ -5,6 +5,131 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [0.4.0] — v0.4 requirement profiles & coverage
+
+Built phase by phase (Phase 30 through Phase 40), same discipline as
+v0.1-v0.3: an architecture review and 24-question self-review *before*
+any code, explicit self-review checkpoints per phase, nothing merged
+without running against a real container. Adds a requirement-profile
+layer entirely inside the existing `backend` container, consuming v0.2's
+`EvaluationResult`s and reusing v0.3's exact multi-source-ambiguity rule
+rather than rewriting either — no v0.1/v0.2/v0.3 behavior changed. Full
+domain model, algorithm, and API reference:
+[docs/profiles.md](docs/profiles.md) / [docs/coverage.md](docs/coverage.md).
+
+### Added
+
+- **Profile domain model** (`backend/app/domain/profiles.py`):
+  `EvaluationProfile`, `RequirementGroup` (adjacency-list hierarchy,
+  arbitrary depth), `Requirement`, `AcceptanceCriterion`. Conditions are
+  an open `dict[str, str | float | bool]` — never a fixed column set —
+  proven by tests using domain-unrelated condition keys alongside the
+  spec's own examples with zero code differences. No `mandatory`/
+  `weight` field (neither has an aggregation semantic defined yet — an
+  unused field would invite premature use). `validate_profile` collects
+  every structural problem (duplicate ids, dangling references, parent-
+  group cycles, blank tasks, non-finite thresholds, an empty profile) in
+  one pass, never fails fast.
+- **Profile persistence + API** (`backend/app/api/profiles.py`,
+  migration `0003_profiles.sql`): one JSON document per profile, not
+  normalized into group/requirement tables — a profile is always read
+  whole, never queried partially. `POST /api/profiles` (two-layer
+  validation — Pydantic structural checks, then `validate_profile` for
+  cross-field problems — either both pass or nothing persists; 409 on
+  duplicate id), `GET /api/profiles`, `GET /api/profiles/{id}`. No
+  update, no delete — profiles are immutable; a changed profile is a new
+  id/version.
+- **Evidence selection** (`backend/app/domain/evidence.py`): a
+  requirement's condition map matches a session iff every key is present
+  in `Session.metadata` with an exactly equal, type-sensitive value
+  (Python's `1 == True` explicitly guarded against). Zero or multiple
+  matching sessions is always `N/A` with a reason — never a silent pick.
+  Reuses v0.3's exact prediction-source-ambiguity rule for the
+  single-session-multiple-sources case. An explicit `EvidenceBinding`
+  overrides discovery (and condition matching) entirely — request-scoped
+  only, never persisted.
+- **Acceptance engine** (`backend/app/domain/coverage.py`): all five
+  operators; `"coverage"` resolves from the same `ComparisonMetrics`
+  v0.3 already computes, not a second formula; an unresolvable metric is
+  always `na`, never `fail`. Requirement-level status priority: `na` (no
+  evidence) → `na` (any unresolvable criterion, even with everything
+  else passing — deliberately stricter than "AND over only the known
+  criteria") → `fail` (any failed criterion) → `pass`.
+- **Coverage engine**: recursive leaf-count group aggregation via the
+  group tree's adjacency list — a group's counts are its own
+  requirements' counts plus the sum of its children's, never an average
+  of child percentages (proven by a dedicated test: a 1-requirement
+  100%-coverage group and a 10-requirement 10%-coverage group aggregate
+  to ~18.2%, not the naive ~55% average). `requirement_coverage` =
+  pass/(pass+fail); `evidence_completeness` = (pass+fail)/total — both
+  `None`, never a fabricated 0, when their denominator is 0. No
+  profile-level `PASS`/`FAIL`/`INCOMPLETE` status anywhere — raw counts
+  and both percentages only, at every level.
+- **Profile UI** (`frontend/src/pages/Profiles.tsx`,
+  `ProfileDetail.tsx`): list with JSON-paste import (validation errors
+  render as one bullet per problem — fixed a real bug during
+  verification where two errors were rendering as one malformed run-on
+  line), a read-only arbitrary-depth hierarchy tree
+  (`frontend/src/groupTree.ts`).
+- **Coverage Matrix UI** (`components/CoverageMatrix.tsx`): configurations
+  as columns, the requirement tree as rows, `PASS`/`FAIL`/`N/A` cells via
+  a new `StatusBadge`. Group summary rows always show raw counts
+  alongside *both* coverage percentages together — never one alone.
+  Collapsing a group hides its descendants but keeps its own summary
+  row visible; search hides only groups with zero matching descendants.
+- **Evidence drill-down** (`components/RequirementDrillDown.tsx`): the
+  first modal in this codebase. Sourced entirely from fields already on
+  `RequirementResult` — no second backend call. Shows the requirement,
+  an explicit "why it failed"/"why N/A" reasons block whenever status
+  isn't `pass`, the full evidence reference, and every criterion's
+  observed/threshold/status — a `PASS`/`FAIL`/`N/A` badge is never shown
+  without also showing why.
+- **Synthetic reference profile** ("Generic Cabin Safety Demo" —
+  deliberately not NCAP or any regulatory framework):
+  `examples/profiles/cabin-safety-demo.json` +
+  `cabin-safety-demo-data.json`, four sessions (one per
+  `illumination`×`occlusion` combination), five configurations, six
+  requirements across three groups, every accuracy exact by
+  construction. Targets deliberately give each configuration a
+  genuinely different pass/fail pattern: `rgb` 1/6 (17%), `depth` 2/6
+  (33%), `thermal` 3/6 (50%), `rgb+thermal` 4/6 (67%),
+  `rgb+depth+thermal` 6/6 (100%). Independently verified — all 30
+  requirement×configuration cells recomputed in plain Python without
+  importing any production coverage code, cross-checked against the real
+  API, same rigor as the v0.2/v0.3 demo guards.
+- **137 new backend tests** (172 → 309), **10 new frontend tests** (24 →
+  34) — profile models/validation, persistence/API, evidence selection,
+  acceptance engine, coverage aggregation, UI, drill-down, the synthetic
+  demo, and a dedicated robustness pass (malformed profiles at the API
+  layer, ambiguous prediction sources, unknown metrics, partial evidence
+  mixing resolved and N/A requirements in one call, a legacy pre-v0.4
+  session with empty `Session.metadata` degrading to N/A cleanly, and
+  two profile versions coexisting independently).
+- `docs/profiles.md`, `docs/coverage.md` (new); `docs/evaluation.md`,
+  `docs/comparison.md`, `README.md`, `docs/limitations.md` updated for
+  the requirement-profile layer.
+
+### Fixed
+
+- **Profile import validation errors rendered as one malformed run-on
+  bullet** instead of one bullet per problem (`"duplicate group id
+  'g1',profile has no requirements"`, no space, single `<li>`) — caused
+  by re-splitting an already array-stringified error message on `", "`
+  instead of reading the parsed JSON `detail` array directly. Found
+  during Playwright verification, fixed with a dedicated fetch in the
+  import form that preserves the structured error list.
+
+### Known limitations
+
+Conditions are flat scalars only (no nested condition maps), no
+weighted/mandatory-requirement aggregation, `RequirementResult`s are
+never persisted (recomputed fresh on every `/coverage` call), an
+unfiltered `/coverage` call can surface unrelated configurations from
+other standing demo data as all-N/A (correct discovery behavior, but
+visually noisy — use `session_ids`/the frontend checkboxes to scope it),
+no condition-exploration UI yet (the metadata a later release would need
+already exists). Full list: [docs/limitations.md](docs/limitations.md).
+
 ## [0.3.0] — v0.3 configuration comparison
 
 Built phase by phase (Phase 20 through Phase 28), same discipline as

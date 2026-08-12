@@ -3,8 +3,12 @@
 The authoritative reference for MultiSens's configuration-comparison
 layer: the domain model, evidence semantics, ambiguity handling, the API
 surface, and the frontend. See [evaluation.md](evaluation.md) for the
-layer this one is built on top of, and [limitations.md](limitations.md)
-for what it deliberately doesn't do.
+layer this one is built on top of, [profiles.md](profiles.md)/
+[coverage.md](coverage.md) for the requirement-profile layer (v0.4)
+built on top of *this* one — reusing this layer's exact multi-source
+ambiguity rule rather than reinventing it — and
+[limitations.md](limitations.md) for what this layer deliberately
+doesn't do.
 
 ## What this layer answers
 
