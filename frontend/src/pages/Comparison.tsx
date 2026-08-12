@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { ComparisonValidityBadge } from "../components/Badge";
 import { SensorAdditionCard } from "../components/SensorAdditionCard";
+import { AblationCard } from "../components/AblationCard";
+import { GeneralComparisonCard } from "../components/GeneralComparisonCard";
 import { formatCoverage, formatDelta, formatMetric } from "../format";
 import {
   fetchSessionConfigurations,
@@ -18,6 +20,29 @@ const RELATIONSHIP_LABELS: Record<PairwiseComparison["relationship"], string> = 
   general: "General comparison",
 };
 
+const METRIC_OPTIONS = [
+  { value: "accuracy", label: "Accuracy" },
+  { value: "precision_macro", label: "Precision (macro)" },
+  { value: "recall_macro", label: "Recall (macro)" },
+  { value: "f1_macro", label: "F1 (macro)" },
+] as const;
+type SortMetric = (typeof METRIC_OPTIONS)[number]["value"];
+
+// Sorts by the magnitude of the selected metric's absolute delta,
+// largest observed change first - purely a display order, never a
+// ranking of "importance." Comparisons where that metric couldn't be
+// calculated (null) sort last rather than being dropped.
+function sortByMetricMagnitude(comparisons: PairwiseComparison[], metric: SortMetric): PairwiseComparison[] {
+  return [...comparisons].sort((a, b) => {
+    const av = a.reported.metric_deltas[metric]?.absolute ?? null;
+    const bv = b.reported.metric_deltas[metric]?.absolute ?? null;
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return Math.abs(bv) - Math.abs(av);
+  });
+}
+
 export function Comparison() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -31,6 +56,7 @@ export function Comparison() {
   const [comparisons, setComparisons] = useState<PairwiseComparison[] | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortMetric, setSortMetric] = useState<SortMetric>("f1_macro");
 
   useEffect(() => {
     fetchSessions()
@@ -79,6 +105,37 @@ export function Comparison() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, task, baselineId]);
+
+  const sensorAdditions = useMemo(
+    () =>
+      comparisons
+        ? sortByMetricMagnitude(
+            comparisons.filter((c) => c.relationship === "direct_addition"),
+            sortMetric,
+          )
+        : [],
+    [comparisons, sortMetric],
+  );
+  const ablations = useMemo(
+    () =>
+      comparisons
+        ? sortByMetricMagnitude(
+            comparisons.filter((c) => c.relationship === "direct_removal"),
+            sortMetric,
+          )
+        : [],
+    [comparisons, sortMetric],
+  );
+  const generalComparisons = useMemo(
+    () =>
+      comparisons
+        ? sortByMetricMagnitude(
+            comparisons.filter((c) => c.relationship === "general"),
+            sortMetric,
+          )
+        : [],
+    [comparisons, sortMetric],
+  );
 
   async function handleRunComparison() {
     if (!sessionId || !task || !baselineId) return;
@@ -271,15 +328,56 @@ export function Comparison() {
           </section>
         )}
 
-        {comparisons && comparisons.some((c) => c.relationship === "direct_addition") && (
+        {comparisons && comparisons.length > 0 && (
+          <label className="flex w-fit flex-col gap-1 text-sm text-slate-400">
+            Sort detail cards by
+            <select
+              value={sortMetric}
+              onChange={(e) => setSortMetric(e.target.value as SortMetric)}
+              className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+            >
+              {METRIC_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {sensorAdditions.length > 0 && (
           <section className="flex flex-col gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sensor addition</h2>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {comparisons
-                .filter((c) => c.relationship === "direct_addition")
-                .map((c) => (
-                  <SensorAdditionCard key={c.candidate_configuration_id} comparison={c} />
-                ))}
+              {sensorAdditions.map((c) => (
+                <SensorAdditionCard key={c.candidate_configuration_id} comparison={c} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {ablations.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ablation</h2>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {ablations.map((c) => (
+                <AblationCard key={c.candidate_configuration_id} comparison={c} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {generalComparisons.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">General comparison</h2>
+            <p className="text-xs text-slate-600">
+              More than one sensor differs between these configurations - deltas below are not attributable to a
+              single sensor.
+            </p>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {generalComparisons.map((c) => (
+                <GeneralComparisonCard key={c.candidate_configuration_id} comparison={c} />
+              ))}
             </div>
           </section>
         )}
