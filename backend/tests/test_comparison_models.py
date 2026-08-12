@@ -103,6 +103,7 @@ def test_pairwise_comparison_full_construction():
     comparison = PairwiseComparison(
         session_id='s1', task='presence',
         baseline_configuration_id='cfg-rgb', candidate_configuration_id='cfg-rgb-thermal',
+        baseline_source_id='rgb_model', candidate_source_id='rgb_thermal_fusion_model',
         tolerance_ms=100.0,
         added_sensors=['thermal'], removed_sensors=[],
         relationship='direct_addition',
@@ -113,6 +114,8 @@ def test_pairwise_comparison_full_construction():
     assert comparison.relationship == 'direct_addition'
     assert comparison.common_set.common_sample_count == 84
     assert comparison.reported.common_sample_count is None
+    assert comparison.baseline_source_id == 'rgb_model'
+    assert comparison.candidate_source_id == 'rgb_thermal_fusion_model'
 
 
 def test_pairwise_comparison_rejects_unknown_relationship():
@@ -120,6 +123,7 @@ def test_pairwise_comparison_rejects_unknown_relationship():
         PairwiseComparison(
             session_id='s1', task='presence',
             baseline_configuration_id='cfg-rgb', candidate_configuration_id='cfg-depth',
+            baseline_source_id='rgb_model', candidate_source_id='depth_model',
             tolerance_ms=100.0, added_sensors=['depth'], removed_sensors=['rgb'],
             relationship='swap',  # not a real value
             reported=_side(), common_set=_side(),
@@ -136,6 +140,7 @@ def test_pairwise_comparison_general_relationship_can_have_both_added_and_remove
     comparison = PairwiseComparison(
         session_id='s1', task='presence',
         baseline_configuration_id='cfg-depth-rgb', candidate_configuration_id='cfg-rgb-thermal',
+        baseline_source_id='depth_rgb_model', candidate_source_id='rgb_thermal_model',
         tolerance_ms=100.0,
         added_sensors=['thermal'], removed_sensors=['depth'],
         relationship='general',
@@ -145,3 +150,20 @@ def test_pairwise_comparison_general_relationship_can_have_both_added_and_remove
     )
     assert comparison.added_sensors == ['thermal']
     assert comparison.removed_sensors == ['depth']
+
+
+def test_pairwise_comparison_requires_both_source_ids():
+    # Traceability gap found during the v0.3 product-direction review:
+    # a comparison must be able to say exactly which prediction source
+    # produced each side's evidence, not just which configuration.
+    with pytest.raises(ValidationError):
+        PairwiseComparison(
+            session_id='s1', task='presence',
+            baseline_configuration_id='cfg-rgb', candidate_configuration_id='cfg-depth',
+            candidate_source_id='depth_model',  # baseline_source_id omitted
+            tolerance_ms=100.0, added_sensors=['depth'], removed_sensors=['rgb'],
+            relationship='general',
+            reported=_side(), common_set=_side(),
+            validity=ComparisonValidity(status='valid'),
+            computed_at=_now(),
+        )

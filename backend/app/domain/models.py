@@ -147,9 +147,15 @@ class EvaluationResult(BaseModel):
 
 class ComparisonValidity(BaseModel):
     """Evidence-quality verdict, never a statistical claim - no p-values,
-    no confidence intervals. `reasons` must be non-empty whenever status
-    isn't 'valid': never silently comparing incomparable configurations
-    means always saying why, not just flagging that something's off."""
+    no confidence intervals - and never a compliance/requirement verdict
+    either: this says whether the *comparison itself* is methodologically
+    fair (same evidence, adequate common population), not whether either
+    configuration is "good enough" for any purpose. A future requirement
+    layer's PASS/FAIL/N/A is a different, not-yet-built judgment that
+    would consume this evidence, not a renamed version of it. `reasons`
+    must be non-empty whenever status isn't 'valid': never silently
+    comparing incomparable configurations means always saying why, not
+    just flagging that something's off."""
     status: Literal['valid', 'valid_with_warnings', 'invalid']
     reasons: list[str] = Field(default_factory=list)
 
@@ -207,6 +213,17 @@ class PairwiseComparison(BaseModel):
     task: str
     baseline_configuration_id: str
     candidate_configuration_id: str
+    # Resolved (not guessed) source per side - see the source-ambiguity
+    # rule in docs/comparison.md once Phase 22 writes it: a configuration
+    # with more than one distinct source_id for this task must be
+    # disambiguated by the caller before a PairwiseComparison can exist at
+    # all, so by the time one exists, both are always known. Carried here,
+    # not just resolved internally and dropped, so evidence stays fully
+    # traceable back to "which exact prediction source" - added after an
+    # explicit product-direction review flagged its absence as the one
+    # real traceability gap in the initial Phase 20 shape.
+    baseline_source_id: str
+    candidate_source_id: str
     tolerance_ms: float
     # Read from a real Prediction.sensor_ids row for each configuration,
     # never parsed out of a configuration_id string - see
