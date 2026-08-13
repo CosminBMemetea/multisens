@@ -196,6 +196,9 @@ def test_no_causal_or_importance_score_language_in_this_module():
     causal_pattern = re.compile(r'\bcaus(e|ed|es|ing)\b', re.IGNORECASE)
     matches = [m.group() for m in causal_pattern.finditer(source) if 'because' not in source[max(0, m.start() - 3):m.start()]]
     assert matches == [], f'found causal-adjacent language: {matches}'
-    assert 'importance_score' not in source
-    assert 'efficiency_score' not in source
-    assert 'deployment_score' not in source
+    # Checks for an actual field/attribute *definition*, not prose - later
+    # phases' own module docstrings legitimately name these terms as
+    # explicitly-rejected examples ("no deployment_score exists"), which a
+    # bare substring check would wrongly flag as if it were the field itself.
+    score_field_pattern = re.compile(r'\b(importance|efficiency|deployment)_score\s*[:=]')
+    assert not score_field_pattern.search(source), 'found a defined combined-score field'

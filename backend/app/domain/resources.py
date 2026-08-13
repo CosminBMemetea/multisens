@@ -1,4 +1,4 @@
-"""Resource-observation domain model (v0.7, Phase 64-68).
+"""Resource-observation domain model (v0.7, Phase 64-69).
 
 Phase 64 fixed the shape; Phase 65 added this module's own field/
 cross-field validation (value-vs-quality consistency, non-empty
@@ -8,10 +8,14 @@ repository.py's resource_observations functions); Phase 66 added real
 collection (app/resource_collector.py, deliberately NOT in this module -
 see that module's own docstring for why); Phase 67 added
 ResourceMetricSummary/ConfigurationResourceProfile, pure aggregation
-over already-persisted rows; Phase 68 adds ConfigurationTradeoff
+over already-persisted rows; Phase 68 added ConfigurationTradeoff
 (joining v0.6 decision evidence with v0.7 resource evidence, without
-merging their semantics), comparability rules, and resource deltas.
-Explicit constraints/Pareto (Phase 69) still don't live here yet.
+merging their semantics), comparability rules, and resource deltas;
+Phase 69 adds explicit resource constraints (reusing AcceptanceCriterion
+directly, not a new grammar) and a resource-aware Pareto/dominance
+generalization of decision.py's own already-tested 3-dimension version.
+No overall_efficiency_score/deployment_score/any combined number exists
+anywhere in this module - every phase's own tests grep-verify it.
 
 Transport-agnostic like every other domain module - no fastapi, sqlite3,
 rclpy, or psutil import. `ResourceObservation` is a pydantic `BaseModel`
@@ -83,7 +87,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.domain.coverage import ACCEPTANCE_OPERATORS
 from app.domain.decision import ConfigurationDecision, PolicyStatus
+from app.domain.profiles import AcceptanceCriterion
 
 # Every value has an explicit provenance - never just a number.
 #
@@ -527,3 +533,153 @@ def compute_resource_delta(
         comparability=comparability,
         metric_deltas=metric_deltas,
     )
+
+
+# --- resource constraints (v0.7, Phase 69) ----------------------------------
+#
+# Reuses AcceptanceCriterion's exact shape (metric/operator/value) - not
+# a second criterion grammar - and coverage.py's own ACCEPTANCE_OPERATORS
+# mapping, so a resource constraint can never silently disagree with how
+# v0.4 already applies '>=' / '<=' / '>' / '<' / '=='.
+
+ResourceConstraintStatus = Literal['pass', 'fail', 'na']
+
+
+@dataclass
+class ResourceConstraintResult:
+    criterion: AcceptanceCriterion
+    # None iff status == 'na' - the metric had no real value in this
+    # profile (unavailable, or never requested). Never coerced to 0.0.
+    observed: float | None
+    status: ResourceConstraintStatus
+
+
+def evaluate_resource_constraint(
+    criterion: AcceptanceCriterion, profile: ConfigurationResourceProfile,
+) -> ResourceConstraintResult:
+    """Uses the profile's mean for `criterion.metric` as the observed
+    value - the same representative statistic compute_resource_delta
+    uses, for the same reason (median/p95/min/max stay available on the
+    profile itself for anyone who needs them). A metric absent from
+    `profile.metrics` (never measured, or measured but entirely
+    unavailable - Phase 67 already excludes all-unavailable metrics from
+    the dict) is always 'na', never 'fail' - an unmeasured constraint is
+    not the same claim as a measured-and-failing one, same posture
+    evaluate_criterion already takes for coverage requirements (v0.4)."""
+    summary = profile.metrics.get(criterion.metric)
+    if summary is None:
+        return ResourceConstraintResult(criterion=criterion, observed=None, status='na')
+    passed = ACCEPTANCE_OPERATORS[criterion.operator](summary.mean, criterion.value)
+    return ResourceConstraintResult(criterion=criterion, observed=summary.mean, status='pass' if passed else 'fail')
+
+
+QualificationStatus = Literal['qualifies', 'does_not_qualify', 'undetermined']
+
+
+def evaluate_resource_qualification(constraint_results: list[ResourceConstraintResult]) -> QualificationStatus:
+    """A direct 3-state map - deliberately NOT the same best-case/worst-
+    case N/A-resolution bounding evaluate_policy (decision.py) uses for
+    unresolved evaluation evidence. That bounding exists because an
+    evaluation N/A can only ever resolve to pass or fail *later*, as more
+    testing happens - a missing resource measurement has no equivalent
+    "will resolve later" property; it is just missing, now, for this
+    exact measurement window. Applying the same hypothetical-bounding
+    math here would be a category error, not a consistency win - do not
+    "fix" this to match evaluate_policy.
+
+    Any FAIL dominates (does_not_qualify), regardless of how many other
+    constraints pass. Any N/A with everything else passing ->
+    undetermined - never treated as qualifying, since an unmeasured
+    constraint is not evidence that it would have passed. Zero
+    constraints -> undetermined, never a vacuous qualifies (same "empty
+    population is never silently a real answer" discipline used
+    throughout this project)."""
+    if not constraint_results:
+        return 'undetermined'
+    if any(r.status == 'fail' for r in constraint_results):
+        return 'does_not_qualify'
+    if any(r.status == 'na' for r in constraint_results):
+        return 'undetermined'
+    return 'qualifies'
+
+
+# --- resource-aware Pareto / dominance (v0.7, Phase 69) ---------------------
+#
+# A mechanical generalization of decision.py's own already-tested
+# _dominates/find_pareto_front - not a second algorithm. decision.py's
+# version is fixed to exactly 3 dimensions (sensor_count minimize,
+# requirement_coverage maximize, evidence_completeness maximize); this
+# version takes an arbitrary caller-chosen dict of dimensions, each
+# tagged minimize/maximize, so v0.7 can add resource metrics (cpu,
+# network, latency, ...) to the same trade-off analysis without
+# reimplementing dominance. See test_resource_pareto.py's own
+# equivalence test: called with exactly decision.py's 3 dimensions, this
+# produces identical results to decision.py's fixed version on every
+# scenario decision.py's own test suite already covers.
+
+ParetoDirection = Literal['minimize', 'maximize']
+
+
+@dataclass
+class ParetoPoint:
+    """One candidate's coordinates in an arbitrary-dimension trade-off
+    space. `id` is opaque to this module - typically a configuration_id,
+    never interpreted or parsed here. A dimension name absent from
+    `values`, or present with value None, is treated identically -
+    "no known value on this dimension" - never a fabricated 0."""
+    id: str
+    values: dict[str, float | None]
+
+
+def _dimension_ge(x: float | None, y: float | None, direction: ParetoDirection) -> bool:
+    """x is same-or-better than y on this dimension. None is always
+    worst, regardless of direction - not knowing a value is never
+    better than knowing one, whether higher or lower is preferred here.
+    Reduces exactly to decision.py's _ge_treating_none_as_worst when
+    direction='maximize'."""
+    if x is None and y is None:
+        return True
+    if x is None:
+        return False
+    if y is None:
+        return True
+    return x <= y if direction == 'minimize' else x >= y
+
+
+def _dimension_gt(x: float | None, y: float | None, direction: ParetoDirection) -> bool:
+    """Reduces exactly to decision.py's _gt_treating_none_as_worst when
+    direction='maximize'."""
+    if x is None:
+        return False
+    if y is None:
+        return True
+    return x < y if direction == 'minimize' else x > y
+
+
+def dominates_general(a: ParetoPoint, b: ParetoPoint, dimensions: dict[str, ParetoDirection]) -> bool:
+    """`a` dominates `b` iff `a` is same-or-better than `b` on every
+    dimension in `dimensions`, and strictly better on at least one -
+    the exact master-prompt definition decision.py's own _dominates
+    already implements for its fixed 3 dimensions."""
+    for name, direction in dimensions.items():
+        if not _dimension_ge(a.values.get(name), b.values.get(name), direction):
+            return False
+    return any(
+        _dimension_gt(a.values.get(name), b.values.get(name), direction)
+        for name, direction in dimensions.items()
+    )
+
+
+def find_dominated_points(points: list[ParetoPoint], dimensions: dict[str, ParetoDirection]) -> list[ParetoPoint]:
+    """O(n^2) pairwise, same justification as decision.py's own version -
+    configuration count is bounded by evaluated evidence, never a
+    generated power set."""
+    return [
+        candidate for candidate in points
+        if any(dominates_general(other, candidate, dimensions) for other in points if other is not candidate)
+    ]
+
+
+def find_pareto_front_general(points: list[ParetoPoint], dimensions: dict[str, ParetoDirection]) -> list[ParetoPoint]:
+    dominated_ids = {p.id for p in find_dominated_points(points, dimensions)}
+    return [p for p in points if p.id not in dominated_ids]

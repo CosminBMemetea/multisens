@@ -131,7 +131,12 @@ class ConfigurationCoverage(BaseModel):
 # same ComparisonMetrics.coverage formula, matched_samples/sample_count,
 # None if sample_count is 0).
 
-_OPERATORS: dict[AcceptanceOperator, Callable[[float, float], bool]] = {
+# Public (not _OPERATORS) since Phase 69 (v0.7) reuses this exact
+# mapping for resource constraints - same "promoted to public so a
+# later layer can never silently disagree with this one by
+# reimplementing operator application a second way" reasoning as
+# status_counts/coverage_and_completeness's own v0.5 promotion.
+ACCEPTANCE_OPERATORS: dict[AcceptanceOperator, Callable[[float, float], bool]] = {
     '>=': operator_module.ge,
     '<=': operator_module.le,
     '>': operator_module.gt,
@@ -161,7 +166,7 @@ def evaluate_criterion(criterion: AcceptanceCriterion, metrics: ComparisonMetric
             metric=criterion.metric, operator=criterion.operator, threshold=criterion.value,
             observed=None, status='na',
         )
-    passed = _OPERATORS[criterion.operator](observed, criterion.value)
+    passed = ACCEPTANCE_OPERATORS[criterion.operator](observed, criterion.value)
     return CriterionResult(
         metric=criterion.metric, operator=criterion.operator, threshold=criterion.value,
         observed=observed, status='pass' if passed else 'fail',
