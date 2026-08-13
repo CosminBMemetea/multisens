@@ -861,6 +861,36 @@ def _to_resource_profile_response(profile: ConfigurationResourceProfile) -> Conf
     )
 
 
+def _fetch_configuration_resource_profile(
+    conn: sqlite3.Connection, session_id: str, configuration_id: str, resource_metrics: list[str],
+) -> tuple[ConfigurationResourceProfile | None, dict[str, Any]]:
+    """None (with empty metadata) whenever `resource_metrics` is empty -
+    resource evidence was never requested, distinct from a profile that
+    was requested but found unavailable (Phase 76 robustness review:
+    applies identically whether or not `configuration_id` has any
+    decision evidence - resource evidence must never be silently dropped
+    just because a configuration was never evaluated against this
+    profile's requirements; the two evidence types are independent, see
+    ConfigurationTradeoff's own docstring in app/domain/resources.py). A
+    genuine unit mismatch among this configuration's own observations for
+    one metric (compute_resource_metric_summary's own ValueError) is
+    surfaced as a clean 422, never an unhandled 500."""
+    if not resource_metrics:
+        return None, {}
+    observations = repo.list_resource_observations(conn, session_id, configuration_id=configuration_id)
+    platform_ids = {o.platform_id for o in observations}
+    platform_id = platform_ids.pop() if len(platform_ids) == 1 else UNKNOWN_PLATFORM_ID
+    try:
+        profile = compute_configuration_resource_profile(
+            session_id=session_id, configuration_id=configuration_id, platform_id=platform_id,
+            requested_metrics=resource_metrics, observations=observations,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"resource evidence for configuration '{configuration_id}': {e}")
+    metadata = observations[0].metadata if observations else {}
+    return profile, metadata
+
+
 def _extract_pareto_value(tradeoff: ConfigurationTradeoff, dimension: str) -> float | None:
     if dimension == 'sensor_count':
         return float(tradeoff.sensor_count)
@@ -935,18 +965,11 @@ def compute_profile_tradeoffs(
     configurations_response: list[ConfigurationTradeoffResponse] = []
 
     for decision in decisions:
-        resource_profile = None
-        if body.resource_metrics:
-            observations = repo.list_resource_observations(
-                conn, body.session_id, configuration_id=decision.configuration_id,
-            )
-            platform_ids = {o.platform_id for o in observations}
-            platform_id = platform_ids.pop() if len(platform_ids) == 1 else UNKNOWN_PLATFORM_ID
-            resource_profile = compute_configuration_resource_profile(
-                session_id=body.session_id, configuration_id=decision.configuration_id, platform_id=platform_id,
-                requested_metrics=body.resource_metrics, observations=observations,
-            )
-            metadata_by_configuration_id[decision.configuration_id] = observations[0].metadata if observations else {}
+        resource_profile, metadata = _fetch_configuration_resource_profile(
+            conn, body.session_id, decision.configuration_id, body.resource_metrics,
+        )
+        if resource_profile is not None:
+            metadata_by_configuration_id[decision.configuration_id] = metadata
 
         tradeoff = build_configuration_tradeoff(decision, resource_profile)
         tradeoffs.append(tradeoff)
@@ -976,10 +999,36 @@ def compute_profile_tradeoffs(
         ))
 
     for configuration_id in no_evidence_ids:
+        # No decision evidence exists (this configuration was named but
+        # never evaluated) - but resource evidence is an independent axis
+        # and must be fetched/reported the same honest way regardless
+        # (Phase 76 robustness review caught this: it used to be dropped
+        # unconditionally here even when real resource evidence existed).
+        resource_profile, metadata = _fetch_configuration_resource_profile(
+            conn, body.session_id, configuration_id, body.resource_metrics,
+        )
+        if resource_profile is not None:
+            metadata_by_configuration_id[configuration_id] = metadata
+
+        constraint_results = (
+            [evaluate_resource_constraint(c, resource_profile) for c in constraint_criteria]
+            if resource_profile is not None else []
+        )
+        qualification = evaluate_resource_qualification(constraint_results)
+
         configurations_response.append(ConfigurationTradeoffResponse(
             configuration_id=configuration_id, sensor_count=0, requirement_coverage=None,
-            evidence_completeness=None, policy_status=None, resource_profile=None, resource_validity=None,
-            constraint_results=[], qualification='undetermined',
+            evidence_completeness=None, policy_status=None,
+            resource_profile=_to_resource_profile_response(resource_profile) if resource_profile is not None else None,
+            resource_validity=resource_profile.validity if resource_profile is not None else None,
+            constraint_results=[
+                ResourceConstraintResultResponse(
+                    metric=r.criterion.metric, operator=r.criterion.operator, threshold=r.criterion.value,
+                    observed=r.observed, status=r.status,
+                )
+                for r in constraint_results
+            ],
+            qualification=qualification,
         ))
 
     pareto_front_ids: list[str] = []
