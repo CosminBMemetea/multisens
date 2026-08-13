@@ -322,6 +322,18 @@ configuration" story every other demo in this project tells. See
 [examples/profiles/README.md](examples/profiles/README.md) for the full
 by-construction derivation.
 
+A second detection demo (Phase 88) extends PropertyWatch the same way,
+across all three camera positions:
+
+```bash
+docker compose up -d
+python3 scripts/load_propertywatch_detection_demo_data.py
+open http://localhost:8080/sessions/propertywatch-detection-demo-session
+```
+
+Entrance detects best (F1 0.821), indoor worst (F1 0.529) - by
+construction, see [examples/profiles/README.md](examples/profiles/README.md).
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to

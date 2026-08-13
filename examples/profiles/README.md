@@ -467,3 +467,43 @@ python3 scripts/load_propertywatch_demo_data.py
 
 Then open the Profiles page, select "PropertyWatch — Property Monitoring
 Demo", and open its Decision or Resources tab.
+
+## `propertywatch-detection-demo-data.json`
+
+A deterministic, **entirely synthetic** object-detection dataset (v0.8,
+Phase 88), extending the PropertyWatch reference story above with three
+new tasks - `entrance_package_detection`, `storage_object_detection`,
+`indoor_object_detection` - one per camera position. No biometric
+identity features of any kind - detected labels are generic object
+categories (`package`/`vehicle`/`pet`/`person`-as-a-generic-moving-
+object, never an identity). No profile/requirements/resources -
+standalone, viewed directly on the session detail page's Evaluation
+panel (v0.8, Phase 86).
+
+Reuses Phase 87's own five frame categories verbatim (see
+`scripts/generate_propertywatch_detection_demo_data.py`'s own
+docstring for the exact bbox geometry), with a deliberately different
+quality tier per camera - entrance (the flagship "worth its resource
+load" camera, v0.7) detects best, indoor worst:
+
+| Task | Config | Precision | Recall | F1 | Mean IoU (matched) |
+|---|---|---|---|---|---|
+| `entrance_package_detection` | `cfg-property_entrance_rgb` | 0.842 | 0.80 | 0.821 | 0.625 |
+| `storage_object_detection` | `cfg-property_storage_rgb` | 0.75 | 0.60 | 0.667 | 0.633 |
+| `indoor_object_detection` | `cfg-property_indoor_rgb` | 0.643 | 0.45 | 0.529 | 0.644 |
+
+Independently re-derived - a completely separate reimplementation of IoU
+and greedy per-frame object matching, zero imports from
+`app.domain.detection` - and cross-checked against the live `/evaluate`
+API in `backend/tests/test_propertywatch_detection_demo.py`.
+
+### Loading it
+
+```bash
+docker compose up -d
+python3 scripts/load_propertywatch_detection_demo_data.py
+```
+
+Then open
+`http://localhost:8080/sessions/propertywatch-detection-demo-session`
+and select any of the three detection tasks in the Evaluation panel.
