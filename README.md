@@ -42,6 +42,16 @@ whatever else speaks RTSP.
   those with the same generic shapes this core exposes. Full contract:
   [docs/profiles.md](docs/profiles.md) /
   [docs/coverage.md](docs/coverage.md).
+- A **condition-exploration layer** (v0.5): filter, group, and cross-
+  tabulate a profile's already-computed coverage by declared condition
+  (`illumination=night`, `occlusion=partial`, ...) — dynamic filter
+  controls discovered from the profile itself, a 2D condition cross-tab,
+  a failure explorer, an N/A breakdown that distinguishes "no experiment
+  performed" from "the evaluation itself has a gap," and full
+  requirement-to-evidence traceability. Never re-decides `PASS`/`FAIL`/
+  `N/A` and never a causal claim — only slices and counts what v0.4
+  already decided. Full contract:
+  [docs/condition-explorer.md](docs/condition-explorer.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
 
@@ -61,7 +71,9 @@ whatever else speaks RTSP.
 - **Not a sensor-fusion tool, and not a causal-attribution tool.**
   MultiSens never runs fusion algorithms, and v0.3's comparison layer
   never claims a sensor *caused* a change — only that two configurations
-  *measured* differently under stated conditions. See
+  *measured* differently under stated conditions. v0.5's condition
+  explorer carries the same discipline forward: "observed coverage under
+  condition X," never "X caused this outcome." See
   [docs/comparison.md](docs/comparison.md#non-causal-by-design).
 - **Evaluation is classification-only** (v0.2) — the domain model is
   deliberately generic (see
@@ -270,17 +282,23 @@ against any existing metric, `PASS`/`FAIL`/`N/A` per requirement, and
 recursive coverage/completeness aggregation that never averages
 percentages or hides N/A behind a flattering number — see
 [docs/profiles.md](docs/profiles.md) / [docs/coverage.md](docs/coverage.md).
+v0.5 added condition exploration on top of that: dynamic condition
+filtering/faceting, 1D breakdown and 2D cross-tabulation, a failure
+explorer, an N/A breakdown that distinguishes a missing experiment from
+an evaluation gap, and full requirement-to-evidence traceability — never
+re-deciding `PASS`/`FAIL`/`N/A`, never a causal claim — see
+[docs/condition-explorer.md](docs/condition-explorer.md).
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
 claims (no p-values, no confidence intervals, no "sensor X caused Y"),
 detection/regression metric engines (the domain model already supports
 them; the evaluators don't exist yet), NCAP/DMS/OMS-specific logic or any
-other built-in regulatory/certification framework, a condition-exploration
-UI (v0.4 preserves the metadata a later release would need), decision
-support ("minimum sufficient configuration"), weighted/mandatory
-requirement aggregation, real depth/thermal sensor conversion, a
-file-import API endpoint, authentication, cloud deployment. See
+other built-in regulatory/certification framework, decision support
+("minimum sufficient configuration"), weighted/mandatory requirement
+aggregation, a simultaneous 3+-dimension cross-tab, saved/named filter
+presets, real depth/thermal sensor conversion, a file-import API
+endpoint, authentication, cloud deployment. See
 [CHANGELOG.md](CHANGELOG.md) for how each release was built and verified.
 
 ## Documentation
@@ -295,6 +313,9 @@ file-import API endpoint, authentication, cloud deployment. See
   model, validation, storage, API surface (v0.4)
 - [docs/coverage.md](docs/coverage.md) — evidence selection, acceptance
   engine, coverage aggregation, API surface, frontend (v0.4)
+- [docs/condition-explorer.md](docs/condition-explorer.md) — filtering,
+  faceting, grouping/cross-tabs, failure/N/A exploration, evidence
+  traceability, API surface, frontend (v0.5)
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

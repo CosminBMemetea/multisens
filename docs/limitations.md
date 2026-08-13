@@ -15,8 +15,11 @@ release, not silently worked around now.
   configurations differ, only *that* they measured differently; v0.4
   added requirement profiles/coverage (see below) - a `PASS`/`FAIL`/
   `N/A` judgment against caller-defined acceptance criteria, never a
-  compliance or certification claim. See the project's own original
-  scope statement in the README.
+  compliance or certification claim; v0.5 added condition exploration
+  (see below) - filtering, grouping, and cross-tabulating that same
+  judgment by condition, explicitly never a causal or statistical claim
+  about what a condition *caused*. See the project's own original scope
+  statement in the README.
 - **Comparison validity does not check matched-label-set divergence.**
   Two configurations whose matched samples span different label sets
   (e.g. one config's matched set never saw the "absent" class) would
@@ -40,8 +43,9 @@ release, not silently worked around now.
   conditions` is `dict[str, str | float | bool]`, not an arbitrary
   nested structure - every example this project has needed fits a flat
   map, and a nested one would need an ambiguous recursive-subset
-  matching rule for no demonstrated benefit. See
-  [profiles.md](profiles.md#conditions-open-by-design-non-negotiable).
+  matching rule for no demonstrated benefit. Inherited directly by
+  v0.5's facet discovery/filtering, which reads the exact same field.
+  See [profiles.md](profiles.md#conditions-open-by-design-non-negotiable).
 - **No profile-level `PASS`/`FAIL`/`INCOMPLETE` status.** Only raw
   pass/fail/N/A counts and the two coverage percentages, at every group
   level including the root - a single rolled-up status was deliberately
@@ -65,10 +69,36 @@ release, not silently worked around now.
   profile's own conditions, but visually noisy if other standing demo
   data shares the database. See
   [coverage.md](coverage.md#api-surface).
-- **No condition-exploration UI.** The coverage matrix filters by
-  requirement name/task only - filtering by declared condition values
-  (e.g. "show only `illumination=night` requirements") is deferred to a
-  later release; the metadata needed for it already exists.
+- **`/analysis`'s `group_by` supports at most 2 dimensions.** A
+  simultaneous 3+-dimension cross-tab doesn't exist - the frontend's
+  configuration×condition "heatmap" and the 2D cross-tab together cover
+  the demonstrated need; a third simultaneous axis has no UI shape
+  defined yet. See
+  [condition-explorer.md](condition-explorer.md#grouping-and-cross-tabulation).
+- **`classify_na_reason` is coupled to `evidence.py`/`coverage.py`'s
+  exact free-text reason strings**, not a structured field on
+  `RequirementResult` - a deliberate choice (avoids redesigning a tagged
+  v0.4.0 file without a concrete defect) with a real fragility: if either
+  module's wording ever changes, the classification table must be
+  updated in lockstep. Guarded by a dedicated cross-layer test, not
+  invisible. See
+  [condition-explorer.md](condition-explorer.md#failure-and-na-exploration).
+- **Explorer/Failures/Evidence filter and tab state lives only in the
+  URL.** No saved/named filter presets, no server-side persistence of a
+  particular exploration view - closing the tab loses it unless the URL
+  itself was bookmarked or shared.
+- **`AnalysisResponse` is never persisted** - same "recompute, don't
+  persist" decision as `RequirementResult`/`ConfigurationCoverage`
+  above, extended to the v0.5 layer. Every `/analysis` call recomputes
+  fresh.
+- **Reverse session lookup (`/profile-usage`) is candidacy, not
+  resolution, and not a dependency graph.** It lists every profile
+  requirement a session's metadata could serve as evidence for, not
+  which one it's *currently* resolved as evidence for - and it stops at
+  one hop (session → matching requirements), never a full
+  requirement/session/profile dependency-graph visualization, which the
+  v0.5 master prompt explicitly rejected as unneeded for this project's
+  scale.
 - **`metric` lookup is limited to what `ComparisonMetrics` already
   exposes** (`accuracy`, `precision_macro`, `recall_macro`, `f1_macro`,
   `precision_micro`, `recall_micro`, `f1_micro`, the synthetic

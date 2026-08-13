@@ -4,7 +4,10 @@ The authoritative reference for how a [requirement profile](profiles.md)
 gets turned into evidence-backed `PASS`/`FAIL`/`N/A` results and
 aggregated coverage: evidence selection, the acceptance engine,
 recursive aggregation, the `/coverage` API, and the frontend. See
-[profiles.md](profiles.md) for the profile document this layer consumes.
+[profiles.md](profiles.md) for the profile document this layer consumes,
+and [condition-explorer.md](condition-explorer.md) for the v0.5 layer
+built directly on top of this one's `RequirementResult`/`GroupCoverage`
+output.
 
 ## Evidence selection
 
@@ -233,9 +236,9 @@ against selected evidence, never a compliance or certification claim.
 See [limitations.md](limitations.md) for the current authoritative
 list; summarized here: no weighted or mandatory-requirement
 aggregation, an unfiltered `/coverage` call can surface unrelated
-configurations as all-`N/A` (see the API caveat above), no condition-
-exploration UI (filtering the matrix by declared condition values, not
-just requirement name/task — deferred to a later release), `metric`
+configurations as all-`N/A` (see the API caveat above), `metric`
 lookup is limited to whatever `ComparisonMetrics` already exposes
 (`accuracy`/`precision_macro`/`recall_macro`/`f1_macro`/`precision_micro`/
 `recall_micro`/`f1_micro`/`coverage` — no custom-metric registration).
+Condition-value filtering (not just requirement name/task) now exists -
+see [condition-explorer.md](condition-explorer.md), v0.5.

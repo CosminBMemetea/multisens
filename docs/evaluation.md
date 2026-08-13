@@ -5,9 +5,11 @@ model, the timestamp-matching algorithm, classification metric semantics,
 the API surface, persistence, and the import format. See
 [architecture.md](architecture.md) for where this layer sits relative to
 v0.1's ingestion/sync/diagnostics stack, [comparison.md](comparison.md)
-for the configuration-comparison layer (v0.3) and
+for the configuration-comparison layer (v0.3),
 [profiles.md](profiles.md)/[coverage.md](coverage.md) for the
-requirement-profile layer (v0.4), both built directly on top of this
+requirement-profile layer (v0.4), and
+[condition-explorer.md](condition-explorer.md) for the v0.5 condition-
+exploration layer, all built directly or indirectly on top of this
 one's `EvaluationResult`s, and [limitations.md](limitations.md) for what
 this layer deliberately doesn't do yet.
 

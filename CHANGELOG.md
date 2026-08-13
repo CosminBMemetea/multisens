@@ -5,6 +5,173 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [0.5.0] — v0.5 condition explorer & evidence analysis
+
+Built phase by phase (Phase 42 through Phase 51), same discipline as
+v0.1-v0.4: a 22-question architecture review *before* any code, explicit
+self-review checkpoints per phase, nothing merged without running
+against a real container. Adds a pure analysis/exploration layer on top
+of v0.4's already-computed `RequirementResult`/`GroupCoverage` evidence
+— **never re-decides `PASS`/`FAIL`/`N/A`**, only filters, groups,
+cross-tabulates, and explains what v0.4 already decided. No v0.1-v0.4
+behavior changed; two v0.4.0-tagged files (`evidence.py`, `coverage.py`)
+were touched only for behavior-preserving helper extraction, each
+re-verified against the full existing test suite plus a live curl check
+against real persisted data before and after. Full domain model,
+algorithm, and API reference:
+[docs/condition-explorer.md](docs/condition-explorer.md).
+
+### Added
+
+- **Filter/facet engine** (`backend/app/domain/analysis.py`):
+  `AnalysisFilter` (conditions/group_id/task/status, flat AND-ed
+  predicates — no query DSL), `discover_facets` (one pass over
+  `profile.requirements[*].conditions`, no evidence needed), and
+  `filter_requirement_ids`/`filter_results` — filtering is over a
+  requirement's *own declared conditions*, never a resolved session's
+  metadata. Missing condition key always excludes, never wildcards.
+  Reuses v0.4's exact type-sensitive subset-match rule, extracted from
+  `evidence.py`'s private `_values_match`/`matches_conditions` into
+  public `values_match`/`conditions_are_subset` (Phase 43) rather than
+  reimplementing the bool/int-collision guard a second time.
+- **Aggregation + grouping** (Phase 44): `AggregateCoverage` and
+  `aggregate_requirement_results` reuse `coverage.py`'s exact
+  `status_counts`/`coverage_and_completeness` formulas (promoted to
+  public) so a filtered summary can never silently disagree with v0.4's
+  own arithmetic. `group_by_condition` (1D breakdown) and
+  `cross_tabulate` (2D cross-tab) — a result missing a grouped condition
+  key is excluded, never lumped into an "unknown" bucket.
+  `failure_breakdown`/`top_failing_groups` reuse the identical recursive
+  group-tree walk `compute_configuration_coverage` uses
+  (`aggregate_group_tree`, extracted without the "exactly one result per
+  requirement" invariant, which doesn't apply to arbitrary filtered
+  subsets). `classify_na_reason`/`na_breakdown` pattern-match the real
+  free-text reason strings `evidence.py`/`coverage.py` already produce
+  — a deliberate, explicitly-stated coupling, guarded by a mandatory
+  cross-layer test that constructs every real N/A scenario through the
+  actual `select_evidence`/`evaluate_requirement` functions, not
+  hand-typed strings.
+- **Analysis API** (`backend/app/api/profiles.py`, Phase 45+48):
+  `GET /{profile_id}/facets`, `POST /{profile_id}/analysis` — one
+  consolidated endpoint (not four separate routes); `group_by`'s length
+  (0/1/2) selects filtered-summary/breakdown/cross-tab shape. Reuses
+  `/coverage`'s exact evidence-gathering helpers
+  (`_resolve_sessions`/`_resolve_configuration_ids`/
+  `_compute_requirement_results_by_configuration`, extracted so neither
+  route duplicates the other). Each `ConfigurationAnalysis` also carries
+  `failure_root` and `na_breakdown`, scoped to the same filtered
+  population as everything else on the response. `GET
+  /sessions/{id}/profile-usage` (Phase 45) — reverse lookup defined as
+  *candidacy* (reuses `matches_conditions` directly), not resolution: a
+  session that lost an ambiguity contest still shows up, since "could
+  this be evidence" is a different question than "is this the resolved
+  evidence."
+- **Explorer UI** (`ProfileDetail.tsx` restructured into
+  Coverage/Explorer/Failures/Evidence tabs, Phase 46-49): Coverage's
+  existing matrix logic moved under a tab unchanged, live-verified
+  byte-identical to its pre-v0.5 behavior. `ExplorerPanel.tsx` — dynamic
+  filter controls built from `GET .../facets` (no hardcoded condition
+  names anywhere), a filtered configuration summary table, a condition
+  breakdown section, and a 2D cross-tab section, each fetching via a
+  shared `hooks/useAnalysis.ts`. Filter/tab state lives in
+  `useSearchParams`, URL-addressable
+  (`?tab=explorer&illumination=night&status=fail`), same pattern
+  `Comparison.tsx` established. `components/ConditionCrossTab.tsx` — a
+  generic row×column grid, reused verbatim for both the single-
+  configuration cross-tab and the configuration×condition-value
+  "heatmap"; every cell shows its requirement-count denominator (`n=X`)
+  always visible, never hover-only. `components/CellDrillDown.tsx` —
+  single-match cells reuse `RequirementDrillDown` directly, multi-match
+  cells get a plain selectable list, never a second bespoke detail view.
+- **Failure + N/A explorer** (Phase 48): `FailuresPanel.tsx` — total
+  failure count, a top-failing-groups list, and a failing-requirements
+  list. `NABreakdownPanel.tsx` — `na_breakdown` split into "experiment
+  never performed" (`no_matching_evidence`) versus "evaluation gap"
+  (`ambiguous_evidence`/`missing_metric`/`other`), per the master
+  prompt's own framing of why that distinction matters. Every list row
+  shows its evidence quality (`matched_samples`/`sample_count`/
+  `coverage`) directly alongside its `StatusBadge`, always visible — no
+  derived "LIMITED EVIDENCE" badge or threshold, per the architecture
+  review's explicit rejection of one.
+- **Evidence traceability** (Phase 49): `RequirementDrillDown` enhanced
+  to render the full Profile → Group → Requirement → Conditions →
+  Evidence → Session → Scenario → Configuration → Prediction source →
+  Evaluation result → Sample counts → Acceptance criteria → Result
+  chain — real scenario/session *names* (not raw ids, resolved via the
+  same `GET /api/scenarios`/`GET /api/sessions/{id}` calls
+  `SessionDetail.tsx` already made) and a link to the session's own
+  page. Zero new backend fields — every field was already on
+  `RequirementResult`/`EvidenceReference`. `SessionDetail.tsx` gained a
+  "Used by profiles" section calling `GET .../profile-usage`, listing
+  each matching profile and the specific requirement *names* referencing
+  this session; zero matches renders a clean explanatory message, not an
+  error.
+- **Multidimensional synthetic demo** (Phase 50): `cabin-safety-demo.json`
+  / `cabin-safety-demo-data.json` extended **in place** (not a second
+  profile) with a third condition dimension, `eyewear` (none/glasses) —
+  2 new sessions, 2 new requirements, a new "Eyewear Robustness" group.
+  Deliberately not a full Cartesian product with `occlusion`. The
+  original 4 sessions' ground truth/predictions are byte-identical to
+  before — only metadata gained a key. Glasses accuracy targets tell a
+  clean story: a mild uniform tax on every configuration except thermal,
+  which flips from `pass` to `fail` at night under the *same* threshold
+  — a condition dimension changing an outcome, not just a number.
+  `scripts/generate_profile_demo_data.py` verified byte-identical across
+  runs; `test_profile_demo.py`'s independent verification now covers all
+  40 requirement×configuration cells (was 30).
+- **80 new backend tests** (309 → 389) — filter/facet engine,
+  aggregation/grouping, the analysis API, the failure/N/A explorer, the
+  extended synthetic demo's independent verification, and a dedicated
+  Phase 51 robustness pass (a zero-condition-dimension profile, an
+  undeclared-condition-key filter, mixed boolean/string condition
+  values, a 2000-requirement profile's responsiveness, an ordinary
+  v0.4-only profile, missing `Session.metadata`, and four `/analysis`
+  malformed-request shapes). **No new frontend unit tests this release**
+  — v0.5's page-level UI was live-verified via Playwright against the
+  real running stack at every phase instead, matching this project's
+  existing convention that only pure functions (`format.ts`,
+  `groupTree.ts`) get `vitest` coverage; frontend suite stays 34/34.
+- `docs/condition-explorer.md` (new); `docs/profiles.md`,
+  `docs/coverage.md`, `docs/comparison.md`, `docs/evaluation.md`,
+  `README.md`, `docs/limitations.md` updated for the condition-
+  exploration layer.
+
+### Fixed
+
+Three real bugs, each caught by this project's own live-verification
+discipline (Playwright against the real running stack, or a mandatory
+cross-layer test) before the phase that introduced them was committed —
+listed here because the catching mechanism is the actual guard, and a
+future contributor should be able to see it worked, not just that the
+code looks right in hindsight:
+
+- **`classify_na_reason`'s initial rule table** assumed the multi-
+  prediction-source ambiguity message contained the word "ambiguous" —
+  it doesn't (only the multi-session case does). Caught immediately by
+  the mandatory cross-layer test, which constructs the scenario via real
+  `select_evidence` calls rather than hand-typed strings.
+- **`ConditionCrossTab`'s column headers** showed only the dimension
+  name (e.g. "OCCLUSION") spanning every column, with no per-column
+  value label ("none"/"partial") underneath — cells were visually
+  indistinguishable by column. Caught via a live screenshot during
+  Phase 47 verification; fixed by adding a second header row.
+- **The Failures tab's top-failing-groups list** included the synthetic
+  group-tree aggregation root (`group_id: null`) as if it were a real
+  named group. Caught via live hand-verification against the Cabin
+  Safety Demo during Phase 48; fixed by excluding `group_id === null`,
+  the same exclusion `CoverageMatrix.tsx` already applied.
+
+### Known limitations
+
+`/analysis`'s `group_by` supports at most 2 dimensions (no simultaneous
+3+-dimension cross-tab), `classify_na_reason` is coupled to
+`evidence.py`/`coverage.py`'s exact free-text reason strings, filter/tab
+state lives only in the URL (no saved/named presets), `AnalysisResponse`
+is never persisted (recomputed fresh every call, same decision as
+`RequirementResult`), reverse session lookup is candidacy — not
+resolution, and not a full dependency-graph visualization. Full list:
+[docs/limitations.md](docs/limitations.md).
+
 ## [0.4.0] — v0.4 requirement profiles & coverage
 
 Built phase by phase (Phase 30 through Phase 40), same discipline as
