@@ -1,27 +1,52 @@
-"""Phase 53/54: decision-support domain model + engine tests. Phase 53's
-tests (below) lock in the DecisionPolicy/PolicyStatus contract itself;
-Phase 54's tests cover evaluate_policy's sufficiency semantics and the
-minimality/dominance algorithms, per the master prompt's own Section 47
-checklist.
+"""Phase 53/54/55: decision-support domain model + engine tests. Phase
+53's tests lock in the DecisionPolicy/PolicyStatus contract itself;
+Phase 54's cover evaluate_policy's sufficiency semantics and the
+minimality/dominance algorithms; Phase 55's cover the requirement-gap
+engine (transitions, condition-level deltas, direct removals, sensor-
+addition composition) - per the master prompt's own Section 47 checklist.
 """
 import typing
+from datetime import datetime, timezone
 
 import pytest
 
 from app.domain.analysis import AggregateCoverage
+from app.domain.coverage import RequirementResult
 from app.domain.decision import (
     ConfigurationDecision,
     ConfigurationEvidence,
     DecisionObjective,
     DecisionPolicy,
     PolicyStatus,
+    analyze_sensor_addition,
+    compute_condition_gap_summary,
+    compute_requirement_transitions,
     evaluate_configurations,
     evaluate_policy,
+    find_direct_removals,
     find_dominated_configurations,
     find_minimal_sufficient_sets,
     find_pareto_front,
     find_sufficient_configurations,
 )
+from app.domain.profiles import AcceptanceCriterion, Requirement
+
+
+def _requirement(**overrides) -> Requirement:
+    defaults = dict(
+        id='req', group_id='g-top', name='Req', task='presence',
+        conditions={}, acceptance=[AcceptanceCriterion(metric='accuracy', operator='>=', value=0.5)],
+    )
+    return Requirement(**{**defaults, **overrides})
+
+
+def _result(requirement_id: str, status: str, configuration_id: str = 'cfg-a', **overrides) -> RequirementResult:
+    defaults = dict(
+        profile_id='p1', profile_version='1.0', requirement_id=requirement_id,
+        configuration_id=configuration_id, task='presence', status=status,
+        reasons=[] if status == 'pass' else ['x'], computed_at=datetime.now(timezone.utc),
+    )
+    return RequirementResult(**{**defaults, **overrides})
 
 
 def test_decision_policy_round_trips_all_fields():
@@ -143,8 +168,8 @@ def test_evaluate_policy_na_straddling_best_and_worst_is_undetermined():
 
 def test_evaluate_configurations_attaches_policy_status_per_configuration():
     evidence = [
-        ConfigurationEvidence('cfg-a', frozenset({'a'}), _agg(9, 1, 0, 0.9, 1.0)),
-        ConfigurationEvidence('cfg-b', frozenset({'b'}), _agg(1, 9, 0, 0.1, 1.0)),
+        ConfigurationEvidence('cfg-a', frozenset({'a'}), _agg(9, 1, 0, 0.9, 1.0), []),
+        ConfigurationEvidence('cfg-b', frozenset({'b'}), _agg(1, 9, 0, 0.1, 1.0), []),
     ]
     policy = DecisionPolicy(0.8, 0.9, False, 'minimize_sensor_count')
     decisions = evaluate_configurations(evidence, policy)
@@ -155,9 +180,9 @@ def test_evaluate_configurations_attaches_policy_status_per_configuration():
 # --- find_minimal_sufficient_sets -------------------------------------------
 
 def _decision(configuration_id: str, sensor_ids: frozenset[str], status: PolicyStatus) -> ConfigurationDecision:
-    # coverage/completeness don't matter for minimality - only sensor_ids
-    # and policy_status do.
-    return ConfigurationDecision(configuration_id, sensor_ids, _agg(1, 0, 0, 1.0, 1.0), status)
+    # coverage/completeness/requirement_results don't matter for
+    # minimality - only sensor_ids and policy_status do.
+    return ConfigurationDecision(configuration_id, sensor_ids, _agg(1, 0, 0, 1.0, 1.0), [], status)
 
 
 def test_minimal_sufficient_set_excludes_a_superset():
@@ -201,7 +226,7 @@ def test_undetermined_and_insufficient_configurations_never_appear_as_minimal():
 
 def _decision_with_coverage(configuration_id, sensor_ids, coverage, completeness):
     return ConfigurationDecision(
-        configuration_id, frozenset(sensor_ids), _agg(1, 0, 0, coverage, completeness), 'sufficient',
+        configuration_id, frozenset(sensor_ids), _agg(1, 0, 0, coverage, completeness), [], 'sufficient',
     )
 
 
@@ -242,3 +267,123 @@ def test_two_none_coverage_configurations_tie_and_neither_dominates():
     b = _decision_with_coverage('cfg-b', {'b'}, None, None)
     dominated = find_dominated_configurations([a, b])
     assert dominated == []
+
+
+# --- compute_requirement_transitions (Phase 55) -----------------------------
+
+def test_compute_requirement_transitions_categorizes_all_four_types():
+    baseline = [
+        _result('req-a', 'fail'), _result('req-b', 'na'),
+        _result('req-c', 'pass'), _result('req-d', 'pass'), _result('req-e', 'fail'),
+    ]
+    candidate = [
+        _result('req-a', 'pass'), _result('req-b', 'pass'),
+        _result('req-c', 'fail'), _result('req-d', 'na'), _result('req-e', 'fail'),
+    ]
+    transitions = compute_requirement_transitions(baseline, candidate)
+    assert transitions.fail_to_pass == ['req-a']
+    assert transitions.na_to_pass == ['req-b']
+    assert transitions.pass_to_fail == ['req-c']
+    assert transitions.pass_to_na == ['req-d']
+    # req-e (fail -> fail) appears in none of the four lists - an
+    # unchanged requirement is not a transition.
+
+
+def test_compute_requirement_transitions_rejects_mismatched_populations():
+    baseline = [_result('req-a', 'pass')]
+    candidate = [_result('req-a', 'pass'), _result('req-b', 'pass')]
+    with pytest.raises(ValueError, match='same requirement'):
+        compute_requirement_transitions(baseline, candidate)
+
+
+# --- compute_condition_gap_summary ------------------------------------------
+
+def test_compute_condition_gap_summary_computes_per_value_delta():
+    requirements = {
+        'req-night': _requirement(id='req-night', conditions={'illumination': 'night'}),
+        'req-day': _requirement(id='req-day', conditions={'illumination': 'day'}),
+    }
+    # Baseline: night fails, day passes. Candidate: both pass.
+    baseline = [_result('req-night', 'fail'), _result('req-day', 'pass')]
+    candidate = [_result('req-night', 'pass'), _result('req-day', 'pass')]
+
+    entries = compute_condition_gap_summary(baseline, candidate, requirements, 'illumination')
+    by_value = {e.value: e for e in entries}
+
+    assert by_value['night'].baseline.requirement_coverage == 0.0
+    assert by_value['night'].candidate.requirement_coverage == 1.0
+    assert by_value['night'].coverage_delta_pp == pytest.approx(100.0)
+
+    assert by_value['day'].baseline.requirement_coverage == 1.0
+    assert by_value['day'].candidate.requirement_coverage == 1.0
+    assert by_value['day'].coverage_delta_pp == pytest.approx(0.0)
+
+
+def test_compute_condition_gap_summary_value_missing_on_one_side_gets_empty_aggregate():
+    # A requirement that only exists in the candidate's filtered
+    # population (e.g. an N/A resolved into evidence with a condition
+    # value baseline's population never touched) still gets a reported,
+    # not silently dropped, entry - baseline shows an empty aggregate.
+    requirements = {'req-smoke': _requirement(id='req-smoke', conditions={'smoke': 'present'})}
+    baseline = []
+    candidate = [_result('req-smoke', 'pass')]
+
+    entries = compute_condition_gap_summary(baseline, candidate, requirements, 'smoke')
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.value == 'present'
+    assert entry.baseline.pass_count == 0 and entry.baseline.requirement_coverage is None
+    assert entry.candidate.pass_count == 1 and entry.candidate.requirement_coverage == 1.0
+    assert entry.coverage_delta_pp is None  # baseline side has no defined coverage to diff against
+
+
+# --- find_direct_removals ----------------------------------------------------
+
+def test_find_direct_removals_reports_evaluated_and_no_evidence():
+    full = _decision_with_coverage('cfg-full', {'front_rgb', 'rear_rgb', 'sim_thermal'}, 1.0, 1.0)
+    without_thermal = ConfigurationDecision(
+        'cfg-no-thermal', frozenset({'front_rgb', 'rear_rgb'}), _agg(1, 0, 0, 0.5, 1.0), [], 'insufficient',
+    )
+    # No evaluated configuration exists for {rear_rgb, sim_thermal} or
+    # {front_rgb, sim_thermal} - only the front_rgb/rear_rgb removal was
+    # ever run.
+    configurations_by_sensor_set = {
+        full.sensor_ids: full,
+        without_thermal.sensor_ids: without_thermal,
+    }
+
+    removals = {r.removed_sensor_id: r for r in find_direct_removals(full, configurations_by_sensor_set)}
+
+    assert removals['sim_thermal'].configuration_id == 'cfg-no-thermal'
+    assert removals['sim_thermal'].policy_status == 'insufficient'
+
+    assert removals['front_rgb'].configuration_id is None
+    assert removals['front_rgb'].policy_status is None
+    assert removals['rear_rgb'].configuration_id is None
+    assert removals['rear_rgb'].policy_status is None
+
+
+# --- analyze_sensor_addition -------------------------------------------------
+
+def test_analyze_sensor_addition_composes_deltas_transitions_and_policy_status():
+    baseline_results = [_result('req-a', 'fail', 'cfg-baseline'), _result('req-b', 'pass', 'cfg-baseline')]
+    candidate_results = [_result('req-a', 'pass', 'cfg-candidate'), _result('req-b', 'pass', 'cfg-candidate')]
+
+    baseline = ConfigurationDecision(
+        'cfg-baseline', frozenset({'front_rgb'}), _agg(1, 1, 0, 0.5, 1.0), baseline_results, 'insufficient',
+    )
+    candidate = ConfigurationDecision(
+        'cfg-candidate', frozenset({'front_rgb', 'sim_thermal'}), _agg(2, 0, 0, 1.0, 1.0),
+        candidate_results, 'sufficient',
+    )
+
+    analysis = analyze_sensor_addition(baseline, candidate)
+
+    assert analysis.added_sensor_ids == ['sim_thermal']
+    assert analysis.removed_sensor_ids == []
+    assert analysis.coverage_delta_pp == pytest.approx(50.0)
+    assert analysis.completeness_delta_pp == pytest.approx(0.0)
+    assert analysis.transitions.fail_to_pass == ['req-a']
+    assert analysis.transitions.na_to_pass == []
+    assert analysis.baseline_policy_status == 'insufficient'
+    assert analysis.candidate_policy_status == 'sufficient'

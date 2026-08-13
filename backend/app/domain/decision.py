@@ -1,12 +1,12 @@
-"""Decision-support domain model + engine (v0.6, Phase 53 + Phase 54).
+"""Decision-support domain model + engine (v0.6, Phase 53-55).
 
 Transport/storage-agnostic like every other domain module - no fastapi,
 sqlite3, or rclpy import. Phase 53 defined the shape (`DecisionPolicy`,
-`PolicyStatus`); Phase 54 adds the pure policy/minimality/dominance
-functions below. Requirement transitions/condition-level gap summaries
-are Phase 55's job (a separate concern - comparing two configurations,
-not evaluating one against a policy), and none of this is exposed over
-HTTP yet (Phase 56).
+`PolicyStatus`); Phase 54 added the pure policy/minimality/dominance
+functions; Phase 55 adds requirement-transition and condition-level gap
+summaries - comparing two already-evaluated configurations, a separate
+concern from evaluating one against a policy. None of this is exposed
+over HTTP yet (Phase 56).
 
 Decision support consumes v0.4's already-computed `RequirementResult`/
 `AggregateCoverage`-shaped evidence (see coverage.py / analysis.py) -
@@ -28,8 +28,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from app.domain.analysis import AggregateCoverage
-from app.domain.coverage import coverage_and_completeness
+from app.domain.analysis import AggregateCoverage, group_by_condition
+from app.domain.comparison import classify_relationship
+from app.domain.coverage import RequirementResult, coverage_and_completeness
+from app.domain.profiles import ConditionValue, Requirement
 
 # Only value v0.6 supports - "minimize sensor count subject to the
 # policy's own coverage/completeness/mandatory criteria being met."
@@ -112,25 +114,31 @@ class DecisionPolicy:
 @dataclass
 class ConfigurationEvidence:
     """Input to the decision engine: one configuration's sensor
-    membership plus its already-computed aggregate coverage under
-    whatever filter the caller applied (v0.5's `AggregateCoverage`,
+    membership, its already-computed aggregate coverage under whatever
+    filter the caller applied, and the filtered `RequirementResult`s
+    themselves (v0.5's `AggregateCoverage`/v0.4's `RequirementResult`,
     reused directly - the decision engine never recomputes pass/fail/na
-    itself). `sensor_ids` is a `frozenset` deliberately, not a `list` -
-    minimality/dominance are set operations, and set membership order
-    was never meaningful."""
+    itself). `requirement_results` is only needed by Phase 55's gap
+    functions (minimality/dominance never look at it); carried here
+    anyway so a `ConfigurationDecision` is the one complete row Phase 56
+    hands to both. `sensor_ids` is a `frozenset` deliberately, not a
+    `list` - minimality/dominance are set operations, and set membership
+    order was never meaningful."""
     configuration_id: str
     sensor_ids: frozenset[str]
     aggregate: AggregateCoverage
+    requirement_results: list[RequirementResult]
 
 
 @dataclass
 class ConfigurationDecision:
     """One `ConfigurationEvidence` plus its computed `policy_status` -
     the engine's one enrichment step. Everything downstream (minimal
-    sets, Pareto front) operates on lists of these."""
+    sets, Pareto front, gap analysis) operates on lists of these."""
     configuration_id: str
     sensor_ids: frozenset[str]
     aggregate: AggregateCoverage
+    requirement_results: list[RequirementResult]
     policy_status: PolicyStatus
 
 
@@ -184,6 +192,7 @@ def evaluate_configurations(
             configuration_id=c.configuration_id,
             sensor_ids=c.sensor_ids,
             aggregate=c.aggregate,
+            requirement_results=c.requirement_results,
             policy_status=evaluate_policy(c.aggregate, policy),
         )
         for c in configurations
@@ -270,3 +279,181 @@ def find_pareto_front(decisions: list[ConfigurationDecision]) -> list[Configurat
     per the master prompt's §37, not part of this function's job)."""
     dominated_ids = {d.configuration_id for d in find_dominated_configurations(decisions)}
     return [d for d in decisions if d.configuration_id not in dominated_ids]
+
+
+# --- requirement gap engine (v0.6, Phase 55) --------------------------------
+#
+# Compares two already-evaluated configurations - never re-decides
+# PASS/FAIL/N/A, never re-implements v0.5's condition grouping. A
+# separate concern from evaluate_policy above: that judges ONE
+# configuration against a policy; this compares TWO configurations
+# against each other.
+
+@dataclass
+class RequirementTransitions:
+    """Four separately-exposed transition categories, never collapsed
+    into one delta (master prompt §13: "do not reduce all of this to a
+    single delta"). Each list holds requirement ids, sorted."""
+    fail_to_pass: list[str]
+    na_to_pass: list[str]
+    pass_to_fail: list[str]
+    pass_to_na: list[str]
+
+
+def compute_requirement_transitions(
+    baseline_results: list[RequirementResult], candidate_results: list[RequirementResult],
+) -> RequirementTransitions:
+    """Both sides must cover the exact same requirement population (same
+    profile, same filter) - a precondition, not silently reconciled;
+    diffing two different populations would produce a meaningless
+    result. Pure status-dict comparison, nothing else."""
+    baseline_by_id = {r.requirement_id: r.status for r in baseline_results}
+    candidate_by_id = {r.requirement_id: r.status for r in candidate_results}
+    if set(baseline_by_id) != set(candidate_by_id):
+        raise ValueError(
+            'baseline and candidate requirement_results must cover the exact same requirement '
+            f'population - baseline has {len(baseline_by_id)} requirements, '
+            f'candidate has {len(candidate_by_id)}'
+        )
+
+    fail_to_pass: list[str] = []
+    na_to_pass: list[str] = []
+    pass_to_fail: list[str] = []
+    pass_to_na: list[str] = []
+    for requirement_id in sorted(baseline_by_id):
+        before, after = baseline_by_id[requirement_id], candidate_by_id[requirement_id]
+        if before == 'fail' and after == 'pass':
+            fail_to_pass.append(requirement_id)
+        elif before == 'na' and after == 'pass':
+            na_to_pass.append(requirement_id)
+        elif before == 'pass' and after == 'fail':
+            pass_to_fail.append(requirement_id)
+        elif before == 'pass' and after == 'na':
+            pass_to_na.append(requirement_id)
+    return RequirementTransitions(fail_to_pass, na_to_pass, pass_to_fail, pass_to_na)
+
+
+@dataclass
+class ConditionGapEntry:
+    """One condition value's observed coverage on each side plus the
+    delta, in percentage points - same `coverage_delta_pp` convention
+    v0.3's `ComparisonSide` already established, not a new one. Never
+    causal language anywhere this is rendered (master prompt §15)."""
+    value: ConditionValue
+    baseline: AggregateCoverage
+    candidate: AggregateCoverage
+    coverage_delta_pp: float | None
+
+
+_EMPTY_AGGREGATE = AggregateCoverage(pass_count=0, fail_count=0, na_count=0, requirement_coverage=None, evidence_completeness=None)
+
+
+def compute_condition_gap_summary(
+    baseline_results: list[RequirementResult],
+    candidate_results: list[RequirementResult],
+    requirement_by_id: dict[str, Requirement],
+    condition_key: str,
+) -> list[ConditionGapEntry]:
+    """Reuses v0.5's `group_by_condition` directly for each side, then
+    subtracts bucket-by-bucket - no grouping/aggregation logic
+    duplicated (master prompt §40/§15: "integrate v0.5 condition
+    metadata... do not duplicate condition analysis from v0.5"). A
+    condition value present on only one side gets an empty aggregate on
+    the other, never silently dropped from the summary."""
+    baseline_buckets = group_by_condition(baseline_results, requirement_by_id, condition_key)
+    candidate_buckets = group_by_condition(candidate_results, requirement_by_id, condition_key)
+
+    entries = []
+    for value in sorted(set(baseline_buckets) | set(candidate_buckets), key=str):
+        baseline_agg = baseline_buckets.get(value, _EMPTY_AGGREGATE)
+        candidate_agg = candidate_buckets.get(value, _EMPTY_AGGREGATE)
+        coverage_delta_pp = (
+            (candidate_agg.requirement_coverage - baseline_agg.requirement_coverage) * 100
+            if candidate_agg.requirement_coverage is not None and baseline_agg.requirement_coverage is not None
+            else None
+        )
+        entries.append(ConditionGapEntry(value, baseline_agg, candidate_agg, coverage_delta_pp))
+    return entries
+
+
+@dataclass
+class DirectRemoval:
+    """One sensor's removal outcome from a configuration. Scoped
+    wording only - "removable without violating the current policy" /
+    "policy-critical within this configuration" - never "redundant
+    sensor" or "necessary sensor" as an intrinsic property (master
+    prompt §11/§12, v0.6 architecture review Q10). `configuration_id`/
+    `policy_status` are both `None` together when this exact removal was
+    never evaluated - reported as unknown, never estimated (§24)."""
+    removed_sensor_id: str
+    configuration_id: str | None
+    policy_status: PolicyStatus | None
+
+
+def find_direct_removals(
+    configuration: ConfigurationDecision,
+    configurations_by_sensor_set: dict[frozenset[str], ConfigurationDecision],
+) -> list[DirectRemoval]:
+    """For each sensor in `configuration`, looks up whether the actual
+    direct-removal configuration was evaluated - `configurations_by_
+    sensor_set` is built by the caller from every discovered
+    configuration, keyed by its own `sensor_ids`, so this never
+    estimates or interpolates a removal that doesn't exist in evidence."""
+    removals = []
+    for sensor_id in sorted(configuration.sensor_ids):
+        remaining = configuration.sensor_ids - {sensor_id}
+        match = configurations_by_sensor_set.get(remaining)
+        if match is None:
+            removals.append(DirectRemoval(sensor_id, None, None))
+        else:
+            removals.append(DirectRemoval(sensor_id, match.configuration_id, match.policy_status))
+    return removals
+
+
+@dataclass
+class SensorAdditionAnalysis:
+    """Deliberately many small, structured fields - never a single
+    magic `importance_score` (master prompt §16). Works for any
+    baseline/candidate pair, not only a clean one-sensor addition -
+    `added_sensor_ids`/`removed_sensor_ids` (v0.3's exact
+    `classify_relationship` set-difference, reused rather than
+    reimplemented) may both be non-empty for a "general" comparison."""
+    baseline_configuration_id: str
+    candidate_configuration_id: str
+    added_sensor_ids: list[str]
+    removed_sensor_ids: list[str]
+    coverage_delta_pp: float | None
+    completeness_delta_pp: float | None
+    transitions: RequirementTransitions
+    baseline_policy_status: PolicyStatus
+    candidate_policy_status: PolicyStatus
+
+
+def analyze_sensor_addition(baseline: ConfigurationDecision, candidate: ConfigurationDecision) -> SensorAdditionAnalysis:
+    """`baseline`/`candidate` must already carry filtered
+    `requirement_results` over the same population (see
+    `compute_requirement_transitions`'s precondition) - this function
+    only composes what's already been computed, it doesn't fetch or
+    filter anything itself."""
+    added, removed, _relationship = classify_relationship(
+        sorted(baseline.sensor_ids), sorted(candidate.sensor_ids),
+    )
+    transitions = compute_requirement_transitions(baseline.requirement_results, candidate.requirement_results)
+
+    b_cov, c_cov = baseline.aggregate.requirement_coverage, candidate.aggregate.requirement_coverage
+    coverage_delta_pp = (c_cov - b_cov) * 100 if b_cov is not None and c_cov is not None else None
+
+    b_comp, c_comp = baseline.aggregate.evidence_completeness, candidate.aggregate.evidence_completeness
+    completeness_delta_pp = (c_comp - b_comp) * 100 if b_comp is not None and c_comp is not None else None
+
+    return SensorAdditionAnalysis(
+        baseline_configuration_id=baseline.configuration_id,
+        candidate_configuration_id=candidate.configuration_id,
+        added_sensor_ids=added,
+        removed_sensor_ids=removed,
+        coverage_delta_pp=coverage_delta_pp,
+        completeness_delta_pp=completeness_delta_pp,
+        transitions=transitions,
+        baseline_policy_status=baseline.policy_status,
+        candidate_policy_status=candidate.policy_status,
+    )
