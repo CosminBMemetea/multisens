@@ -7,7 +7,12 @@ top of what [coverage.md](coverage.md) and
 [condition-explorer.md](condition-explorer.md) already decided. See
 [profiles.md](profiles.md) for the profile document this layer reads and
 [coverage.md](coverage.md) for the `RequirementResult`/`AggregateCoverage`
-shapes it consumes.
+shapes it consumes. See
+[deployment-tradeoffs.md](deployment-tradeoffs.md) for what v0.7 builds
+*on top of* this layer's own `ConfigurationDecision`/`PolicyStatus`
+output, joined with resource evidence ([resources.md](resources.md)) -
+this document's own decision semantics are unchanged by v0.7 and reused
+there verbatim, never re-decided.
 
 ## What this layer answers
 
@@ -367,4 +372,6 @@ O(n²), bounded by evaluated-configuration count, not a generated power
 set; `DecisionAnalysisResponse` is never persisted (recomputed fresh
 every call); and sensor-identity/ROS migration (simultaneous live
 dashboard viewing of two same-modality physical sensors) remains
-deferred, unchanged from before v0.6.
+deferred, unchanged from before v0.6. v0.7's generalized Pareto front
+(`deployment-tradeoffs.md`) reuses this exact O(n²) bound, extended to
+arbitrary caller-chosen dimensions.

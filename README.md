@@ -1,6 +1,6 @@
 # MultiSens
 
-[![v0.6.0](https://img.shields.io/badge/release-v0.6.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.6.0)
+[![v0.7.0](https://img.shields.io/badge/release-v0.7.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.7.0)
 
 An open-source, vendor-neutral platform for ingesting, synchronizing,
 diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
@@ -64,6 +64,25 @@ whatever else speaks RTSP.
   within this configuration" — scoped wording only, never "redundant
   sensor" as an intrinsic property, and never a universal importance
   score. Full contract: [docs/decision-support.md](docs/decision-support.md).
+- A **resource observation & deployment trade-off layer** (v0.7): what
+  does a sensor configuration actually cost to run — CPU, memory,
+  network, latency, FPS — attributed per configuration per session, with
+  every value carrying explicit provenance (`measured`/`declared`/
+  `estimated`/`unavailable`, never a fabricated number). Joins that
+  resource evidence with v0.6's decision evidence into one trade-off
+  view: resource constraints (reusing the same acceptance-criterion
+  grammar), a resource-aware generalized Pareto front, and observed
+  (never causal) resource deltas between two configurations —
+  comparability itself gated on matching execution platform, resolution,
+  target FPS, and measurement duration. Two independent, non-cabin demo
+  families ship with this release — **RideSafe** (70mai front/rear
+  dashcams, ride monitoring and incident evidence) and **PropertyWatch**
+  (generic home/garage/workshop/storage/small-warehouse multi-camera
+  monitoring, no face-recognition or surveillance-identification). Full
+  contract: [docs/resources.md](docs/resources.md) /
+  [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md). Provenance
+  discipline across every layer, consolidated in one place:
+  [docs/provenance.md](docs/provenance.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
 
@@ -89,7 +108,10 @@ whatever else speaks RTSP.
   layer extends it once more: a sensor is "removable without violating
   the current policy" or "policy-critical within this configuration" —
   never "redundant" or "necessary" as an intrinsic property, and there is
-  no universal sensor-importance score anywhere. See
+  no universal sensor-importance score anywhere. v0.7's resource deltas
+  keep the same posture: "candidate used +5.1 Mbps more than baseline,"
+  never "the added sensor cost 5.1 Mbps" — and there is no combined
+  decision+resource score anywhere either. See
   [docs/comparison.md](docs/comparison.md#non-causal-by-design).
 - **Evaluation is classification-only** (v0.2) — the domain model is
   deliberately generic (see
@@ -252,6 +274,36 @@ requirements newly pass, and try the sensor-removal sweep to see
 derivation and [docs/decision-support.md](docs/decision-support.md) for
 the domain model and API.
 
+## Deployment trade-offs quick start (v0.7)
+
+Two independent, non-cabin demo families — reference personal camera
+hardware, not any employer or professional evaluation project:
+
+```bash
+docker compose up -d
+python3 scripts/load_ridesafe_demo_data.py
+python3 scripts/load_propertywatch_demo_data.py
+open http://localhost:8080/profiles
+```
+
+Open **"RideSafe — Ride Monitoring Demo"** and its **Resources** tab: a
+two-configuration (front-only / front+rear) trade-off around 70mai
+dashcams, ride monitoring and incident evidence only — never a safety-
+certification or driver-monitoring claim. Open **"PropertyWatch —
+Property Monitoring Demo"** for the flagship "is the third camera worth
+its resource load" example: three nested configurations
+(entrance-only → +storage → +storage+indoor) produce a genuine 3-point
+Pareto staircase, more sensors always costing more but also always
+reaching more requirement coverage. Try the resource-constraint form
+(e.g. `cpu_percent <= 30`) to see `QUALIFIES`/`DOES_NOT_QUALIFY`/
+`UNDETERMINED` reported directly from the backend, and the baseline/
+candidate comparison section for an observed (never causal) resource
+delta. See [examples/profiles/README.md](examples/profiles/README.md)
+for the full derivation and
+[docs/resources.md](docs/resources.md) /
+[docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) for the
+domain model and API.
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to
@@ -281,6 +333,8 @@ Full evaluation API surface: [docs/evaluation.md](docs/evaluation.md#api-surface
 Full comparison API surface: [docs/comparison.md](docs/comparison.md#api-surface).
 Full profile/coverage API surface: [docs/profiles.md](docs/profiles.md#api-surface) / [docs/coverage.md](docs/coverage.md#api-surface).
 Full decision-support API surface: [docs/decision-support.md](docs/decision-support.md#api-surface).
+Full resource-observation API surface: [docs/resources.md](docs/resources.md#api-surface).
+Full deployment-trade-off API surface: [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md#api-surface).
 
 ## ROS topics
 
@@ -335,7 +389,21 @@ never narrowed to one when several tie), a Pareto/dominance trade-off
 front, and requirement-gap closure across four separately-exposed
 transition categories — never re-deciding `PASS`/`FAIL`/`N/A`, never a
 causal claim, and never a universal sensor-importance score — see
-[docs/decision-support.md](docs/decision-support.md).
+[docs/decision-support.md](docs/decision-support.md). v0.7 added a
+resource-observation and deployment-trade-off layer on top of that:
+`ResourceObservation` evidence with explicit provenance
+(`measured`/`declared`/`estimated`/`unavailable`), per-configuration
+resource summaries, comparability rules gating cross-platform/
+cross-resolution comparison, resource constraints reusing the same
+acceptance-criterion grammar v0.4 already established, a resource-aware
+generalized Pareto front, and observed-only resource deltas — never
+merged with decision evidence into one score — see
+[docs/resources.md](docs/resources.md) /
+[docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md). Two
+independent personal-camera demo families (RideSafe, PropertyWatch)
+replace cabin/occupant-style examples going forward — see
+[docs/provenance.md](docs/provenance.md) for the cross-cutting evidence-
+honesty discipline both build on.
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
@@ -350,8 +418,12 @@ sensor-identity/ROS migration for simultaneous live dual-camera viewing
 (decision support itself needed none of this — see
 [docs/decision-support.md](docs/decision-support.md#sensor-instance-identity-not-modality)),
 a simultaneous 3+-dimension cross-tab, saved/named filter presets, real
-depth/thermal sensor conversion, a file-import API endpoint,
-authentication, cloud deployment. See
+depth/thermal sensor conversion, a file-import API endpoint, GPU/power/
+temperature/storage-write resource metrics (no discrete GPU or Jetson
+reachable in this release's environment — see
+[docs/limitations.md](docs/limitations.md)), cross-platform resource
+comparison exercised against a genuine second machine, authentication,
+cloud deployment. See
 [CHANGELOG.md](CHANGELOG.md) for how each release was built and verified.
 
 ## Documentation
@@ -372,6 +444,15 @@ authentication, cloud deployment. See
 - [docs/decision-support.md](docs/decision-support.md) — policy model,
   sufficiency semantics, minimum sufficient sets, Pareto/dominance,
   requirement gap closure, API surface, frontend (v0.6)
+- [docs/resources.md](docs/resources.md) — resource-observation model,
+  provenance/quality vocabulary, metric vocabulary, collection,
+  persistence, API surface, frontend (v0.7)
+- [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) —
+  trade-off engine, comparability, resource constraints, generalized
+  Pareto, RideSafe/PropertyWatch worked examples, API surface, frontend
+  (v0.7)
+- [docs/provenance.md](docs/provenance.md) — cross-cutting data
+  provenance and evidence-honesty discipline across every layer
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

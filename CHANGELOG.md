@@ -5,6 +5,203 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [0.7.0] — v0.7 resource observation & deployment trade-offs
+
+Built phase by phase (Phase 64 through Phase 76), same discipline as
+v0.1-v0.6: a 30-question architecture review *before* any code (plus an
+explicit employer-independence verification, given this release's
+public reference demos), explicit self-review checkpoints per phase,
+nothing merged without running against a real container. Adds a
+resource-observation layer with explicit provenance, joined with v0.6's
+already-decided policy evidence into a trade-off/comparability/
+constraint/generalized-Pareto layer — **never re-decides
+`PASS`/`FAIL`/`N/A` or `PolicyStatus`**, never merges decision and
+resource evidence into one score. No v0.1-v0.6 behavior changed. Full
+domain model, algorithm, and API reference:
+[docs/resources.md](docs/resources.md) /
+[docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md).
+
+This release also retires cabin/occupant-monitoring-style examples going
+forward, replacing them with two independent personal-camera demo
+families built around the author's own consumer hardware — see "Added"
+below and [docs/provenance.md](docs/provenance.md) for the cross-cutting
+evidence-honesty discipline this and every other layer share.
+
+### Added
+
+- **Resource domain foundation** (`backend/app/domain/resources.py`,
+  Phase 64-65): `ResourceObservation` (pydantic, like `GroundTruth`/
+  `Prediction` — persisted/ingested evidence, not a computed artifact)
+  with `ResourceQuality` (`measured`/`declared`/`estimated`/
+  `unavailable` — `value is None` iff `quality == 'unavailable'`,
+  enforced both directions) and `SUPPORTED_RESOURCE_METRICS` (the
+  reviewed six: `cpu_percent`, `memory_mb`, `network_receive_mbps`,
+  `network_transmit_mbps`, `fps`, `pipeline_latency_ms` — GPU/power/
+  temperature/storage-write explicitly excluded, no hardware to verify
+  them against). `ExecutionPlatform` + `UNKNOWN_PLATFORM_ID` (an
+  unresolved platform is never comparable, even to itself). New
+  migration `0004_resource_observations.sql`;
+  `insert_resource_observations_batch`/`list_resource_observations`
+  follow the exact batch-insert/filtered-query pattern `predictions`
+  already uses.
+- **Resource collection** (`backend/app/resource_collector.py`, Phase
+  66): `SystemMetricsWindow` (`cpu_percent`/`memory_mb`/
+  `network_receive_mbps`/`network_transmit_mbps` via the same `psutil`
+  primitives `system_diagnostics_node` already uses, bound to an
+  explicit `start()`/`end()` window instead of a permanent background
+  loop) and `collect_sensor_metrics` (`fps`/`pipeline_latency_ms` — a
+  pure translation of already-published `fps_received`/
+  `publish_latency_ms` diagnostics, not a new measurement). Never
+  fabricates a value: a zero-duration window's network rate and a
+  sensor absent from the diagnostics snapshot both report explicit
+  `unavailable` rows. Measured collector overhead documented directly
+  in the module: ~0.27ms per `start()`/`end()` pair.
+- **Resource summaries** (Phase 67): `ResourceMetricSummary`
+  (mean/median/p95/min/max/sample_count/unit/quality) and
+  `compute_resource_metric_summary` — pure aggregation over
+  already-persisted rows, `None` (never a fabricated zero) for an empty
+  or all-`unavailable` population, raises on mismatched units rather
+  than silently averaging incompatible quantities.
+  `ConfigurationResourceProfile` — `validity`
+  (`complete`/`partial`/`unavailable`) derived from how many requested
+  metrics have real evidence; `measurement_window` honestly spans the
+  full range across contributing rows, gaps included.
+- **Trade-off engine** (Phase 68-69): `ConfigurationTradeoff` +
+  `build_configuration_tradeoff` — pure composition joining v0.6's
+  `ConfigurationDecision` with an optional `ConfigurationResourceProfile`.
+  `check_comparability` — platform/resolution/target-FPS match, plus
+  same-order-of-magnitude measurement duration (10x heuristic bound);
+  `comparable` and `warnings` always travel together, never one without
+  the other. `compute_resource_delta` — observed-only wording ("+5.1
+  Mbps," never "caused"), grep-verified by a dedicated non-causal-
+  language test. Resource constraints reuse `AcceptanceCriterion`
+  directly (`ACCEPTANCE_OPERATORS` promoted from coverage.py's private
+  `_OPERATORS`, zero behavior change) — `evaluate_resource_constraint`
+  reports `na` (never `fail`) for an unmeasured metric.
+  `evaluate_resource_qualification` — a direct 3-state map
+  (`qualifies`/`does_not_qualify`/`undetermined`), deliberately **not**
+  `evaluate_policy`'s best/worst-case N/A-resolution bounding, since a
+  missing resource measurement has no "will resolve later" property.
+  `find_pareto_front_general`/`dominates_general` — a mechanical
+  generalization of decision.py's fixed 3-dimension Pareto to an
+  arbitrary caller-chosen dimension dict, proven equivalent to the
+  original on every scenario decision.py's own suite covers. No
+  `overall_efficiency_score`/`deployment_score`/any combined number
+  anywhere — grep-verified as an actual field definition, not a
+  docstring mention.
+- **Resource + trade-off API** (`backend/app/api/sessions.py` /
+  `profiles.py`, Phase 70): `POST /{id}/resource-observations/batch` +
+  `GET /{id}/resource-observations` (loose-dict/partial-failure pattern,
+  identical to ground-truth/predictions). `POST /{id}/tradeoffs` — joins
+  v0.6 decision evidence with v0.7 resource evidence, reusing
+  `_resolve_configuration_ids`/`_compute_requirement_results_by_configuration`
+  exactly like `/coverage`/`/analysis`/`/decision-analysis`; takes one
+  required `session_id` (resource evidence is inherently
+  single-session-scoped), validates `resource_metrics`/
+  `resource_constraints`/`pareto_dimensions` against the supported
+  vocabulary, and carries an optional nested `resource_comparison`
+  section (same "`gap_analysis` on `/decision-analysis`" pattern).
+- **Resource UI + trade-off UI** (`ProfileDetail.tsx`'s new Resources
+  tab, Phase 71-72): `ResourcesPanel.tsx` — session picker, per-
+  configuration resource table, drill-down (mean/median/p95/min/max,
+  quality+platform badge, an inline-SVG time-series chart, contributing-
+  observations list). `ResourceQualityBadge.tsx` —
+  `MEASURED`/`DECLARED`/`ESTIMATED`/`UNAVAILABLE`/`MIXED`.
+  `QualificationBadge.tsx` — the v0.7 counterpart to
+  `PolicyStatusBadge`. `ResourceConstraintForm`/`QualificationTable`/
+  `ResourceComparisonSection`/`ResourceParetoSection` — reuse the
+  Decision tab's own acceptance-criterion form shape, render backend-
+  computed qualification directly (never recomputed client-side), and
+  keep comparability warnings always visible alongside the numbers they
+  qualify.
+- **`ResourceMetricSummary.quality` gap found and fixed while building
+  the UI** (Phase 71): the original Phase 67 shape had no way to report
+  which quality tier(s) actually contributed to a computed mean — added
+  `'mixed'` so a badge can never misrepresent a part-`declared` value as
+  plainly "MEASURED."
+- **RideSafe demo** (Phase 73): 70mai front/rear dashcams, framed
+  strictly as *ride monitoring and incident evidence* — never safety-
+  certification, driver-monitoring, or occupant-monitoring. Two
+  sessions (day/night), three configurations, four requirements, plus
+  synthetic resource data telling a "two cameras share some overhead"
+  story. Its day-only Resources-tab view honestly shows `undetermined`
+  policy status for every configuration (it can't see the
+  night-conditioned requirements) even though coverage percentages
+  still differ — documented, not a bug.
+- **PropertyWatch demo** (Phase 74): a generic multi-camera property
+  monitoring setup — home, garage, workshop, storage space, or small
+  warehouse, never one hardcoded building type, no surveillance-
+  identification or face-recognition. Three nested configurations
+  (entrance-only → +storage → +storage+indoor), one task per camera
+  position (a camera-less area is genuinely N/A, never a fabricated
+  fail), a "roughly linear per added camera" resource story, and a
+  genuine 3-point Pareto staircase — the flagship "is the third camera
+  worth its resource load" worked example. Caught and fixed a real
+  pre-shipping bug in its own generator script: `entrance`/`storage`/
+  `indoor` sensor ids are not alphabetically pre-ordered (unlike
+  RideSafe's `front`/`rear`), so building `configuration_id` from
+  insertion order would have silently produced the wrong id.
+- **Jetson / cross-platform validation reviewed and explicitly deferred**
+  (Phase 75, issue #76, closed): no Jetson Orin or any second machine
+  was reachable in the environment this release was built in — confirmed
+  via SSH/hostname resolution, not assumed. No cross-platform numbers
+  fabricated to fill the gap. `ExecutionPlatform` gained zero
+  Jetson/NVIDIA-specific fields either way, per the issue's own
+  out-of-scope note.
+- **Resource-layer robustness pass** (Phase 76, issue #77):
+  `test_resource_robustness.py`, 13 dedicated tests — missing metrics,
+  a failed measurement, a partial time series, inconsistent platform
+  metadata, cross-platform comparison, invalid/mixed units, a genuine
+  zero value, resource evidence with no coverage result and vice versa,
+  a synthetic/physical mixture, all-N/A constraints, and two malformed
+  `/tradeoffs` request shapes.
+- **136 new backend tests** (443 → 579) across every phase above. **10
+  new frontend vitest tests** (34 → 40, `format.ts`'s
+  `formatResourceValue`, Phase 71) — the Resources/trade-off UI itself
+  was live-verified via Playwright against the real running stack at
+  every phase instead, same convention as v0.5/v0.6.
+- `docs/resources.md` (new), `docs/deployment-tradeoffs.md` (new),
+  `docs/provenance.md` (new); `README.md`, `docs/decision-support.md`,
+  `docs/limitations.md` updated for the resource/trade-off layer.
+
+### Fixed
+
+Two real defects, both caught by writing this release's own Phase 76
+robustness tests before shipping — the same "a failing test exposes it,
+then the minimal fix closes it" discipline as v0.6's `evaluate_policy`
+completeness fix:
+
+- **Mixed units for the same metric/configuration crashed `/tradeoffs`
+  with an unhandled `500`.** `unit` is a deliberately open string at
+  ingestion, so nothing stopped two rows for one metric from disagreeing
+  — `compute_resource_metric_summary`'s own `ValueError` was never
+  caught in the API handler. Now a clean `422` naming the offending
+  configuration.
+- **Resource evidence was silently dropped for a configuration with no
+  coverage result.** A `configuration_id` that only ever appears in
+  resource observations (never in any prediction, so no decision
+  evidence exists) had its `resource_profile` unconditionally reported
+  as `null` when explicitly requested — even though real resource rows
+  existed for it. Decision and resource evidence are independent axes;
+  fixed by extracting `_fetch_configuration_resource_profile`, now
+  shared by both the decision-evidence loop and the no-evidence loop.
+
+### Known limitations
+
+Only six resource metrics are supported (no GPU/power/temperature/
+storage-write — no hardware to verify them against in this release's
+environment); a `ResourceObservation`'s `unit` is fully open at
+ingestion, not validated against the supported-metric table;
+`measurement_window` is never cross-checked against a session's own
+evaluation-evidence timespan; resource evidence is measured from inside
+whichever container the collector runs in (same Docker-Desktop-VM
+caveat v0.1's diagnostics already carries, now extended to network
+metrics); cross-platform comparability has only been exercised against
+one real platform (Jetson validation explicitly deferred, issue #76);
+the generalized Pareto front is O(n²), same bound as v0.6's fixed
+version; and `TradeoffResponse` is never persisted (recomputed fresh
+every call). Full list: [docs/limitations.md](docs/limitations.md).
+
 ## [0.6.0] — v0.6 decision support & minimum sufficient sensor set
 
 Built phase by phase (Phase 53 through Phase 62), same discipline as

@@ -122,6 +122,33 @@ release, not silently worked around now.
   don't persist" decision as `RequirementResult`/`AnalysisResponse`
   above, extended to the v0.6 layer. Every `/decision-analysis` call
   recomputes fresh.
+- **`SUPPORTED_RESOURCE_METRICS` (v0.7) is exactly six metrics** -
+  `cpu_percent`, `memory_mb`, `network_receive_mbps`,
+  `network_transmit_mbps`, `fps`, `pipeline_latency_ms`. No GPU, power,
+  temperature, or storage-write collector exists - no discrete-GPU
+  passthrough and no Jetson exist in the environment this release was
+  built in, so shipping those now would mean code no one can exercise or
+  verify. See [resources.md](resources.md#supported_resource_metrics-the-reviewed-six).
+- **A `ResourceObservation`'s `unit` is a fully open string at
+  ingestion**, not validated against `SUPPORTED_RESOURCE_METRICS`'s own
+  unit mapping - same open-vocabulary posture as `metric` itself. A
+  mismatched unit for the same metric/configuration is only caught later,
+  at read time (`/tradeoffs` returns a clean `422`), not rejected at
+  ingestion. See
+  [deployment-tradeoffs.md](deployment-tradeoffs.md#a-mismatched-unit-is-caught-at-read-time-not-ingestion).
+- **A resource observation's `measurement_window` is never cross-checked
+  against a session's own evaluation-evidence timespan.** A session with
+  500 seconds of ground-truth/prediction evidence can carry a resource
+  observation window covering only a few seconds of that, and nothing in
+  the resource layer flags the mismatch - `Session` alone is the scoping
+  entity, with no separate measurement-run concept (v0.7 architecture
+  review). See
+  [resources.md](resources.md#session-not-a-new-resourcemeasurementrun-entity).
+- **v0.7's generalized Pareto front is O(n²) pairwise**, same bound and
+  same justification as v0.6's fixed-dimension version above.
+- **`TradeoffResponse` is never persisted** - same "recompute, don't
+  persist" decision as every prior analysis layer's response shape.
+  Every `/tradeoffs` call recomputes fresh.
 - **`metric` lookup is limited to what `ComparisonMetrics` already
   exposes** (`accuracy`, `precision_macro`, `recall_macro`, `f1_macro`,
   `precision_micro`, `recall_micro`, `f1_micro`, the synthetic
@@ -198,14 +225,23 @@ release, not silently worked around now.
   `psutil` from inside the `ros` container; on Docker Desktop for Mac this
   reflects the Linux VM's overall resource view, not a cgroup-isolated
   per-container figure.
+- **v0.7's resource collector (`app/resource_collector.py`) measures from
+  inside the `backend` container instead** - the same Docker-Desktop-VM
+  caveat above applies, now extended for the first time to
+  `network_receive_mbps`/`network_transmit_mbps` too: readings are
+  host-interface-wide, not per-RTSP-stream, so if multiple sensors share
+  one interface (as they do in the reference setup), a single
+  configuration's "network Mbps" really means "total host network
+  activity during the window." See
+  [resources.md](resources.md#collection-appresource_collectorpy).
 - Developed and verified only on Apple Silicon (M2, 8GB target). Base
   images (`ros:humble-ros-base`) are confirmed multi-arch (arm64/v8
   manifest present), and no code path is architecture-specific - but
   x86_64/Jetson has not been run, only reasoned about.
-- **v0.7 resource trade-offs (`docs/decision-support.md`) have only ever
-  been measured on one machine/platform.** `ExecutionPlatform` and the
-  `platform_id`-based comparability warning in
-  `backend/app/domain/resources.py` were built to support comparing
+- **v0.7 resource trade-offs ([deployment-tradeoffs.md](deployment-tradeoffs.md#comparability-four-independent-rules))
+  have only ever been measured on one machine/platform.**
+  `ExecutionPlatform` and the `platform_id`-based comparability warning
+  in `backend/app/domain/resources.py` were built to support comparing
   observations across genuinely different machines, but no second
   platform's data has actually been captured to exercise that path.
   Reviewed for v0.7 and explicitly deferred (issue #76, closed): no
@@ -213,10 +249,7 @@ release, not silently worked around now.
   this release was built in, and no cross-platform numbers are
   fabricated to fill the gap. The domain model gained zero
   Jetson/NVIDIA-specific fields either way - a GPU metric, if ever
-  collected, is just another entry in the open `metric` vocabulary. See
-  `check_comparability` in `backend/app/domain/resources.py` for what the
-  cross-platform warning does today with only one platform ever observed;
-  full v0.7 documentation lands in `docs/resources.md` (issue #78).
+  collected, is just another entry in the open `metric` vocabulary.
 
 ## Honestly-reported, not yet resolved
 
