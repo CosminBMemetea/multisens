@@ -345,14 +345,14 @@ nav item, matching v0.5's own pattern of adding tabs rather than pages.
 
 The "Generic Exterior Sensing Decision Demo" (see
 [examples/profiles/README.md](../examples/profiles/README.md)) is a
-second, genuinely different synthetic profile/dataset from the cabin-
-safety demo - not a variant squeezed into it (v0.6 architecture review,
+second, genuinely different synthetic profile/dataset from the sensor-lab
+demo - not a variant squeezed into it (v0.6 architecture review,
 Q23). Its reference sensor ids (`front_rgb`, `rear_rgb`, `sim_thermal`,
 `sim_depth`) were deliberately **not** added to `config/sensors.yaml`:
 doing so would violate the one-sensor-per-modality launch-time guard
 (`front_rgb`/`rear_rgb` are both modality `rgb`; `sim_thermal`/
 `sim_depth` would collide with the already-configured live `thermal`/
-`depth` entries powering the cabin-safety dashboard). These four ids are
+`depth` entries powering the sensor-lab-demo dashboard). These four ids are
 evaluation-only, with `SensorChips`' graceful no-badge fallback covering
 display. The Decision tab shows a standing **"SYNTHETIC DECISION DEMO"**
 banner (driven by the profile's own `metadata.synthetic: true`) making

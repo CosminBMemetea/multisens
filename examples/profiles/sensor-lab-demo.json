@@ -1,0 +1,103 @@
+{
+  "id": "sensor-lab-demo-v1.0",
+  "name": "Generic Sensor Evaluation Lab",
+  "version": "1.0",
+  "description": "Deterministic synthetic reference profile for the MultiSens v0.4/v0.5 requirement-coverage and condition-exploration workflow. SYNTHETIC DATA - demonstrates functionality only, not a claim about real sensor performance. See examples/profiles/README.md.",
+  "metadata": { "synthetic": true },
+  "groups": [
+    { "id": "baseline", "name": "Baseline Detection" },
+    { "id": "visibility-robustness", "name": "Visibility Robustness" },
+    { "id": "strict-accuracy", "name": "Strict Accuracy" },
+    { "id": "weather-robustness", "name": "Weather Robustness" }
+  ],
+  "requirements": [
+    {
+      "id": "req-day-baseline",
+      "group_id": "baseline",
+      "name": "Day baseline",
+      "description": "Baseline presence accuracy in daylight with a clear (unoccluded) view.",
+      "task": "presence",
+      "conditions": { "illumination": "day", "occlusion": "none", "weather": "clear" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
+      ]
+    },
+    {
+      "id": "req-night-baseline",
+      "group_id": "baseline",
+      "name": "Night baseline",
+      "description": "Baseline presence accuracy at night with a clear (unoccluded) view.",
+      "task": "presence",
+      "conditions": { "illumination": "night", "occlusion": "none", "weather": "clear" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
+      ]
+    },
+    {
+      "id": "req-day-occluded",
+      "group_id": "visibility-robustness",
+      "name": "Day, partial occlusion",
+      "description": "Presence accuracy in daylight with partial occlusion of the sensor's view.",
+      "task": "presence",
+      "conditions": { "illumination": "day", "occlusion": "partial", "weather": "clear" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.80 }
+      ]
+    },
+    {
+      "id": "req-night-occluded",
+      "group_id": "visibility-robustness",
+      "name": "Night, partial occlusion",
+      "description": "Presence accuracy at night with partial occlusion of the sensor's view - the hardest single-dimension case in this demo.",
+      "task": "presence",
+      "conditions": { "illumination": "night", "occlusion": "partial", "weather": "clear" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.75 }
+      ]
+    },
+    {
+      "id": "req-day-strict",
+      "group_id": "strict-accuracy",
+      "name": "Strict day accuracy",
+      "description": "A stricter accuracy bar under the same daylight/clear-view conditions as the Baseline Detection group - demonstrates that the same evidence can satisfy one requirement and fail another; acceptance is requirement-specific, not a property of the configuration alone.",
+      "task": "presence",
+      "conditions": { "illumination": "day", "occlusion": "none", "weather": "clear" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.95 }
+      ]
+    },
+    {
+      "id": "req-night-strict",
+      "group_id": "strict-accuracy",
+      "name": "Strict night accuracy",
+      "description": "A stricter accuracy bar under the same night/clear-view conditions as the Baseline Detection group.",
+      "task": "presence",
+      "conditions": { "illumination": "night", "occlusion": "none", "weather": "clear" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.95 }
+      ]
+    },
+    {
+      "id": "req-day-rain",
+      "group_id": "weather-robustness",
+      "name": "Day, rain",
+      "description": "Presence accuracy in daylight with a clear (unoccluded) view, under rain - same acceptance bar as the day baseline, so a pass/fail difference is attributable to weather alone, not a stricter threshold.",
+      "task": "presence",
+      "conditions": { "illumination": "day", "occlusion": "none", "weather": "rain" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
+      ]
+    },
+    {
+      "id": "req-night-rain",
+      "group_id": "weather-robustness",
+      "name": "Night, rain",
+      "description": "Presence accuracy at night with a clear (unoccluded) view, under rain - same acceptance bar as the night baseline. Thermal specifically fails this one where it passes the night baseline, demonstrating that a condition dimension can flip an outcome, not just shift a number.",
+      "task": "presence",
+      "conditions": { "illumination": "night", "occlusion": "none", "weather": "rain" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
+      ]
+    }
+  ]
+}

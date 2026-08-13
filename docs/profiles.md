@@ -24,12 +24,12 @@ flowchart LR
 ```
 
 MultiSens's core has **no built-in knowledge of any specific
-requirement framework** — no NCAP, no DMS/OMS certification scheme, no
-automotive-specific logic anywhere in `app/domain/profiles.py` or
-`coverage.py`. A profile representing such a framework is something an
-external user builds with the generic shapes below, entirely outside
-the core. See [the synthetic reference profile](#synthetic-reference-profile)
-for a worked example that is deliberately *not* one of those frameworks.
+requirement framework** — no domain-specific logic anywhere in
+`app/domain/profiles.py` or `coverage.py`. A profile representing any
+particular framework is something an external user builds with the
+generic shapes below, entirely outside the core. See
+[the synthetic reference profile](#synthetic-reference-profile) for a
+worked example built entirely from those generic shapes.
 
 ## Domain model
 
@@ -153,11 +153,11 @@ coverage matrix) plus the coverage view described in
 ## Synthetic reference profile
 
 [`examples/profiles/README.md`](../examples/profiles/README.md) —
-"Generic Cabin Safety Demo," deliberately not modeled on or named after
-any real regulatory or certification framework. Four groups, eight
-requirements across three condition dimensions (`illumination`/
-`occlusion`/`eyewear`), six sessions, five configurations, every accuracy
-value exact by construction. See that README for the full derivation and
+"Generic Sensor Evaluation Lab," built entirely from this layer's own
+generic shapes. Four groups, eight requirements across three condition
+dimensions (`illumination`/`occlusion`/`weather`), six sessions, five
+configurations, every accuracy value exact by construction. See that
+README for the full derivation and
 the independent-verification test (`backend/tests/test_profile_demo.py`)
 that recomputes all 40 requirement×configuration cells without importing
 any production coverage code.

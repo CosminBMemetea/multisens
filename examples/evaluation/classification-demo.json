@@ -3,14 +3,14 @@
   "session": {
     "id": "demo-presence-classification",
     "name": "Demo Presence Classification",
-    "scenario_id": "synthetic-cabin-demo",
+    "scenario_id": "synthetic-classification-demo",
     "metadata": {
       "synthetic": true
     }
   },
   "scenario": {
-    "id": "synthetic-cabin-demo",
-    "name": "Synthetic Cabin Demo",
+    "id": "synthetic-classification-demo",
+    "name": "Synthetic Classification Demo",
     "description": "Deterministic synthetic dataset for demonstrating the MultiSens evaluation workflow end to end. Ground truth and predictions are both generated, not measured - see examples/evaluation/README.md. Does NOT represent real sensor performance.",
     "tags": [
       "synthetic",

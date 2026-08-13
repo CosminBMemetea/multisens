@@ -8,7 +8,8 @@ release, not silently worked around now.
 ## Scope boundaries (by design, not oversight)
 
 - **No perception, no ML inference, no sensor fusion, no causal or
-  statistical claims, no NCAP/DMS/OMS-specific logic.** v0.1 was
+  statistical claims, no built-in domain-specific compliance logic.**
+  v0.1 was
   ingestion, synchronization, diagnostics, and visualization; v0.2 added
   ground-truth evaluation (classification only - see below); v0.3 added
   configuration comparison (see below) - never a claim about *why* two

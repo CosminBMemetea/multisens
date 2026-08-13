@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Loads examples/profiles/cabin-safety-demo-data.json and
-cabin-safety-demo.json into a running MultiSens backend via its ordinary
+"""Loads examples/profiles/sensor-lab-demo-data.json and
+sensor-lab-demo.json into a running MultiSens backend via its ordinary
 REST API - same "no dedicated import endpoint" reasoning as
 scripts/load_demo_data.py.
 
@@ -21,8 +21,8 @@ import urllib.request
 from pathlib import Path
 
 API_BASE = os.environ.get('MULTISENS_API_BASE', 'http://localhost:8000')
-DATA_PATH = Path(__file__).parent.parent / 'examples' / 'profiles' / 'cabin-safety-demo-data.json'
-PROFILE_PATH = Path(__file__).parent.parent / 'examples' / 'profiles' / 'cabin-safety-demo.json'
+DATA_PATH = Path(__file__).parent.parent / 'examples' / 'profiles' / 'sensor-lab-demo-data.json'
+PROFILE_PATH = Path(__file__).parent.parent / 'examples' / 'profiles' / 'sensor-lab-demo.json'
 
 
 def _request(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:

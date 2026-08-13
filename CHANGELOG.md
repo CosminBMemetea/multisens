@@ -5,6 +5,50 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [Unreleased] — public-language cleanup
+
+Forward-only cleanup ahead of v0.8, requested and reviewed before
+execution. Retires the last cabin-themed demo content and trims generic
+regulatory-framework disclaimers project-wide - no functionality
+changes except renaming/retheming demo fixtures, and no historical
+CHANGELOG entries below this one were edited (those describe what each
+already-tagged release actually shipped).
+
+### Changed
+
+- **Retired the "Generic Cabin Safety Demo" (v0.4/v0.5's flagship
+  requirement-profile/coverage demo), rethemed to "Generic Sensor
+  Evaluation Lab."** All numbers (accuracies, pass/fail pattern,
+  coverage percentages) stay bit-identical - only names changed:
+  `examples/profiles/cabin-safety-demo.json`/`cabin-safety-demo-data.json`
+  → `sensor-lab-demo.json`/`sensor-lab-demo-data.json`; requirement
+  groups `Alertness`/`Occupancy`/`Eyewear Robustness` →
+  `Baseline Detection`/`Strict Accuracy`/`Weather Robustness`
+  (`Visibility Robustness` was already neutral, unchanged); the third
+  condition dimension `eyewear` (`none`/`glasses`) → `weather`
+  (`clear`/`rain`), including the requirement/session descriptions that
+  used to reference "occupant wearing glasses." `scripts/
+  generate_profile_demo_data.py`/`load_profile_demo_data.py`,
+  `backend/tests/test_profile_demo.py`, `examples/profiles/README.md`,
+  `docs/profiles.md`, `docs/condition-explorer.md`,
+  `docs/decision-support.md`, and `README.md` updated to match; all 5
+  independent-verification tests re-pass with unchanged expected values,
+  confirming the retheme changed nothing but names.
+- **Renamed the v0.2 evaluation demo's scenario id** (`synthetic-cabin-demo`
+  → `synthetic-classification-demo`, `examples/evaluation/classification-demo.json`) -
+  it never had cabin-specific content, "cabin" was only ever an arbitrary
+  id string.
+- **Trimmed regulatory-framework-naming disclaimers** ("not NCAP," "not a
+  DMS/OMS scheme," etc.) from `README.md`, `docs/profiles.md`,
+  `docs/limitations.md`, and the frontend's synthetic-data banner
+  (`ProfileDetail.tsx`) - MultiSens's "no built-in domain-specific
+  framework logic" statement stands on its own without naming outside
+  schemes just to disclaim them. Design-rationale uses of "regulatory-
+  looking" that don't name a specific outside framework (`decision.py`,
+  `DecisionPanel.tsx`, `docs/decision-support.md` - explaining why
+  `DecisionPolicy` has no default) are unchanged; they were never a
+  disclaimer to begin with.
+
 ## [0.7.0] — v0.7 resource observation & deployment trade-offs
 
 Built phase by phase (Phase 64 through Phase 76), same discipline as

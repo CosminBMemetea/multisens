@@ -7,11 +7,11 @@ Run once, output committed to git:
 
     python3 scripts/generate_decision_demo_data.py
 
-A genuinely different scenario from cabin-safety-demo.json's interior/
-occupant-monitoring story - exterior sensing across sensor *instances*,
+A genuinely different scenario from sensor-lab-demo.json's condition-
+exploration story - exterior sensing across sensor *instances*,
 not just modalities: front_rgb and rear_rgb are two separate physical
 RGB camera positions, sim_thermal and sim_depth are simulated. This is
-a new profile document, not squeezed into cabin-safety-demo (v0.6
+a new profile document, not squeezed into sensor-lab-demo (v0.6
 architecture review, issue #54, Q23) - the two demos answer genuinely
 different questions (v0.4/v0.5's "does this evidence satisfy a
 requirement" vs v0.6's "which sensor combination is minimally
@@ -20,7 +20,7 @@ sufficient").
 Deliberately no condition dimensions (Requirement.conditions is empty
 everywhere) - this demo is about the *sensor-combination* space v0.6
 reasons over, not a second condition-exploration showcase; that's
-already exhaustively demonstrated by cabin-safety-demo. One session,
+already exhaustively demonstrated by sensor-lab-demo. One session,
 one task, four acceptance thresholds is enough to produce a genuinely
 informative, hand-verifiable minimum-sufficient-configuration and
 Pareto-front story.

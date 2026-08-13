@@ -15,7 +15,7 @@ front/rear dashcams), reusing the exact sensor-instance-not-modality
 precedent v0.6's front_rgb/rear_rgb already established - no new
 sensor-identity work needed (see docs/decision-support.md).
 
-Two sessions (day/night), matching cabin-safety-demo's own illumination
+Two sessions (day/night), matching sensor-lab-demo's own illumination
 dimension mechanism but with zero occupant/driver-monitoring framing -
 this demo is about whether a camera *sees the scene*, not who or what is
 in it. Three configurations (front-only, rear-only, front+rear) tell a
@@ -55,7 +55,7 @@ NIGHT_SESSION_ID = 'ridesafe-night-session'
 # light; rear_rgb alone is the mirror image (clears low light, not
 # daylight) - two cameras with complementary, not identical, strengths,
 # same "genuinely different pass/fail pattern per configuration"
-# discipline cabin-safety-demo/exterior-decision-demo already established.
+# discipline sensor-lab-demo/exterior-decision-demo already established.
 # Only the combined front+rear configuration reliably clears every bar,
 # day and night - the single minimal sufficient configuration.
 CONFIGS = [

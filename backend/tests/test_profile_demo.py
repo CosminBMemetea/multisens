@@ -13,44 +13,44 @@ from pathlib import Path
 
 import pytest
 
-DATA_PATH = Path(__file__).resolve().parents[2] / 'examples' / 'profiles' / 'cabin-safety-demo-data.json'
-PROFILE_PATH = Path(__file__).resolve().parents[2] / 'examples' / 'profiles' / 'cabin-safety-demo.json'
+DATA_PATH = Path(__file__).resolve().parents[2] / 'examples' / 'profiles' / 'sensor-lab-demo-data.json'
+PROFILE_PATH = Path(__file__).resolve().parents[2] / 'examples' / 'profiles' / 'sensor-lab-demo.json'
 
 # By construction (see scripts/generate_profile_demo_data.py), not measured.
 EXPECTED_ACCURACY = {
-    'cabin-day-clear': {'cfg-rgb': 0.92, 'cfg-depth': 0.88, 'cfg-thermal': 0.78,
-                         'cfg-rgb-thermal': 0.94, 'cfg-depth-rgb-thermal': 0.97},
-    'cabin-day-occluded': {'cfg-rgb': 0.75, 'cfg-depth': 0.68, 'cfg-thermal': 0.80,
-                            'cfg-rgb-thermal': 0.88, 'cfg-depth-rgb-thermal': 0.93},
-    'cabin-night-clear': {'cfg-rgb': 0.60, 'cfg-depth': 0.88, 'cfg-thermal': 0.85,
-                           'cfg-rgb-thermal': 0.90, 'cfg-depth-rgb-thermal': 0.95},
-    'cabin-night-occluded': {'cfg-rgb': 0.45, 'cfg-depth': 0.68, 'cfg-thermal': 0.78,
-                              'cfg-rgb-thermal': 0.82, 'cfg-depth-rgb-thermal': 0.90},
-    'cabin-day-glasses': {'cfg-rgb': 0.90, 'cfg-depth': 0.87, 'cfg-thermal': 0.70,
-                           'cfg-rgb-thermal': 0.91, 'cfg-depth-rgb-thermal': 0.95},
-    'cabin-night-glasses': {'cfg-rgb': 0.58, 'cfg-depth': 0.87, 'cfg-thermal': 0.75,
-                             'cfg-rgb-thermal': 0.86, 'cfg-depth-rgb-thermal': 0.92},
+    'lab-day-clear': {'cfg-rgb': 0.92, 'cfg-depth': 0.88, 'cfg-thermal': 0.78,
+                       'cfg-rgb-thermal': 0.94, 'cfg-depth-rgb-thermal': 0.97},
+    'lab-day-occluded': {'cfg-rgb': 0.75, 'cfg-depth': 0.68, 'cfg-thermal': 0.80,
+                          'cfg-rgb-thermal': 0.88, 'cfg-depth-rgb-thermal': 0.93},
+    'lab-night-clear': {'cfg-rgb': 0.60, 'cfg-depth': 0.88, 'cfg-thermal': 0.85,
+                         'cfg-rgb-thermal': 0.90, 'cfg-depth-rgb-thermal': 0.95},
+    'lab-night-occluded': {'cfg-rgb': 0.45, 'cfg-depth': 0.68, 'cfg-thermal': 0.78,
+                            'cfg-rgb-thermal': 0.82, 'cfg-depth-rgb-thermal': 0.90},
+    'lab-day-rain': {'cfg-rgb': 0.90, 'cfg-depth': 0.87, 'cfg-thermal': 0.70,
+                      'cfg-rgb-thermal': 0.91, 'cfg-depth-rgb-thermal': 0.95},
+    'lab-night-rain': {'cfg-rgb': 0.58, 'cfg-depth': 0.87, 'cfg-thermal': 0.75,
+                        'cfg-rgb-thermal': 0.86, 'cfg-depth-rgb-thermal': 0.92},
 }
 
-# requirement_id -> (illumination, occlusion, eyewear, threshold) -
-# hand-derived from cabin-safety-demo.json, independent of parsing that
+# requirement_id -> (illumination, occlusion, weather, threshold) -
+# hand-derived from sensor-lab-demo.json, independent of parsing that
 # file's `acceptance`/`conditions` structure at all.
 REQUIREMENTS = {
-    'req-day-baseline': ('day', 'none', 'none', 0.85),
-    'req-night-baseline': ('night', 'none', 'none', 0.85),
-    'req-day-occluded': ('day', 'partial', 'none', 0.80),
-    'req-night-occluded': ('night', 'partial', 'none', 0.75),
-    'req-day-strict': ('day', 'none', 'none', 0.95),
-    'req-night-strict': ('night', 'none', 'none', 0.95),
-    'req-day-glasses': ('day', 'none', 'glasses', 0.85),
-    'req-night-glasses': ('night', 'none', 'glasses', 0.85),
+    'req-day-baseline': ('day', 'none', 'clear', 0.85),
+    'req-night-baseline': ('night', 'none', 'clear', 0.85),
+    'req-day-occluded': ('day', 'partial', 'clear', 0.80),
+    'req-night-occluded': ('night', 'partial', 'clear', 0.75),
+    'req-day-strict': ('day', 'none', 'clear', 0.95),
+    'req-night-strict': ('night', 'none', 'clear', 0.95),
+    'req-day-rain': ('day', 'none', 'rain', 0.85),
+    'req-night-rain': ('night', 'none', 'rain', 0.85),
 }
 
 REQUIREMENT_GROUP = {
-    'req-day-baseline': 'alertness', 'req-night-baseline': 'alertness',
+    'req-day-baseline': 'baseline', 'req-night-baseline': 'baseline',
     'req-day-occluded': 'visibility-robustness', 'req-night-occluded': 'visibility-robustness',
-    'req-day-strict': 'occupancy', 'req-night-strict': 'occupancy',
-    'req-day-glasses': 'eyewear-robustness', 'req-night-glasses': 'eyewear-robustness',
+    'req-day-strict': 'strict-accuracy', 'req-night-strict': 'strict-accuracy',
+    'req-day-rain': 'weather-robustness', 'req-night-rain': 'weather-robustness',
 }
 
 CONFIGS = ['cfg-rgb', 'cfg-depth', 'cfg-thermal', 'cfg-rgb-thermal', 'cfg-depth-rgb-thermal']
@@ -70,14 +70,15 @@ EXPECTED_STATUS = {
                         'cfg-rgb-thermal': 'fail', 'cfg-depth-rgb-thermal': 'pass'},
     'req-night-strict': {'cfg-rgb': 'fail', 'cfg-depth': 'fail', 'cfg-thermal': 'fail',
                           'cfg-rgb-thermal': 'fail', 'cfg-depth-rgb-thermal': 'pass'},
-    # Same 0.85 bar as the Alertness baselines - a pass/fail difference
-    # here is attributable to eyewear alone. Night flips cfg-thermal from
-    # pass (0.85 vs night-baseline's 0.85 observed exactly at threshold)
-    # to fail (0.75) - the one place this dimension changes an outcome.
-    'req-day-glasses': {'cfg-rgb': 'pass', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
-                         'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
-    'req-night-glasses': {'cfg-rgb': 'fail', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
-                           'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
+    # Same 0.85 bar as the Baseline Detection group - a pass/fail
+    # difference here is attributable to rain alone. Night flips
+    # cfg-thermal from pass (0.85 vs night-baseline's 0.85 observed
+    # exactly at threshold) to fail (0.75) - the one place this
+    # dimension changes an outcome.
+    'req-day-rain': {'cfg-rgb': 'pass', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
+                      'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
+    'req-night-rain': {'cfg-rgb': 'fail', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
+                        'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
 }
 
 # pass_count / 8 - derived from EXPECTED_STATUS above, restated here as an
@@ -119,8 +120,8 @@ def _independent_status(accuracy: dict[str, dict[str, float]], sessions_by_condi
     threshold, exactly what a requirement's condition + acceptance
     criterion reduce to for this deliberately condition-unambiguous demo."""
     status: dict[str, dict[str, str]] = {}
-    for req_id, (illumination, occlusion, eyewear, threshold) in REQUIREMENTS.items():
-        session_id = sessions_by_condition[(illumination, occlusion, eyewear)]
+    for req_id, (illumination, occlusion, weather, threshold) in REQUIREMENTS.items():
+        session_id = sessions_by_condition[(illumination, occlusion, weather)]
         status[req_id] = {}
         for config in CONFIGS:
             observed = accuracy[session_id][config]
@@ -135,7 +136,7 @@ def test_dataset_file_has_expected_shape():
     assert 'synthetic' in dataset['scenario']['tags']
     for session in dataset['sessions']:
         assert session['metadata']['synthetic'] is True
-        assert 'eyewear' in session['metadata']  # Phase 50's third condition dimension
+        assert 'weather' in session['metadata']  # Phase 50's third condition dimension
         assert len(dataset['ground_truth'][session['id']]) == 100
         assert len(dataset['predictions'][session['id']]) == 500  # 5 configs x 100
 
@@ -146,12 +147,12 @@ def test_profile_file_has_expected_shape():
     assert len(profile['groups']) == 4
     assert len(profile['requirements']) == 8
     assert {g['id'] for g in profile['groups']} == {
-        'alertness', 'visibility-robustness', 'occupancy', 'eyewear-robustness',
+        'baseline', 'visibility-robustness', 'strict-accuracy', 'weather-robustness',
     }
     assert {r['id'] for r in profile['requirements']} == set(REQUIREMENTS)
     for requirement in profile['requirements']:
         assert requirement['group_id'] == REQUIREMENT_GROUP[requirement['id']]
-        assert requirement['conditions']['eyewear'] == REQUIREMENTS[requirement['id']][2]
+        assert requirement['conditions']['weather'] == REQUIREMENTS[requirement['id']][2]
 
 
 def test_independent_accuracy_matches_construction_targets():
@@ -164,7 +165,7 @@ def test_independent_status_matches_hand_derived_table():
     # before trusting them to validate the API response below.
     dataset = _load_data()
     sessions_by_condition = {
-        (s['metadata']['illumination'], s['metadata']['occlusion'], s['metadata']['eyewear']): s['id']
+        (s['metadata']['illumination'], s['metadata']['occlusion'], s['metadata']['weather']): s['id']
         for s in dataset['sessions']
     }
     accuracy = _independent_accuracy(dataset)

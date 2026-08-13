@@ -77,7 +77,7 @@ been evaluated yet. A `Facet` (`key`, `values: list[FacetValue]`) is
 discovered fresh from whatever a given profile's requirements actually
 declare - never a fixed enum of known condition names. A profile whose
 requirements declare a condition key this module has never seen before
-(the extended `cabin-safety-demo` profile's `eyewear` dimension, added
+(the extended `sensor-lab-demo` profile's `weather` dimension, added
 in Phase 50, is exactly this case) works with zero code changes.
 
 ## Aggregation
@@ -277,11 +277,11 @@ verified byte-identical to its pre-v0.5 behavior.
 
 ## Synthetic reference profile
 
-The standing "Generic Cabin Safety Demo" (see
+The standing "Generic Sensor Evaluation Lab" (see
 [profiles.md](profiles.md#synthetic-reference-profile)) was extended in
-place in Phase 50 with a third condition dimension (`eyewear`) precisely
+place in Phase 50 with a third condition dimension (`weather`) precisely
 so this layer has real, hand-verifiable multidimensional data to
-exercise - the `illumination`×`eyewear` cross-tab for `cfg-thermal` is a
+exercise - the `illumination`×`weather` cross-tab for `cfg-thermal` is a
 worked example of a condition dimension flipping a pass/fail outcome,
 not just shifting a number. See
 [examples/profiles/README.md](../examples/profiles/README.md).

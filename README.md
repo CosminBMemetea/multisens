@@ -38,8 +38,8 @@ whatever else speaks RTSP.
   satisfy them — `PASS`/`FAIL`/`N/A` per requirement, coverage and
   evidence-completeness always shown together, every result traceable to
   its exact evidence. No built-in knowledge of any specific requirement
-  framework (not NCAP, not a DMS/OMS scheme) — external users build
-  those with the same generic shapes this core exposes. Full contract:
+  framework — external users build those with the same generic shapes
+  this core exposes. Full contract:
   [docs/profiles.md](docs/profiles.md) /
   [docs/coverage.md](docs/coverage.md).
 - A **condition-exploration layer** (v0.5): filter, group, and cross-
@@ -88,10 +88,9 @@ whatever else speaks RTSP.
 
 ## What MultiSens is NOT
 
-- **Not a perception or ML platform, and not a regulatory or
-  certification authority.** No inference, no NCAP/DMS/OMS logic, no
-  object detection, no "compliant"/"certified"/"safety score" claim
-  anywhere in the UI. MultiSens evaluates predictions; it does not
+- **Not a perception or ML platform.** No inference, no object
+  detection, no "compliant"/"certified"/"safety score" claim anywhere
+  in the UI. MultiSens evaluates predictions; it does not
   produce them — a prediction may come from ROS, REST, an imported file,
   another computer, or proprietary software, and MultiSens doesn't need
   to know which. v0.4's requirement profiles judge caller-defined
@@ -231,10 +230,9 @@ Ablation, and General Comparison sections. Full contract:
 
 ## Requirement profile / coverage / exploration quick start (v0.4 + v0.5)
 
-A separate, deliberately generic demo — "Generic Cabin Safety Demo," not
-NCAP or any other real framework — six sessions across
-`illumination`/`occlusion`/`eyewear` conditions, eight requirements,
-exact-by-construction accuracies:
+A separate, deliberately generic demo — "Generic Sensor Evaluation Lab" —
+six sessions across `illumination`/`occlusion`/`weather` conditions, eight
+requirements, exact-by-construction accuracies:
 
 ```bash
 docker compose up -d
@@ -242,7 +240,7 @@ python3 scripts/load_profile_demo_data.py
 open http://localhost:8080/profiles
 ```
 
-Open "Generic Cabin Safety Demo," hit **Compute coverage**. Every
+Open "Generic Sensor Evaluation Lab," hit **Compute coverage**. Every
 configuration passes a genuinely different subset of the eight
 requirements (25%/50%/38%/75%/100% coverage) — click any cell to see
 exactly which evidence produced it. The **Explorer**, **Failures**, and
@@ -256,7 +254,7 @@ derivation and [docs/profiles.md](docs/profiles.md) /
 
 A third, genuinely different synthetic profile/dataset — "Generic
 Exterior Sensing Decision Demo," front/rear camera positions plus
-simulated thermal/depth, not a variant of the cabin-safety demo above:
+simulated thermal/depth, not a variant of the sensor-lab demo above:
 
 ```bash
 docker compose up -d
@@ -409,8 +407,7 @@ Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
 claims (no p-values, no confidence intervals, no "sensor X caused Y"),
 detection/regression metric engines (the domain model already supports
-them; the evaluators don't exist yet), NCAP/DMS/OMS-specific logic or any
-other built-in regulatory/certification framework, per-requirement
+them; the evaluators don't exist yet), per-requirement
 weighted/mandatory-scoped aggregation (v0.6's mandatory flag is an
 all-or-nothing population setting, not a per-requirement list), cost/
 power/latency decision objectives (only `minimize_sensor_count` exists),
