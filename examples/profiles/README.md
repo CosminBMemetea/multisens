@@ -3,24 +3,33 @@
 ## `cabin-safety-demo.json` + `cabin-safety-demo-data.json`
 
 A deterministic, **entirely synthetic** reference profile and dataset for
-exercising the v0.4 requirement-profile and coverage workflow end to end.
+exercising the v0.4 requirement-profile/coverage workflow and the v0.5
+condition-exploration workflow (facets, filtering, breakdown, cross-tab,
+failure/N/A explorers, traceability) end to end.
 
 **`cabin-safety-demo.json`** is the profile document itself (the exact shape
 `POST /api/profiles` accepts): "Generic Cabin Safety Demo", version `1.0`,
-three generic requirement groups (`Alertness`, `Visibility Robustness`,
-`Occupancy`), six requirements, each keyed to a `presence` task and an
-`illumination`/`occlusion` condition pair.
+four generic requirement groups (`Alertness`, `Visibility Robustness`,
+`Occupancy`, `Eyewear Robustness`), eight requirements, each keyed to a
+`presence` task and an `illumination`/`occlusion`/`eyewear` condition
+triple.
 
 **`cabin-safety-demo-data.json`** is the underlying evidence: one shared
-scenario and **four sessions** - one per `(illumination, occlusion)`
-combination (`day`/`none`, `day`/`partial`, `night`/`none`,
-`night`/`partial`) - each with 100 `presence` ground-truth samples and
-predictions from five configurations (`rgb`, `depth`, `thermal`,
-`rgb+thermal`, `rgb+depth+thermal`). Conditions live on `Session.metadata`,
-not a new table - see the v0.4 architecture review (issue #31, Q8) for why
-that's the right binding point. Because every requirement in this profile
-names *both* condition keys, exactly one session ever matches each
-requirement - there is no evidence ambiguity anywhere in this demo.
+scenario and **six sessions**. The original four cover one session per
+`(illumination, occlusion)` combination (`day`/`none`, `day`/`partial`,
+`night`/`none`, `night`/`partial`), each with `eyewear: none`. Two more
+(Phase 50, v0.5) hold occlusion at `none` and vary `eyewear` instead
+(`day`/`glasses`, `night`/`glasses`) - deliberately **not** a full
+`(illumination x occlusion x eyewear)` Cartesian product, since "partial
+occlusion AND glasses" would conflate two visibility-degrading factors into
+one meaningless combination. Every session has 100 `presence` ground-truth
+samples and predictions from five configurations (`rgb`, `depth`,
+`thermal`, `rgb+thermal`, `rgb+depth+thermal`). Conditions live on
+`Session.metadata`, not a new table - see the v0.4 architecture review
+(issue #31, Q8) for why that's the right binding point. Because every
+requirement in this profile names all *three* condition keys, exactly one
+session ever matches each requirement - there is no evidence ambiguity
+anywhere in this demo.
 
 ## Why these numbers
 
@@ -30,38 +39,46 @@ Every accuracy value below is **generated, not measured** - see
 session/configuration pair, so accuracy is exact, not a probabilistic
 approximation - same technique as `scripts/generate_demo_data.py`). They
 are deliberately constructed so each configuration has a genuinely
-**different** pass/fail pattern across the profile's six requirements, not
+**different** pass/fail pattern across the profile's eight requirements, not
 just a different total:
 
-| Configuration | day/clear | day/occluded | night/clear | night/occluded |
-|---|---|---|---|---|
-| `cfg-rgb` | 92% | 75% | 60% | 45% |
-| `cfg-depth` | 88% | 68% | 88% | 68% |
-| `cfg-thermal` | 78% | 80% | 85% | 78% |
-| `cfg-rgb-thermal` | 94% | 88% | 90% | 82% |
-| `cfg-depth-rgb-thermal` | 97% | 93% | 95% | 90% |
+| Configuration | day/clear | day/occluded | night/clear | night/occluded | day/glasses | night/glasses |
+|---|---|---|---|---|---|---|
+| `cfg-rgb` | 92% | 75% | 60% | 45% | 90% | 58% |
+| `cfg-depth` | 88% | 68% | 88% | 68% | 87% | 87% |
+| `cfg-thermal` | 78% | 80% | 85% | 78% | 70% | 75% |
+| `cfg-rgb-thermal` | 94% | 88% | 90% | 82% | 91% | 86% |
+| `cfg-depth-rgb-thermal` | 97% | 93% | 95% | 90% | 95% | 92% |
 
 The story these numbers tell: `rgb` favors daylight and struggles at night
 (camera-based); `depth` is illumination-invariant but occlusion-sensitive
 (a physical-obstruction sensor doesn't care about light, but does care
 about being blocked); `thermal` is both illumination-invariant and more
 occlusion-tolerant than `depth`; `rgb+thermal` fuses complementary
-strengths; `rgb+depth+thermal` dominates everywhere. Against the profile's
-six requirements (two accuracy-≥85% baselines, two occlusion requirements
-at 80%/75%, and two stricter 95% bars reusing the baseline conditions to
-show that acceptance is requirement-specific, not a property of the
-configuration alone) this produces:
+strengths; `rgb+depth+thermal` dominates everywhere. The `glasses` columns
+(Phase 50, v0.5) add a third, independent dimension: a mild, roughly-uniform
+tax on every configuration except `thermal`, which takes a much larger hit
+(glasses lenses attenuating the thermal signature around the eyes) - large
+enough at night to flip `cfg-thermal` from **pass** (night/clear, 85% vs.
+the night baseline's 85% threshold) to **fail** (night/glasses, 75% vs. the
+*same* 85% threshold on `req-night-glasses`) - a condition dimension
+changing a pass/fail outcome, not just shifting a number.
+
+Against the profile's eight requirements (two accuracy-≥85% baselines, two
+occlusion requirements at 80%/75%, two stricter 95% bars reusing the
+baseline conditions, and two glasses variants of the baselines at the same
+85% bar) this produces:
 
 | Configuration | Requirements passed | Coverage |
 |---|---|---|
-| `cfg-rgb` | 1 / 6 | 17% |
-| `cfg-depth` | 2 / 6 | 33% |
-| `cfg-thermal` | 3 / 6 | 50% |
-| `cfg-rgb-thermal` | 4 / 6 | 67% |
-| `cfg-depth-rgb-thermal` | 6 / 6 | 100% |
+| `cfg-rgb` | 2 / 8 | 25% |
+| `cfg-depth` | 4 / 8 | 50% |
+| `cfg-thermal` | 3 / 8 | 38% |
+| `cfg-rgb-thermal` | 6 / 8 | 75% |
+| `cfg-depth-rgb-thermal` | 8 / 8 | 100% |
 
 Evidence completeness is 100% throughout - every requirement's declared
-conditions match exactly one of the four sessions, and every session has
+conditions match exactly one of the six sessions, and every session has
 every configuration evaluated, so nothing in this demo is ever N/A. (The
 Profiles UI's own live-verification screenshots, taken while building
 Phase 38, separately exercise the N/A case with an ad-hoc unreachable
@@ -76,7 +93,7 @@ elsewhere - correctly reported as all-N/A for this profile's requirements
 error. This is the evidence-discovery algorithm behaving exactly as
 designed (see app/domain/evidence.py) - use the Coverage section's
 per-configuration checkboxes, or pass an explicit `session_ids` filter
-scoped to this demo's four sessions, to see just the five configurations
+scoped to this demo's six sessions, to see just the five configurations
 this profile is actually about.
 
 **Do not read any of this as a claim about real sensor performance** -

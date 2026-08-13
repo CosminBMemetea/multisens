@@ -26,30 +26,37 @@ EXPECTED_ACCURACY = {
                            'cfg-rgb-thermal': 0.90, 'cfg-depth-rgb-thermal': 0.95},
     'cabin-night-occluded': {'cfg-rgb': 0.45, 'cfg-depth': 0.68, 'cfg-thermal': 0.78,
                               'cfg-rgb-thermal': 0.82, 'cfg-depth-rgb-thermal': 0.90},
+    'cabin-day-glasses': {'cfg-rgb': 0.90, 'cfg-depth': 0.87, 'cfg-thermal': 0.70,
+                           'cfg-rgb-thermal': 0.91, 'cfg-depth-rgb-thermal': 0.95},
+    'cabin-night-glasses': {'cfg-rgb': 0.58, 'cfg-depth': 0.87, 'cfg-thermal': 0.75,
+                             'cfg-rgb-thermal': 0.86, 'cfg-depth-rgb-thermal': 0.92},
 }
 
-# requirement_id -> (illumination, occlusion, threshold) - hand-derived
-# from cabin-safety-demo.json, independent of parsing that file's
-# `acceptance`/`conditions` structure at all.
+# requirement_id -> (illumination, occlusion, eyewear, threshold) -
+# hand-derived from cabin-safety-demo.json, independent of parsing that
+# file's `acceptance`/`conditions` structure at all.
 REQUIREMENTS = {
-    'req-day-baseline': ('day', 'none', 0.85),
-    'req-night-baseline': ('night', 'none', 0.85),
-    'req-day-occluded': ('day', 'partial', 0.80),
-    'req-night-occluded': ('night', 'partial', 0.75),
-    'req-day-strict': ('day', 'none', 0.95),
-    'req-night-strict': ('night', 'none', 0.95),
+    'req-day-baseline': ('day', 'none', 'none', 0.85),
+    'req-night-baseline': ('night', 'none', 'none', 0.85),
+    'req-day-occluded': ('day', 'partial', 'none', 0.80),
+    'req-night-occluded': ('night', 'partial', 'none', 0.75),
+    'req-day-strict': ('day', 'none', 'none', 0.95),
+    'req-night-strict': ('night', 'none', 'none', 0.95),
+    'req-day-glasses': ('day', 'none', 'glasses', 0.85),
+    'req-night-glasses': ('night', 'none', 'glasses', 0.85),
 }
 
 REQUIREMENT_GROUP = {
     'req-day-baseline': 'alertness', 'req-night-baseline': 'alertness',
     'req-day-occluded': 'visibility-robustness', 'req-night-occluded': 'visibility-robustness',
     'req-day-strict': 'occupancy', 'req-night-strict': 'occupancy',
+    'req-day-glasses': 'eyewear-robustness', 'req-night-glasses': 'eyewear-robustness',
 }
 
 CONFIGS = ['cfg-rgb', 'cfg-depth', 'cfg-thermal', 'cfg-rgb-thermal', 'cfg-depth-rgb-thermal']
 
 # Hand-verified (see examples/profiles/README.md's derivation) - every one
-# of the 6 requirements x 5 configurations = 30 cells, not just a sample.
+# of the 8 requirements x 5 configurations = 40 cells, not just a sample.
 EXPECTED_STATUS = {
     'req-day-baseline': {'cfg-rgb': 'pass', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
                           'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
@@ -63,13 +70,21 @@ EXPECTED_STATUS = {
                         'cfg-rgb-thermal': 'fail', 'cfg-depth-rgb-thermal': 'pass'},
     'req-night-strict': {'cfg-rgb': 'fail', 'cfg-depth': 'fail', 'cfg-thermal': 'fail',
                           'cfg-rgb-thermal': 'fail', 'cfg-depth-rgb-thermal': 'pass'},
+    # Same 0.85 bar as the Alertness baselines - a pass/fail difference
+    # here is attributable to eyewear alone. Night flips cfg-thermal from
+    # pass (0.85 vs night-baseline's 0.85 observed exactly at threshold)
+    # to fail (0.75) - the one place this dimension changes an outcome.
+    'req-day-glasses': {'cfg-rgb': 'pass', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
+                         'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
+    'req-night-glasses': {'cfg-rgb': 'fail', 'cfg-depth': 'pass', 'cfg-thermal': 'fail',
+                           'cfg-rgb-thermal': 'pass', 'cfg-depth-rgb-thermal': 'pass'},
 }
 
-# pass_count / 6 - derived from EXPECTED_STATUS above, restated here as an
+# pass_count / 8 - derived from EXPECTED_STATUS above, restated here as an
 # independent cross-check target for the root GroupCoverage.
 EXPECTED_ROOT_COVERAGE = {
-    'cfg-rgb': 1 / 6, 'cfg-depth': 2 / 6, 'cfg-thermal': 3 / 6,
-    'cfg-rgb-thermal': 4 / 6, 'cfg-depth-rgb-thermal': 6 / 6,
+    'cfg-rgb': 2 / 8, 'cfg-depth': 4 / 8, 'cfg-thermal': 3 / 8,
+    'cfg-rgb-thermal': 6 / 8, 'cfg-depth-rgb-thermal': 8 / 8,
 }
 
 
@@ -104,8 +119,8 @@ def _independent_status(accuracy: dict[str, dict[str, float]], sessions_by_condi
     threshold, exactly what a requirement's condition + acceptance
     criterion reduce to for this deliberately condition-unambiguous demo."""
     status: dict[str, dict[str, str]] = {}
-    for req_id, (illumination, occlusion, threshold) in REQUIREMENTS.items():
-        session_id = sessions_by_condition[(illumination, occlusion)]
+    for req_id, (illumination, occlusion, eyewear, threshold) in REQUIREMENTS.items():
+        session_id = sessions_by_condition[(illumination, occlusion, eyewear)]
         status[req_id] = {}
         for config in CONFIGS:
             observed = accuracy[session_id][config]
@@ -116,10 +131,11 @@ def _independent_status(accuracy: dict[str, dict[str, float]], sessions_by_condi
 def test_dataset_file_has_expected_shape():
     dataset = _load_data()
     assert dataset['format_version'] == '1.0'
-    assert len(dataset['sessions']) == 4
+    assert len(dataset['sessions']) == 6
     assert 'synthetic' in dataset['scenario']['tags']
     for session in dataset['sessions']:
         assert session['metadata']['synthetic'] is True
+        assert 'eyewear' in session['metadata']  # Phase 50's third condition dimension
         assert len(dataset['ground_truth'][session['id']]) == 100
         assert len(dataset['predictions'][session['id']]) == 500  # 5 configs x 100
 
@@ -127,12 +143,15 @@ def test_dataset_file_has_expected_shape():
 def test_profile_file_has_expected_shape():
     profile = _load_profile()
     assert profile['metadata']['synthetic'] is True
-    assert len(profile['groups']) == 3
-    assert len(profile['requirements']) == 6
-    assert {g['id'] for g in profile['groups']} == {'alertness', 'visibility-robustness', 'occupancy'}
+    assert len(profile['groups']) == 4
+    assert len(profile['requirements']) == 8
+    assert {g['id'] for g in profile['groups']} == {
+        'alertness', 'visibility-robustness', 'occupancy', 'eyewear-robustness',
+    }
     assert {r['id'] for r in profile['requirements']} == set(REQUIREMENTS)
     for requirement in profile['requirements']:
         assert requirement['group_id'] == REQUIREMENT_GROUP[requirement['id']]
+        assert requirement['conditions']['eyewear'] == REQUIREMENTS[requirement['id']][2]
 
 
 def test_independent_accuracy_matches_construction_targets():
@@ -145,7 +164,8 @@ def test_independent_status_matches_hand_derived_table():
     # before trusting them to validate the API response below.
     dataset = _load_data()
     sessions_by_condition = {
-        (s['metadata']['illumination'], s['metadata']['occlusion']): s['id'] for s in dataset['sessions']
+        (s['metadata']['illumination'], s['metadata']['occlusion'], s['metadata']['eyewear']): s['id']
+        for s in dataset['sessions']
     }
     accuracy = _independent_accuracy(dataset)
     status = _independent_status(accuracy, sessions_by_condition)
@@ -183,7 +203,7 @@ def test_api_coverage_matches_independently_computed_status(client):
     coverages = {c['configuration_id']: c for c in resp.json()['configuration_coverages']}
     assert set(coverages) == set(CONFIGS)
 
-    # Every one of the 30 cells (6 requirements x 5 configurations),
+    # Every one of the 40 cells (8 requirements x 5 configurations),
     # cross-checked against the independently hand-derived table.
     for config, coverage in coverages.items():
         results_by_req = {r['requirement_id']: r for r in coverage['requirement_results']}
@@ -199,7 +219,7 @@ def test_api_coverage_matches_independently_computed_status(client):
     # checked against the independently derived pass-count table.
     for config, coverage in coverages.items():
         root = coverage['root']
-        assert root['pass_count'] + root['fail_count'] == 6
+        assert root['pass_count'] + root['fail_count'] == 8
         assert root['na_count'] == 0
         assert root['requirement_coverage'] == pytest.approx(EXPECTED_ROOT_COVERAGE[config])
         assert root['evidence_completeness'] == pytest.approx(1.0)

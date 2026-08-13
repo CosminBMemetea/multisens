@@ -150,14 +150,13 @@ coverage matrix) plus the coverage view described in
 
 [`examples/profiles/README.md`](../examples/profiles/README.md) —
 "Generic Cabin Safety Demo," deliberately not modeled on or named after
-any real regulatory or certification framework. Three groups, six
-requirements, four sessions (one per `illumination`/`occlusion`
-combination), five configurations, every accuracy value exact by
-construction. See that README for the full derivation and the
-independent-verification test
-(`backend/tests/test_profile_demo.py`) that recomputes all 30
-requirement×configuration cells without importing any production
-coverage code.
+any real regulatory or certification framework. Four groups, eight
+requirements across three condition dimensions (`illumination`/
+`occlusion`/`eyewear`), six sessions, five configurations, every accuracy
+value exact by construction. See that README for the full derivation and
+the independent-verification test (`backend/tests/test_profile_demo.py`)
+that recomputes all 40 requirement×configuration cells without importing
+any production coverage code.
 
 ## Known profile-layer limitations
 

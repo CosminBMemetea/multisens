@@ -179,12 +179,12 @@ shows an improvement — a clean first look at the Sensor Addition,
 Ablation, and General Comparison sections. Full contract:
 [docs/comparison.md](docs/comparison.md).
 
-## Requirement profile / coverage quick start (v0.4)
+## Requirement profile / coverage / exploration quick start (v0.4 + v0.5)
 
 A separate, deliberately generic demo — "Generic Cabin Safety Demo," not
-NCAP or any other real framework — four sessions across
-`illumination`/`occlusion` conditions, six requirements, exact-by-
-construction accuracies:
+NCAP or any other real framework — six sessions across
+`illumination`/`occlusion`/`eyewear` conditions, eight requirements,
+exact-by-construction accuracies:
 
 ```bash
 docker compose up -d
@@ -193,9 +193,11 @@ open http://localhost:8080/profiles
 ```
 
 Open "Generic Cabin Safety Demo," hit **Compute coverage**. Every
-configuration passes a genuinely different subset of the six
-requirements (17%/33%/50%/67%/100% coverage) — click any cell to see
-exactly which evidence produced it. See
+configuration passes a genuinely different subset of the eight
+requirements (25%/50%/38%/75%/100% coverage) — click any cell to see
+exactly which evidence produced it. The **Explorer**, **Failures**, and
+**Evidence** tabs (v0.5) filter, group, and cross-tabulate the same
+requirements by condition, using the same three dimensions. See
 [examples/profiles/README.md](examples/profiles/README.md) for the full
 derivation and [docs/profiles.md](docs/profiles.md) /
 [docs/coverage.md](docs/coverage.md) for the domain model and API.

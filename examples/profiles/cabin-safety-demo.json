@@ -2,12 +2,13 @@
   "id": "cabin-safety-demo-v1.0",
   "name": "Generic Cabin Safety Demo",
   "version": "1.0",
-  "description": "Deterministic synthetic reference profile for the MultiSens v0.4 requirement-coverage workflow. SYNTHETIC DATA - demonstrates functionality only, not a regulatory framework and not a claim about real sensor performance. See examples/profiles/README.md.",
+  "description": "Deterministic synthetic reference profile for the MultiSens v0.4/v0.5 requirement-coverage and condition-exploration workflow. SYNTHETIC DATA - demonstrates functionality only, not a regulatory framework and not a claim about real sensor performance. See examples/profiles/README.md.",
   "metadata": { "synthetic": true },
   "groups": [
     { "id": "alertness", "name": "Alertness" },
     { "id": "visibility-robustness", "name": "Visibility Robustness" },
-    { "id": "occupancy", "name": "Occupancy" }
+    { "id": "occupancy", "name": "Occupancy" },
+    { "id": "eyewear-robustness", "name": "Eyewear Robustness" }
   ],
   "requirements": [
     {
@@ -16,7 +17,7 @@
       "name": "Day baseline",
       "description": "Baseline presence accuracy in daylight with a clear (unoccluded) view.",
       "task": "presence",
-      "conditions": { "illumination": "day", "occlusion": "none" },
+      "conditions": { "illumination": "day", "occlusion": "none", "eyewear": "none" },
       "acceptance": [
         { "metric": "accuracy", "operator": ">=", "value": 0.85 }
       ]
@@ -27,7 +28,7 @@
       "name": "Night baseline",
       "description": "Baseline presence accuracy at night with a clear (unoccluded) view.",
       "task": "presence",
-      "conditions": { "illumination": "night", "occlusion": "none" },
+      "conditions": { "illumination": "night", "occlusion": "none", "eyewear": "none" },
       "acceptance": [
         { "metric": "accuracy", "operator": ">=", "value": 0.85 }
       ]
@@ -38,7 +39,7 @@
       "name": "Day, partial occlusion",
       "description": "Presence accuracy in daylight with partial occlusion of the sensor's view.",
       "task": "presence",
-      "conditions": { "illumination": "day", "occlusion": "partial" },
+      "conditions": { "illumination": "day", "occlusion": "partial", "eyewear": "none" },
       "acceptance": [
         { "metric": "accuracy", "operator": ">=", "value": 0.80 }
       ]
@@ -49,7 +50,7 @@
       "name": "Night, partial occlusion",
       "description": "Presence accuracy at night with partial occlusion of the sensor's view - the hardest single-dimension case in this demo.",
       "task": "presence",
-      "conditions": { "illumination": "night", "occlusion": "partial" },
+      "conditions": { "illumination": "night", "occlusion": "partial", "eyewear": "none" },
       "acceptance": [
         { "metric": "accuracy", "operator": ">=", "value": 0.75 }
       ]
@@ -60,7 +61,7 @@
       "name": "Strict day accuracy",
       "description": "A stricter accuracy bar under the same daylight/clear-view conditions as the Alertness baseline - demonstrates that the same evidence can satisfy one requirement and fail another; acceptance is requirement-specific, not a property of the configuration alone.",
       "task": "presence",
-      "conditions": { "illumination": "day", "occlusion": "none" },
+      "conditions": { "illumination": "day", "occlusion": "none", "eyewear": "none" },
       "acceptance": [
         { "metric": "accuracy", "operator": ">=", "value": 0.95 }
       ]
@@ -71,9 +72,31 @@
       "name": "Strict night accuracy",
       "description": "A stricter accuracy bar under the same night/clear-view conditions as the Alertness baseline.",
       "task": "presence",
-      "conditions": { "illumination": "night", "occlusion": "none" },
+      "conditions": { "illumination": "night", "occlusion": "none", "eyewear": "none" },
       "acceptance": [
         { "metric": "accuracy", "operator": ">=", "value": 0.95 }
+      ]
+    },
+    {
+      "id": "req-day-glasses",
+      "group_id": "eyewear-robustness",
+      "name": "Day, glasses",
+      "description": "Presence accuracy in daylight with a clear (unoccluded) view, occupant wearing glasses - same acceptance bar as the Alertness day baseline, so a pass/fail difference is attributable to eyewear alone, not a stricter threshold.",
+      "task": "presence",
+      "conditions": { "illumination": "day", "occlusion": "none", "eyewear": "glasses" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
+      ]
+    },
+    {
+      "id": "req-night-glasses",
+      "group_id": "eyewear-robustness",
+      "name": "Night, glasses",
+      "description": "Presence accuracy at night with a clear (unoccluded) view, occupant wearing glasses - same acceptance bar as the Alertness night baseline. Thermal specifically fails this one where it passes the night baseline, demonstrating that a condition dimension can flip an outcome, not just shift a number.",
+      "task": "presence",
+      "conditions": { "illumination": "night", "occlusion": "none", "eyewear": "glasses" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
       ]
     }
   ]
