@@ -1,12 +1,15 @@
-"""Resource-observation domain model (v0.7, Phase 64-65).
+"""Resource-observation domain model (v0.7, Phase 64-67).
 
-Phase 64 fixed the shape; Phase 65 adds this module's own field/
+Phase 64 fixed the shape; Phase 65 added this module's own field/
 cross-field validation (value-vs-quality consistency, non-empty
 identity/unit/source fields, an ordered time window) plus persistence
 (see app/persistence/migrations/0004_resource_observations.sql and
-repository.py's resource_observations functions). Collection (Phase 66),
-summaries (Phase 67), comparability/trade-off joining (Phase 68), and
-constraints/Pareto (Phase 69) still don't live here yet.
+repository.py's resource_observations functions); Phase 66 added real
+collection (app/resource_collector.py, deliberately NOT in this module -
+see that module's own docstring for why); Phase 67 adds
+ResourceMetricSummary/ConfigurationResourceProfile, pure aggregation
+over already-persisted rows. Comparability/trade-off joining (Phase 68)
+and constraints/Pareto (Phase 69) still don't live here yet.
 
 Transport-agnostic like every other domain module - no fastapi, sqlite3,
 rclpy, or psutil import. `ResourceObservation` is a pydantic `BaseModel`
@@ -70,6 +73,9 @@ several independent measurement windows within one session, that
 """
 from __future__ import annotations
 
+import math
+import statistics
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
@@ -222,3 +228,130 @@ class ExecutionPlatform(BaseModel):
 # named so a comparability check (Phase 68) can treat it as never
 # comparable to anything, including itself.
 UNKNOWN_PLATFORM_ID = 'unknown'
+
+
+# --- resource summaries (v0.7, Phase 67) ------------------------------------
+#
+# Pure computed aggregation over already-persisted ResourceObservation
+# rows - never a second stored source of truth, same pattern
+# aggregate_requirement_results already uses for RequirementResult (v0.4).
+# A "resource over time" chart (architecture review) is the underlying
+# sequence of rows; these functions only summarize them for display.
+
+@dataclass
+class ResourceMetricSummary:
+    """Computed over one metric's real-valued (value is not None)
+    ResourceObservation rows. Does not itself decide which quality tier
+    (measured/declared/estimated) to include - the caller passes exactly
+    the rows it wants summarized; mixing qualities within one call is
+    the caller's choice, not something this type resolves (Phase 68
+    owns that policy, e.g. "prefer measured, fall back to declared")."""
+    mean: float
+    median: float
+    p95: float
+    min: float
+    max: float
+    sample_count: int
+    unit: str
+
+
+def _percentile(sorted_values: list[float], fraction: float) -> float:
+    """Linear-interpolation percentile (matches numpy's default 'linear'
+    method) - the standard, easily independently-reproducible choice for
+    the small sample counts a v0.7-scale session actually produces. A
+    single value has no interpolation to do."""
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+    index = fraction * (len(sorted_values) - 1)
+    lower, upper = math.floor(index), math.ceil(index)
+    if lower == upper:
+        return sorted_values[int(index)]
+    return sorted_values[lower] + (sorted_values[upper] - sorted_values[lower]) * (index - lower)
+
+
+def compute_resource_metric_summary(observations: list[ResourceObservation]) -> ResourceMetricSummary | None:
+    """None if `observations` is empty or every row is unavailable
+    (value is None) - never a fabricated zero-valued summary, same
+    "empty/undecided population is never silently a real answer"
+    discipline v0.6's evaluate_policy already established for zero
+    requirements. Every observation passed in must share one unit -
+    averaging Mbps with % would be silently meaningless, so a mismatch
+    raises rather than picking one arbitrarily."""
+    values = [o.value for o in observations if o.value is not None]
+    if not values:
+        return None
+    units = {o.unit for o in observations if o.value is not None}
+    if len(units) > 1:
+        raise ValueError(f'cannot summarize observations with mixed units: {sorted(units)}')
+
+    sorted_values = sorted(values)
+    return ResourceMetricSummary(
+        mean=statistics.fmean(values),
+        median=statistics.median(sorted_values),
+        p95=_percentile(sorted_values, 0.95),
+        min=sorted_values[0],
+        max=sorted_values[-1],
+        sample_count=len(values),
+        unit=units.pop(),
+    )
+
+
+@dataclass
+class ConfigurationResourceProfile:
+    """One configuration's resource evidence for one session, joined
+    across whatever metrics were requested - the v0.7 counterpart to
+    v0.6's AggregateCoverage. `observations` passed to the compute
+    function below should already be scoped to this session/
+    configuration/platform by the caller (Phase 68's comparability
+    logic, not this module) - this type only aggregates and judges
+    validity over what it's given."""
+    configuration_id: str
+    session_id: str
+    platform_id: str
+    metrics: dict[str, ResourceMetricSummary]
+    # None only when no requested metric has any real-valued evidence at
+    # all. Spans the full min(started_at)..max(ended_at) range across
+    # every contributing row, including any gaps between windows -
+    # windows need not be contiguous, and this is not a sum of only the
+    # covered time, an honest span rather than a flattering one.
+    measurement_window: tuple[datetime, datetime] | None
+    validity: Literal['complete', 'partial', 'unavailable']
+    warnings: list[str]
+
+
+def compute_configuration_resource_profile(
+    session_id: str, configuration_id: str, platform_id: str,
+    requested_metrics: list[str], observations: list[ResourceObservation],
+) -> ConfigurationResourceProfile:
+    """`validity`: 'complete' iff every requested metric has at least one
+    real-valued row (and at least one metric was actually requested -
+    zero requested metrics is 'unavailable', never a vacuous 'complete');
+    'partial' if some but not all do; 'unavailable' if none do."""
+    metrics: dict[str, ResourceMetricSummary] = {}
+    warnings: list[str] = []
+    window_starts: list[datetime] = []
+    window_ends: list[datetime] = []
+
+    for metric in requested_metrics:
+        metric_observations = [o for o in observations if o.metric == metric]
+        summary = compute_resource_metric_summary(metric_observations)
+        if summary is None:
+            warnings.append(f"no measured/declared/estimated evidence for '{metric}' in this window")
+            continue
+        metrics[metric] = summary
+        window_starts.extend(o.started_at for o in metric_observations if o.value is not None)
+        window_ends.extend(o.ended_at for o in metric_observations if o.value is not None)
+
+    if requested_metrics and len(metrics) == len(requested_metrics):
+        validity: Literal['complete', 'partial', 'unavailable'] = 'complete'
+    elif metrics:
+        validity = 'partial'
+    else:
+        validity = 'unavailable'
+
+    measurement_window = (min(window_starts), max(window_ends)) if window_starts else None
+
+    return ConfigurationResourceProfile(
+        configuration_id=configuration_id, session_id=session_id, platform_id=platform_id,
+        metrics=metrics, measurement_window=measurement_window, validity=validity, warnings=warnings,
+    )
