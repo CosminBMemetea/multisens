@@ -479,6 +479,8 @@ export const SUPPORTED_RESOURCE_METRICS = [
 ] as const;
 export type ResourceMetric = (typeof SUPPORTED_RESOURCE_METRICS)[number];
 
+export type ParetoDirection = "minimize" | "maximize";
+
 export const RESOURCE_METRIC_LABELS: Record<ResourceMetric, string> = {
   cpu_percent: "CPU",
   memory_mb: "RAM",

@@ -10,6 +10,7 @@ import type {
   Facet,
   GroundTruthEvent,
   PairwiseComparison,
+  ParetoDirection,
   PredictionEvent,
   ProfileSummary,
   ProfileUsageEntry,
@@ -232,7 +233,7 @@ export function runTradeoffs(
     filters?: AnalysisFilter;
     resource_metrics?: string[];
     resource_constraints?: { metric: string; operator: string; value: number }[];
-    pareto_dimensions?: Record<string, "minimize" | "maximize">;
+    pareto_dimensions?: Record<string, ParetoDirection>;
     resource_comparison?: { baseline_configuration_id: string; candidate_configuration_id: string };
   },
 ): Promise<TradeoffResponse> {
