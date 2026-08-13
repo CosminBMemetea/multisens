@@ -231,3 +231,104 @@ python3 scripts/load_decision_demo_data.py
 
 Then open the Profiles page, select "Generic Exterior Sensing Decision
 Demo", and open its Decision tab.
+
+## `ridesafe-demo.json` + `ridesafe-demo-data.json`
+
+A deterministic, **entirely synthetic** reference profile and dataset for
+the MultiSens v0.7 deployment/resource-tradeoff workflow, built around a
+personal front/rear dashcam setup (reference hardware: 70mai). **RideSafe
+is ride monitoring and incident-evidence capture** - it is not a safety-
+certification, driver-monitoring, or occupant-monitoring system, and
+MultiSens itself never claims to guarantee passenger safety or prevent
+incidents. This is the first of two v0.7 demos (a second, PropertyWatch,
+follows in Phase 74) marking this project's deliberate pivot away from
+cabin/occupant-style examples toward independent personal-camera
+scenarios.
+
+**`ridesafe-demo.json`** is the profile document: two groups (`Scene
+Visibility`, `Journey Recording`), four `scene_visibility` requirements
+across an `illumination: day | night` condition dimension - the same
+condition-exploration mechanism `cabin-safety-demo.json` uses, with zero
+occupant/driver-monitoring framing: this dimension only asks whether a
+camera *sees the road scene*, never who or what is in it.
+
+**`ridesafe-demo-data.json`** is the underlying evidence: one scenario,
+**two sessions** (`ridesafe-day-session`, `ridesafe-night-session`), 100
+`scene_visibility` ground-truth samples each, and predictions from three
+configurations across two reference sensor ids - `ridesafe_front_rgb` and
+`ridesafe_rear_rgb` (two separate physical camera positions, reusing the
+exact sensor-instance-not-modality precedent `front_rgb`/`rear_rgb`
+already established in v0.6 - no new sensor-identity work needed):
+
+| Configuration | Sensors | Day accuracy | Night accuracy |
+|---|---|---|---|
+| `cfg-ridesafe_front_rgb` | front | 72% | 48% |
+| `cfg-ridesafe_rear_rgb` | rear | 68% | 52% |
+| `cfg-ridesafe_front_rgb-ridesafe_rear_rgb` | front+rear | 95% | 78% |
+
+The story: front and rear cameras have complementary, not identical,
+strengths (front slightly favors daylight, rear slightly favors low
+light) - only the combined configuration reliably clears every bar, day
+and night. Against the profile's four requirements (two baselines at
+70%/50%, two stricter "full journey recording" bars at 90%/65%) this
+produces:
+
+| Configuration | Requirements passed | Coverage |
+|---|---|---|
+| `cfg-ridesafe_front_rgb` | 1 / 4 | 25% |
+| `cfg-ridesafe_rear_rgb` | 1 / 4 | 25% |
+| `cfg-ridesafe_front_rgb-ridesafe_rear_rgb` | 4 / 4 | 100% |
+
+Under the standard demo policy (100% coverage, 95% completeness,
+mandatory-pass off) evaluated across **both** sessions, exactly **one**
+configuration is minimally sufficient - `cfg-ridesafe_front_rgb-
+ridesafe_rear_rgb` - and all three configurations sit on the Pareto
+front (front/rear tie on sensor count and coverage; the combined
+configuration trades more sensors for strictly higher coverage - a
+genuine trade-off, not a dominated point). Independently re-derived by
+hand and cross-checked against the live API in
+`backend/tests/test_ridesafe_demo.py`, with no imports from
+`app.domain.decision`/`coverage`/`analysis`/`resources` themselves.
+
+### SYNTHETIC RESOURCE DATA (v0.7)
+
+The dataset also carries resource observations for the **daylight
+session only** - CPU/memory/network/latency/FPS numbers chosen to tell a
+clean "two cameras cost more but reach full coverage" story, never
+measured from real 70mai/webcam hardware:
+
+| Configuration | CPU | RAM | Network | Latency |
+|---|---|---|---|---|
+| `cfg-ridesafe_front_rgb` | 18.2% | 580 MB | 4.5↓/1.1↑ Mbps | 32 ms |
+| `cfg-ridesafe_rear_rgb` | 17.4% | 575 MB | 4.3↓/1.0↑ Mbps | 33 ms |
+| `cfg-ridesafe_front_rgb-ridesafe_rear_rgb` | 29.8% | 825 MB | 8.6↓/2.0↑ Mbps | 39 ms |
+
+**Because resource evidence is inherently single-session-scoped** (see
+`backend/app/domain/resources.py`'s own module docstring), opening the
+Resources tab and selecting the daylight session only ever sees the 2
+day-conditioned requirements - the
+other 2 (night-conditioned) are genuinely N/A within that one session,
+so real evidence completeness there is exactly 50%. Under the tabs' own
+standard 95%-completeness policy this means every configuration's
+`policy_status` badge reads **UNDETERMINED** in that view - not a bug,
+an honest consequence of a single-session view genuinely not having
+night evidence, while the underlying coverage percentages (0% / 50% /
+100%) still tell the differentiated story. `scripts/load_ridesafe_demo_data.py`
+uses its own looser illustrative policy for its printed CLI summary
+specifically (documented in the script itself) so that output reads
+cleanly; the live UI is not changed to match it.
+
+Real, physically MEASURED resource numbers are only ever obtainable by
+running `POST /api/sessions/{id}/resource-observations/batch` locally
+against actual connected 70mai/webcam hardware and a real collector -
+never shipped as committed demo content (v0.7 architecture review, Q25).
+
+### Loading it
+
+```bash
+docker compose up -d
+python3 scripts/load_ridesafe_demo_data.py
+```
+
+Then open the Profiles page, select "RideSafe — Ride Monitoring Demo",
+and open its Decision or Resources tab.

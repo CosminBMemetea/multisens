@@ -1,0 +1,57 @@
+{
+  "id": "ridesafe-demo-v1.0",
+  "name": "RideSafe — Ride Monitoring Demo",
+  "version": "1.0",
+  "description": "Deterministic synthetic reference profile for the MultiSens v0.7 deployment/resource-tradeoff workflow. RideSafe is a personal front/rear dashcam setup (reference hardware: 70mai) recording a vehicle journey for better visibility and incident evidence - it is ride monitoring and incident-evidence capture, not a safety-certification, driver-monitoring, or occupant-monitoring system, and MultiSens itself never claims to guarantee passenger safety or prevent incidents. Reference sensor ids (ridesafe_front_rgb, ridesafe_rear_rgb) are separate physical camera positions, never merged just because they share a modality. SYNTHETIC DATA - demonstrates functionality only, not a claim about real camera performance. See examples/profiles/README.md.",
+  "metadata": { "synthetic": true },
+  "groups": [
+    { "id": "scene-visibility", "name": "Scene Visibility" },
+    { "id": "journey-recording", "name": "Journey Recording" }
+  ],
+  "requirements": [
+    {
+      "id": "req-day-baseline",
+      "group_id": "scene-visibility",
+      "name": "Baseline scene visibility, daylight",
+      "description": "Can this configuration see the road scene clearly during daylight journeys?",
+      "task": "scene_visibility",
+      "conditions": { "illumination": "day" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.70 }
+      ]
+    },
+    {
+      "id": "req-night-baseline",
+      "group_id": "scene-visibility",
+      "name": "Baseline scene visibility, low light",
+      "description": "Can this configuration see the road scene during low-light journeys? A looser bar than daylight - low light is a genuinely harder condition for any camera.",
+      "task": "scene_visibility",
+      "conditions": { "illumination": "night" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.50 }
+      ]
+    },
+    {
+      "id": "req-day-strict",
+      "group_id": "journey-recording",
+      "name": "Full journey recording, daylight",
+      "description": "A stricter bar representing reliable, near-continuous journey documentation - reachable only by combining front and rear coverage.",
+      "task": "scene_visibility",
+      "conditions": { "illumination": "day" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.90 }
+      ]
+    },
+    {
+      "id": "req-night-strict",
+      "group_id": "journey-recording",
+      "name": "Full journey recording, low light",
+      "description": "The strictest bar in this demo - full front+rear journey documentation at night.",
+      "task": "scene_visibility",
+      "conditions": { "illumination": "night" },
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.65 }
+      ]
+    }
+  ]
+}
