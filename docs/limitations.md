@@ -11,7 +11,8 @@ release, not silently worked around now.
   statistical claims, no built-in domain-specific compliance logic.**
   v0.1 was
   ingestion, synchronization, diagnostics, and visualization; v0.2 added
-  ground-truth evaluation (classification only - see below); v0.3 added
+  ground-truth evaluation (classification only through v0.7 - see below);
+  v0.3 added
   configuration comparison (see below) - never a claim about *why* two
   configurations differ, only *that* they measured differently; v0.4
   added requirement profiles/coverage (see below) - a `PASS`/`FAIL`/
@@ -22,8 +23,11 @@ release, not silently worked around now.
   about what a condition *caused*; v0.6 added decision support (see
   below) - judging a configuration's already-computed coverage against
   an explicit, caller-supplied policy, explicitly never a causal claim
-  and never a universal sensor-importance score. See the project's own
-  original scope statement in the README.
+  and never a universal sensor-importance score; v0.8 added object
+  detection and scalar regression evaluators (see below) - no tracking,
+  segmentation, pose, or AP/mAP, and still no perception/inference of any
+  kind (MultiSens evaluates predictions, it never produces them). See the
+  project's own original scope statement in the README.
 - **Comparison validity does not check matched-label-set divergence.**
   Two configurations whose matched samples span different label sets
   (e.g. one config's matched set never saw the "absent" class) would
@@ -158,12 +162,22 @@ release, not silently worked around now.
   `coverage_warning_threshold_pp` (default 5.0) are heuristic, not
   evidence-based** - same honesty treatment as `tolerance_ms`'s default
   (see [comparison.md](comparison.md#comparison-validity)).
-- **Evaluation is classification-only (v0.2).** `GroundTruth`/
-  `Prediction.value` are intentionally generic dicts (see
-  [evaluation.md](evaluation.md#task-values-generic-by-design)), but the
-  only metric engine that exists is `evaluate_classification`. Detection/
-  regression would be new code beside it, not a schema change - but that
-  code doesn't exist yet.
+- **Evaluation was classification-only through v0.7; v0.8 added object
+  detection and scalar regression** as new evaluators beside
+  `evaluate_classification` - exactly the "new code, not a schema change"
+  path [evaluation.md](evaluation.md#task-values-generic-by-design)
+  always anticipated. See [evaluators.md](evaluators.md) for the generic
+  interface and [detection-evaluation.md](detection-evaluation.md)/
+  [regression-evaluation.md](regression-evaluation.md) for each
+  evaluator's own scope boundaries (no AP/mAP, no cross-frame object
+  tracking, no segmentation masks, no oriented bounding boxes, no
+  relative/percentage error, no vector regression - all deliberate v0.8
+  deferrals, not oversights). No `TaskDefinition` registry exists -
+  `evaluator_type` is stated explicitly per `/evaluate` call, not
+  remembered against a task name (see
+  [evaluators.md](evaluators.md#evaluator_type-on-evaluationresult-explicit-per-call-not-a-registry-entity)).
+  `/timeline` remains classification-only - a label-vs-label strip has no
+  detection/regression analogue.
 - **`tolerance_ms` for evaluation matching is not evidence-based**, unlike
   the ROS/DDS sync tolerance (see
   [architecture.md](architecture.md#synchronization-measured-not-guessed)).

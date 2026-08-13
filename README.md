@@ -1,6 +1,6 @@
 # MultiSens
 
-[![v0.7.0](https://img.shields.io/badge/release-v0.7.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.7.0)
+[![v0.8.0](https://img.shields.io/badge/release-v0.8.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.8.0)
 
 An open-source, vendor-neutral platform for ingesting, synchronizing,
 diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
@@ -451,13 +451,27 @@ merged with decision evidence into one score — see
 independent personal-camera demo families (RideSafe, PropertyWatch)
 replace cabin/occupant-style examples going forward — see
 [docs/provenance.md](docs/provenance.md) for the cross-cutting evidence-
-honesty discipline both build on.
+honesty discipline both build on. v0.8 generalized the evaluation layer
+beyond classification: a small, closed `Evaluator` interface plus a
+static registry, two new evaluators (object detection — bounding-box
+IoU/greedy matching, precision/recall/F1/mean-IoU, per-class breakdown;
+scalar regression — MAE/RMSE/bias/median, unit-aware), full backward
+compatibility for every pre-v0.8 classification workflow, and a first
+robotics-flavored reference demo (Robot/Drone Sensing) built entirely as
+task profiles over the same two generic evaluators — no new
+evaluator-specific logic per task name. Every other layer (comparison,
+coverage, decision, trade-offs) is evaluator-blind by construction and
+needed zero engine changes to support the new evaluators — see
+[docs/evaluators.md](docs/evaluators.md).
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
 claims (no p-values, no confidence intervals, no "sensor X caused Y"),
-detection/regression metric engines (the domain model already supports
-them; the evaluators don't exist yet), per-requirement
+object tracking/segmentation/pose/localization evaluators (v0.8 added
+detection and regression only — see
+[docs/limitations.md](docs/limitations.md)), AP/mAP or any other
+combined detection score, relative/percentage regression error, vector
+regression, per-requirement
 weighted/mandatory-scoped aggregation (v0.6's mandatory flag is an
 all-or-nothing population setting, not a per-requirement list), cost/
 power/latency decision objectives (only `minimize_sensor_count` exists),
@@ -500,6 +514,15 @@ cloud deployment. See
   (v0.7)
 - [docs/provenance.md](docs/provenance.md) — cross-cutting data
   provenance and evidence-honesty discipline across every layer
+- [docs/evaluators.md](docs/evaluators.md) — generic `Evaluator`
+  interface, registry, `evaluator_type` persistence, backward
+  compatibility (v0.8)
+- [docs/detection-evaluation.md](docs/detection-evaluation.md) — bbox
+  convention, IoU, greedy matching, thresholds, per-class metrics, no
+  AP/mAP (v0.8)
+- [docs/regression-evaluation.md](docs/regression-evaluation.md) —
+  scalar value/unit schema, MAE/RMSE/bias/median, unit-mismatch rules
+  (v0.8)
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

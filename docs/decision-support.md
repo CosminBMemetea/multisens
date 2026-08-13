@@ -14,6 +14,18 @@ output, joined with resource evidence ([resources.md](resources.md)) -
 this document's own decision semantics are unchanged by v0.7 and reused
 there verbatim, never re-decided.
 
+**v0.8 note**: this layer, `coverage.md`'s acceptance engine, and
+`deployment-tradeoffs.md`'s trade-off engine are all evaluator-blind by
+construction — an `AcceptanceCriterion`'s `metric` field is looked up by
+string key on whatever `EvaluationResult.metrics` a requirement's task
+actually produced, whether that came from classification, object
+detection, or regression (v0.8 — see [evaluators.md](evaluators.md)).
+Zero engine code in this document changed to make that true; a single
+mixed-task profile (classification + detection + regression requirements
+on the same two configurations) proved it end to end through
+`/coverage`, `/decision-analysis`, `/tradeoffs`, and `/compare` together
+(`backend/tests/test_mixed_task_integration.py`).
+
 ## What this layer answers
 
 > Given a profile's already-computed PASS/FAIL/N/A results across several

@@ -1,4 +1,4 @@
-# Comparison Contract (v0.3)
+# Comparison Contract (v0.3, generalized across evaluator types in v0.8)
 
 The authoritative reference for MultiSens's configuration-comparison
 layer: the domain model, evidence semantics, ambiguity handling, the API
@@ -105,15 +105,61 @@ different questions about the same pair:
   `tolerance_ms`).
 - **`common_set`** — filters both configurations' already-matched pairs
   down to the ground-truth **ids** both matched, then re-evaluates each
-  side over exactly that shared population using the unmodified
-  `evaluate_classification`. Filtering is by `GroundTruth.id` on the
+  side over exactly that shared population using whichever evaluator
+  actually produced the two persisted results, dispatched through
+  `EVALUATOR_REGISTRY` (v0.8 — read straight off each side's own
+  `EvaluationResult.evaluator_type`, never assumed or re-requested; see
+  [evaluators.md](evaluators.md)). Filtering is by `GroundTruth.id` on the
   already-computed match, **never** by re-running `match_by_timestamp` on
   a subset — a subset re-match isn't guaranteed to reproduce the pairs
   the original full-population match found, if two ground-truth points
   had been competing for the same prediction. Everything in this filtered
   view is matched by construction, so common-set coverage is always
   100%; `common_sample_count` (relative to each side's own unfiltered
-  `matched_samples`) is the number that actually matters.
+  `matched_samples`) is the number that actually matters — for detection
+  this counts shared matched **frames**, not shared matched objects (see
+  [detection-evaluation.md](detection-evaluation.md#evaluatoroutputs-frame-count-fields-stay-frame-level-not-object-level));
+  for regression one matched pair already is one sample, so there is no
+  analogous frame-vs-object distinction to make (see
+  [regression-evaluation.md](regression-evaluation.md#evaluatoroutputs-frame-count-fields)).
+
+## Generic across evaluator types (v0.8)
+
+`ComparisonSide.metric_deltas` is built from whatever metric keys the
+two `ComparisonMetrics` actually have (`sorted(set(baseline.metrics) |
+set(candidate.metrics))`), never a hardcoded classification field list —
+the same delta machinery works unchanged for `object_detection`'s
+precision/recall/F1/TP/FP/FN/mean-IoU or `regression`'s
+MAE/RMSE/bias/median, zero new comparison code required for either
+evaluator. `compute_metric_delta` already treats a `None` baseline or
+candidate as a genuine "no evidence" case (absolute/relative both stay
+`None`, never fabricated) — proven not just at the pure-function level
+but through the real HTTP/JSON response for a zero-evidence detection
+configuration (`test_compare_detection_with_all_na_metrics_on_one_side_does_not_crash`,
+Phase 90).
+
+**A baseline/candidate pair evaluated with different `evaluator_type`s
+is an explicit `invalid` comparison** — there is nothing meaningful to
+diff between, say, a classification accuracy and a regression MAE. This
+is reported as a dedicated `ComparisonValidity` reason
+(`"...evaluator_type..."`), the common population size is still honestly
+reported via frame count, but no metric deltas are fabricated across the
+mismatch. The frontend never branches on evaluator type either —
+`ComparisonMetricTable`/`Comparison.tsx`'s leaderboard both render
+whatever metric keys `metric_deltas` actually contains, with
+`labelForMetric` (`frontend/src/format.ts`) providing a friendly label
+for every known metric name across all three evaluators and a raw-key
+fallback for anything else.
+
+`CompareRequest.parameters` (v0.8) threads through to the common-set
+re-evaluation exactly like `tolerance_ms` already does — required for an
+`object_detection` comparison (no default confidence/IoU threshold, same
+as `/evaluate`), ignored by classification/regression. A real bug this
+project caught before shipping: the common-set path used to call
+`evaluate(match_result, {})` unconditionally, crashing any
+`object_detection` comparison with an unhandled `500` until this field
+was added (Phase 84) — now a clean `422` if `parameters` is omitted for
+a detection comparison.
 
 ## Sensor-set relationship
 
@@ -143,8 +189,10 @@ Ablation results are phrased strictly as an **observed metric penalty**
 `reasons` is non-empty whenever `status != 'valid'` — enforced by a
 Pydantic validator, never a silently-flagged-but-unexplained warning.
 
-- **`invalid`** — self-comparison (baseline == candidate), or zero common
-  samples in common-set mode.
+- **`invalid`** — self-comparison (baseline == candidate), zero common
+  samples in common-set mode, or a baseline/candidate pair evaluated with
+  different `evaluator_type`s (v0.8 — see
+  [Generic across evaluator types](#generic-across-evaluator-types-v08)).
 - **`valid_with_warnings`** — common sample count below
   `min_common_sample_count` (default **20**), or `|coverage_delta_pp|`
   above `coverage_warning_threshold_pp` (default **5.0**). Both

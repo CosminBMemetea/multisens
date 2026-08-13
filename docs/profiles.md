@@ -10,6 +10,12 @@ filters/groups/cross-tabulates that coverage by condition,
 judges a configuration's coverage against an explicit policy, and
 [comparison.md](comparison.md) for the layer directly below this one.
 
+**v0.8 note**: a requirement's `acceptance` criteria (`metric`/
+`operator`/`value`) work identically against any evaluator's metrics —
+classification, object detection, or regression (see
+[evaluators.md](evaluators.md)) — since evidence selection here has
+never branched on where a metric came from, only on its name.
+
 ## What this layer answers
 
 > Given a profile containing configurable requirements, which

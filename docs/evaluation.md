@@ -1,4 +1,4 @@
-# Evaluation Contract (v0.2)
+# Evaluation Contract (v0.2, evaluator layer generalized in v0.8)
 
 The authoritative reference for MultiSens's evaluation layer: the domain
 model, the timestamp-matching algorithm, classification metric semantics,
@@ -12,6 +12,16 @@ requirement-profile layer (v0.4), and
 exploration layer, all built directly or indirectly on top of this
 one's `EvaluationResult`s, and [limitations.md](limitations.md) for what
 this layer deliberately doesn't do yet.
+
+**v0.8 note**: `match_by_timestamp` and everything below in this document
+about frame-matching semantics is unchanged. What *is* new: classification
+is now one of three evaluators, not the only one - see
+[evaluators.md](evaluators.md) for the generic `Evaluator` interface/
+registry, [detection-evaluation.md](detection-evaluation.md) for object
+detection, and [regression-evaluation.md](regression-evaluation.md) for
+scalar regression. This document keeps describing classification's own
+metric semantics in full, since it's still the default evaluator and the
+one every pre-v0.8 workflow already depends on unchanged.
 
 ## What this layer answers
 
@@ -51,9 +61,14 @@ anywhere in that file, verified by the fact that every one of Phases
   field as `source_id`, see below), `configuration_id` (derived, not
   chosen), `task`, `value`, `confidence`, `latency_ms`, `metadata`.
 - **EvaluationResult** - `id`, `session_id`, `configuration_id`, `task`,
-  `format_version`, `tolerance_ms`, `sample_count`, `matched_samples`,
+  `format_version`, `evaluator_type` (v0.8 - `'classification'`,
+  `'object_detection'`, or `'regression'`; defaults to `'classification'`
+  for full backward compatibility, see [evaluators.md](evaluators.md)),
+  `tolerance_ms`, `sample_count`, `matched_samples`,
   `unmatched_predictions`, `unmatched_ground_truth`, `metrics` (dict of
-  `str -> float | None`), `confusion_matrix`, `computed_at`.
+  `str -> float | None`), `confusion_matrix` (classification only, `null`
+  otherwise), `details` (v0.8 - evaluator-specific structured evidence,
+  `null` for a bare classification result), `computed_at`.
 
 ### `source_id` vs. `sensor_ids` - the distinction that must never collapse
 
@@ -84,13 +99,15 @@ key throughout the rest of this document.
 
 `GroundTruth.value` and `Prediction.value` are opaque dicts, not a
 classification-specific `label: str` field. A `presence` classification
-event today (`{"label": "present"}`) and a hypothetical future detection
-event (`{"bbox": [...], "class": "person"}`) fit through the exact same
-field - proven by a dedicated test
+event (`{"label": "present"}`) and a detection event
+(`{"objects": [...]}`/`{"detections": [...]}`, v0.8) fit through the
+exact same field - proven by a dedicated test
 (`test_prediction_value_shape_is_generic_not_classification_specific`),
-not just asserted. **v0.2's metric engine only implements classification**
-(see below) - a detection/regression evaluator would be new code beside
-`evaluate_classification`, not a schema change.
+not just asserted. **v0.2's own metric engine only implemented
+classification; v0.8 added object detection and scalar regression beside
+it as new code, exactly as this generic schema anticipated - zero schema
+change was needed.** See [evaluators.md](evaluators.md) for the full
+evaluator layer.
 
 ## Timestamp matching
 
@@ -125,7 +142,13 @@ MultiSens does not interpret them beyond arithmetic difference.
 ## Classification metrics
 
 [`backend/app/domain/metrics.py`](../backend/app/domain/metrics.py)
-(`evaluate_classification`) - the only evaluator that exists in v0.2.
+(`evaluate_classification`) - the original evaluator (v0.2), now wrapped
+by `ClassificationEvaluator` and reachable through the generic
+`EVALUATOR_REGISTRY['classification']` (v0.8, see
+[evaluators.md](evaluators.md)) with byte-for-byte identical output.
+Object detection and regression have their own metric semantics -
+[detection-evaluation.md](detection-evaluation.md)/
+[regression-evaluation.md](regression-evaluation.md).
 
 - **Accuracy** = correct / `matched_samples`. Computed over matched
   samples only - an unmatched item is a coverage problem, not a
@@ -176,10 +199,14 @@ POST   /api/sessions/{id}/predictions/batch
 GET    /api/sessions/{id}/ground-truth
 GET    /api/sessions/{id}/predictions
 
-POST   /api/sessions/{id}/evaluate      # body: {task, configuration_ids?, tolerance_ms?}
-GET    /api/sessions/{id}/evaluation    # every persisted result for this session
-GET    /api/sessions/{id}/timeline      # ?task=&configuration_id=&tolerance_ms= - see below
+POST   /api/sessions/{id}/evaluate      # body: {task, configuration_ids?, tolerance_ms?, evaluator_type?, parameters?}
+GET    /api/sessions/{id}/evaluation    # every persisted result for this session, any evaluator_type
+GET    /api/sessions/{id}/timeline      # ?task=&configuration_id=&tolerance_ms= - classification only, see below
 ```
+
+`evaluator_type`/`parameters` are v0.8 additions - see
+[evaluators.md](evaluators.md#the-evaluator-protocol). Both default to
+classification's own pre-v0.8 behavior when omitted.
 
 ### Batch ingestion and partial failure
 
@@ -234,6 +261,13 @@ which stays a pure aggregate; recomputed fresh via `match_by_timestamp`
 on every call. Fine at target scale, and means the timeline can never
 drift from what a fresh `/evaluate` call would compute.
 
+**Classification-only (v0.8)** - a label-vs-label strip has no
+detection/regression analogue; requesting it for a non-classification
+result is a clean `422` naming the actual `evaluator_type`, checked
+explicitly against the persisted result rather than left to fail
+accidentally inside `extract_label`. See
+[evaluators.md](evaluators.md#api-surface).
+
 ## Persistence
 
 SQLite (`backend/app/persistence/`), behind a repository boundary -
@@ -275,6 +309,8 @@ actually needs one - see [limitations.md](limitations.md).
 
 See [limitations.md](limitations.md) for the current authoritative list;
 summarized here because they follow directly from everything above:
-classification-only, `tolerance_ms` not evidence-based, synchronous
-`/evaluate` (no background job), no result history, no file-import
-endpoint.
+`tolerance_ms` not evidence-based, synchronous `/evaluate` (no
+background job), no result history, no file-import endpoint, `/timeline`
+still classification-only (v0.8). The classification-only *evaluator*
+limitation from v0.2-v0.7 is resolved as of v0.8 - see
+[evaluators.md](evaluators.md).

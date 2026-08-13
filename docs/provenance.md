@@ -32,6 +32,7 @@ completely only by naming all four:
 | **Evaluation reality** | Is this ground truth/prediction real experiment data or a synthetic demo? | `metadata.synthetic: true` on every demo profile/session (v0.2+) |
 | **Measurement confidence** | Was this value actually measured, human-declared, computed, or missing? | `ResourceQuality` (v0.7) - see [resources.md](resources.md#resourcequality-four-values-never-a-fabricated-number) |
 | **Decision confidence** | Is this judgment fully resolved, or could more evidence still change it? | `PASS`/`FAIL`/`N/A` and `PolicyStatus` (v0.4/v0.6) |
+| **Evaluator identity** | Which comparison logic produced this number - classification, detection, or regression? | `EvaluationResult.evaluator_type`, self-describing on every row (v0.8) - see [evaluators.md](evaluators.md) |
 
 None of these axes imply each other. Physical-source data can still be
 part of a synthetic demo profile (deliberately not the case in this
@@ -75,7 +76,12 @@ This is the actual audit trail for any number this project claims: not
 "trust the code," but "here is a second, independent computation that
 agrees with it." See `test_synthetic_demo.py`, `test_profile_demo.py`,
 `test_decision_demo.py`, `test_ridesafe_demo.py`,
-`test_propertywatch_demo.py`.
+`test_propertywatch_demo.py`, and (v0.8) `test_ridesafe_detection_demo.py`/
+`test_propertywatch_detection_demo.py`/`test_robot_drone_demo.py` - each
+of which reimplements IoU/greedy-object-matching or MAE/RMSE/bias/median
+from scratch, with zero imports from `app.domain.detection`/
+`app.domain.regression`, the same discipline as every classification
+demo's own zero-`app.domain`-import recomputation.
 
 ## Measurement confidence: `ResourceQuality` (v0.7)
 
@@ -114,7 +120,11 @@ a consistency win.
   `unavailable`/`N/A`, reported explicitly - never `0`, never an
   average that quietly excludes what's missing. Enforced per-layer:
   `RequirementResult` (v0.4), `evaluate_policy` (v0.6),
-  `ResourceObservation`'s value/quality cross-validation (v0.7).
+  `ResourceObservation`'s value/quality cross-validation (v0.7),
+  `EvaluatorOutput.metrics`'s `MetricValue` (`float | None`) uniform
+  across all three v0.8 evaluators - a detection configuration with zero
+  TP/FP has `precision: None`, never a fabricated `0.0`, and that `None`
+  survives all the way through `/compare`'s metric deltas unchanged.
 - **Never silently drop evidence.** A configuration named but never
   evaluated is reported `NO EVIDENCE`, not omitted (v0.6's
   `/decision-analysis`, v0.7's `/tradeoffs` - including the v0.7

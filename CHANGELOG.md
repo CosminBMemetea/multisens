@@ -5,16 +5,35 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
-## [Unreleased] — public-language cleanup
+## [0.8.0] — multi-task evaluation & robotics/drone readiness
 
-Forward-only cleanup ahead of v0.8, requested and reviewed before
-execution. Retires the last cabin-themed demo content and trims generic
-regulatory-framework disclaimers project-wide - no functionality
-changes except renaming/retheming demo fixtures, and no historical
-CHANGELOG entries below this one were edited (those describe what each
-already-tagged release actually shipped).
+Built phase by phase (Phase 78 through Phase 90), same discipline as
+v0.1-v0.7: a strong architecture review before any code (the master
+prompt's own specification challenged explicitly, several proposals
+rejected - no `TaskDefinition` registry entity, no AP/mAP, no Hungarian
+assignment, no vector regression, no relative/percentage error - each
+with a documented reason), explicit self-review checkpoints per phase,
+nothing merged without running against a real container. Generalizes the
+v0.2 evaluation layer beyond classification: a small, closed `Evaluator`
+protocol plus a static registry, two new evaluators (object detection,
+scalar regression), full backward compatibility for every pre-v0.8
+classification workflow (proven, not assumed), and three new reference
+demos - two extending the existing RideSafe/PropertyWatch personal-camera
+stories, one introducing the first generic robotics-ready example.
+**Every other layer (comparison, coverage, decision, trade-offs) needed
+zero engine changes** - all four were already evaluator-blind by
+construction, proven end to end with a single mixed-task profile. Full
+domain model, algorithm, and API reference: [docs/evaluators.md](docs/evaluators.md) /
+[docs/detection-evaluation.md](docs/detection-evaluation.md) /
+[docs/regression-evaluation.md](docs/regression-evaluation.md).
 
-### Changed
+This release also includes a forward-looking public-language cleanup
+completed ahead of the v0.8 phases proper: retires the last
+cabin-themed demo content and trims generic regulatory-framework
+disclaimers project-wide - no functionality changes except renaming/
+retheming demo fixtures.
+
+### Changed (public-language cleanup)
 
 - **Retired the "Generic Cabin Safety Demo" (v0.4/v0.5's flagship
   requirement-profile/coverage demo), rethemed to "Generic Sensor
@@ -48,6 +67,156 @@ already-tagged release actually shipped).
   `DecisionPanel.tsx`, `docs/decision-support.md` - explaining why
   `DecisionPolicy` has no default) are unchanged; they were never a
   disclaimer to begin with.
+
+### Added (v0.8 evaluator layer)
+
+- **Generic `Evaluator` protocol + `EvaluatorOutput`**
+  (`backend/app/domain/evaluators.py`/`evaluator_output.py`, Phase 78):
+  `evaluate(match_result, parameters) -> EvaluatorOutput`, frame-level
+  counts (`sample_count`/`matched_samples`/`unmatched_predictions`/
+  `unmatched_ground_truth`) meaning the same thing for every evaluator,
+  `metrics: dict[str, float | None]`, optional evaluator-specific
+  `details`. `EVALUATOR_REGISTRY` started **empty** - only ever holds
+  fully-working entries, populated one evaluator at a time as each
+  became real. New migration `0005_evaluation_result_evaluator_type.sql`
+  (`evaluator_type TEXT NOT NULL DEFAULT 'classification'`, nullable
+  `details TEXT`) - every pre-v0.8 row auto-becomes classification, zero
+  backfill needed.
+- **`ClassificationEvaluator`** (Phase 79): wraps the existing v0.2
+  `evaluate_classification` byte-for-byte, registered as
+  `EVALUATOR_REGISTRY['classification']`. `/evaluate`'s `evaluator_type`
+  field defaults to `'classification'` - every pre-v0.8 caller keeps
+  working unchanged; an unrecognized `evaluator_type` is always a clean
+  `422`, never a silent fallback.
+- **Object detection domain model** (`backend/app/domain/detection.py`,
+  Phase 80-82): normalized `[0.0, 1.0]` top-left `x`/`y`/`width`/`height`
+  bbox convention (always valid by construction), `parse_detections`/
+  `parse_ground_truth_objects`, `compute_iou`, greedy per-frame object
+  matching (sorted by descending IoU, deterministic tie-break by
+  `(gt_index, detection_index)` - explicitly not Hungarian assignment,
+  this codebase's first numerical dependency would have been for it),
+  label filtering before IoU (a wrong-label detection is both a miss and
+  a false positive, never partial credit), IoU threshold gating candidacy
+  (not just a post-hoc label). `DetectionParameters`
+  (`confidence_threshold`/`iou_threshold`, both **required, no default**).
+  Session-level precision/recall/F1/mean-matched-IoU plus a per-class
+  breakdown in `details`. **No AP/mAP anywhere** - grep-verified by a
+  dedicated test. `DetectionEvaluator` registered only once `evaluate()`
+  was complete and tested (Phase 82), not when the schema/matching code
+  first existed (Phase 80-81) - the registry's own "only working
+  entries" rule applied to itself.
+- **Scalar regression domain model** (`backend/app/domain/regression.py`,
+  Phase 83): `{"value": float, "unit": str}` schema on both sides, a
+  vector `value` rejected with a dedicated clear message, per-pair and
+  cross-sample unit-mismatch checks (both raise, never silently drop or
+  average incompatible quantities - the same rule v0.7's
+  `compute_resource_metric_summary` already applies to mixed-unit
+  resource observations). MAE/RMSE/bias/median-absolute-error.
+  Deliberately deferred, not silently dropped: relative/percentage error,
+  vector regression - both grep-verified absent.
+- **Full API integration** (Phase 84): `EvaluateRequest.evaluator_type`/
+  `parameters`; `CompareRequest.parameters` threaded to the common-set
+  re-evaluation (fixes a real bug - `/compare` used to crash any
+  `object_detection` comparison with an unhandled `500`, since the
+  common-set path unconditionally called `evaluate(match_result, {})`
+  and detection has no default thresholds; now a clean `422` if omitted);
+  `/timeline` explicitly checks `evaluator_type` before extraction,
+  returning a dedicated message for a non-classification result instead
+  of an accidental one from inside `extract_label`.
+- **Mixed-task integration proof** (Phase 85): a single profile with
+  classification + object_detection + regression requirements on the
+  same two configurations, run end to end through `/coverage`,
+  `/decision-analysis`, `/tradeoffs`, and `/compare` - zero production
+  code changed to make it work, confirming `coverage.py`/`analysis.py`/
+  `decision.py`/`resources.py` were already evaluator-blind.
+- **Multi-task frontend** (Phase 86): `EvaluationResult` discriminated
+  union keyed on `evaluator_type` (`frontend/src/types.ts`, no `any`
+  anywhere), evaluator-aware summary columns
+  (`evaluationColumns.ts`), a per-class breakdown view for detection and
+  a unit note for regression (`EvaluationPanel.tsx`), a fully generic
+  `ComparisonMetricTable`/leaderboard driven by whatever metric keys a
+  comparison actually has (no more hardcoded F1/Recall columns). Real
+  gap found and fixed: the Evaluation panel used to fetch `/timeline`
+  unconditionally for every evaluator type, surfacing Phase 84's new 422
+  as a page-level error banner for detection/regression sessions -
+  fixed by gating the fetch on `isClassificationResult`.
+- **Three new reference demos, each independently re-derived and
+  cross-checked against the live API** (Phase 87-89): **RideSafe
+  Detection** (`front_scene_object_detection`/
+  `rear_scene_object_detection`, front camera F1 0.80 vs. rear F1 0.57);
+  **PropertyWatch Detection** (entrance/storage/indoor, F1 0.821/0.667/
+  0.529); **Robot/Drone Sensing** - the first generic robotics-ready
+  reference example (`robot_front_rgb`/`sim_depth`/`sim_range`,
+  synthetic, not added to `config/sensors.yaml`), `obstacle_detection`
+  (camera F1 0.757 vs. depth-derived F1 0.611) and `distance_estimation`
+  (a dedicated range sensor MAE 0.06 m vs. a depth-camera estimate MAE
+  0.30 m) as task profiles over the same two generic evaluators, no new
+  evaluator-specific logic. Explicitly never an autonomous navigation,
+  drone control, or flight safety system - a dedicated overclaim scan
+  enforces it. Kept clearly distinct in name/theme from the unrelated,
+  older "Generic Sensor Evaluation Lab."
+- **v0.8 robustness pass** (Phase 90): 11 dedicated tests at the real
+  HTTP API level - malformed detection/regression values reach
+  `/evaluate` as a clean `422`, unknown `evaluator_type` fails
+  atomically (zero partial writes), all-N/A metrics flow through
+  `/compare` without a crash, a full evaluate+compare round trip using
+  zero v0.8 request fields anywhere still matches pre-v0.8 behavior
+  exactly, empty detections on both sides never crash, and regression's
+  common-set semantics (one matched pair is one sample, no frame-vs-object
+  nuance) are pinned down explicitly. No genuine defects found - the
+  whole v0.8 evaluator/comparison layer already held up.
+- **New docs**: [docs/evaluators.md](docs/evaluators.md),
+  [docs/detection-evaluation.md](docs/detection-evaluation.md),
+  [docs/regression-evaluation.md](docs/regression-evaluation.md).
+  Updated: `docs/evaluation.md` (evaluator_type/details on
+  `EvaluationResult`, classification-only claim corrected),
+  `docs/comparison.md` (generic metric deltas across evaluator types,
+  evaluator-type-mismatch invalidity), `docs/decision-support.md`/
+  `docs/profiles.md` (evaluator-blind evidence lookup noted),
+  `docs/provenance.md` (evaluator identity as a fifth provenance
+  dimension, new demo test files), `docs/limitations.md` (classification-
+  only limitation resolved, new v0.8 scope boundaries added), `README.md`
+  (quick-start sections for all three new demos, Roadmap, Documentation).
+
+### Fixed (v0.8)
+
+- **`/compare` crashed with an unhandled `500` for two `object_detection`
+  configurations** (Phase 84) - the common-set re-evaluation always
+  called `evaluate(match_result, {})`, and `object_detection` has no
+  default `confidence_threshold`/`iou_threshold`. Fixed by threading
+  `CompareRequest.parameters` through to the common-set call, wrapped in
+  the same `ValueError -> 422` handling `/evaluate` already had.
+- **A circular import between `evaluators.py` and the new
+  `detection.py`** (Phase 82) - both needed each other's types. Fixed by
+  extracting `Evaluator`/`EvaluatorOutput` into a new, minimal
+  `evaluator_output.py` imported one-directionally by both, re-exported
+  from `evaluators.py` for backward compatibility.
+- **A robotics demo construction bug caught before shipping** (Phase 89)
+  - an early draft of the Robot/Drone Sensing dataset emitted a duplicate
+  ground-truth row per sensor for the shared `obstacle_detection` task,
+  which would have silently doubled false-negative counts once evaluated
+  through the real API. Caught by the demo's own independent-verification
+  test before the data file was ever committed; fixed by sharing one
+  ground-truth set per task, predictions varying only per sensor/config.
+
+### Known limitations (v0.8)
+
+- No `TaskDefinition` registry - `evaluator_type` is stated explicitly
+  per `/evaluate` call, never remembered against a task name.
+- No AP/mAP, no cross-frame object tracking, no segmentation masks, no
+  oriented/rotated bounding boxes, no pixel-coordinate bbox input mode.
+- No relative/percentage regression error, no vector regression.
+- `/timeline` remains classification-only - a label-vs-label strip has
+  no detection/regression analogue.
+- The Evaluation panel's "Run Evaluation" button always calls
+  `/evaluate` with no `evaluator_type`/`parameters` (defaults to
+  classification) - fine for every shipped demo (results are
+  pre-evaluated via each loader script's own API calls with the correct
+  parameters), but running it live against a fresh detection/regression
+  session from the browser would `422`. A parameters-input UI for
+  `/evaluate`/`/compare` is a documented follow-up, not built in v0.8.
+- Backend: 151 new tests (579 → 730). Frontend: 7 new tests (40 → 47),
+  `tsc`/`oxlint` clean throughout.
 
 ## [0.7.0] — v0.7 resource observation & deployment trade-offs
 
