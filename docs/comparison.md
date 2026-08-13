@@ -8,7 +8,10 @@ layer this one is built on top of, [profiles.md](profiles.md)/
 built on top of *this* one — reusing this layer's exact multi-source
 ambiguity rule rather than reinventing it —
 [condition-explorer.md](condition-explorer.md) for the v0.5 condition-
-exploration layer built on top of that one, and
+exploration layer built on top of that one,
+[decision-support.md](decision-support.md) for the v0.6 layer whose
+sensor-addition analysis reuses this layer's exact `classify_relationship`
+set-difference rather than reimplementing it, and
 [limitations.md](limitations.md) for what this layer deliberately
 doesn't do.
 

@@ -1,6 +1,6 @@
 # MultiSens
 
-[![v0.5.0](https://img.shields.io/badge/release-v0.5.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.5.0)
+[![v0.6.0](https://img.shields.io/badge/release-v0.6.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.6.0)
 
 An open-source, vendor-neutral platform for ingesting, synchronizing,
 diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
@@ -52,6 +52,18 @@ whatever else speaks RTSP.
   `N/A` and never a causal claim — only slices and counts what v0.4
   already decided. Full contract:
   [docs/condition-explorer.md](docs/condition-explorer.md).
+- A **decision-support layer** (v0.6): given an explicit, caller-supplied
+  policy (never a default), which sensor configurations are `SUFFICIENT`
+  — and is there a smaller one that's tied for sufficient too? Minimum
+  sufficient sets by strict set-inclusion minimality (never sensor-count
+  sorting, never narrowed to one when several tie), a Pareto/dominance
+  trade-off front across sensor count vs. coverage vs. completeness, and
+  requirement-gap closure comparing two configurations across four
+  separately-exposed transition categories. Sensor removal is reported as
+  "removable without violating the current policy" / "policy-critical
+  within this configuration" — scoped wording only, never "redundant
+  sensor" as an intrinsic property, and never a universal importance
+  score. Full contract: [docs/decision-support.md](docs/decision-support.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
 
@@ -73,7 +85,11 @@ whatever else speaks RTSP.
   never claims a sensor *caused* a change — only that two configurations
   *measured* differently under stated conditions. v0.5's condition
   explorer carries the same discipline forward: "observed coverage under
-  condition X," never "X caused this outcome." See
+  condition X," never "X caused this outcome." v0.6's decision-support
+  layer extends it once more: a sensor is "removable without violating
+  the current policy" or "policy-critical within this configuration" —
+  never "redundant" or "necessary" as an intrinsic property, and there is
+  no universal sensor-importance score anywhere. See
   [docs/comparison.md](docs/comparison.md#non-causal-by-design).
 - **Evaluation is classification-only** (v0.2) — the domain model is
   deliberately generic (see
@@ -214,6 +230,28 @@ requirements by condition, using the same three dimensions. See
 derivation and [docs/profiles.md](docs/profiles.md) /
 [docs/coverage.md](docs/coverage.md) for the domain model and API.
 
+## Decision support quick start (v0.6)
+
+A third, genuinely different synthetic profile/dataset — "Generic
+Exterior Sensing Decision Demo," front/rear camera positions plus
+simulated thermal/depth, not a variant of the cabin-safety demo above:
+
+```bash
+docker compose up -d
+python3 scripts/load_decision_demo_data.py
+open http://localhost:8080/profiles
+```
+
+Open "Generic Exterior Sensing Decision Demo," open its **Decision**
+tab. Eight configurations against four accuracy bars produce exactly one
+minimum sufficient set and a four-point Pareto trade-off curve — pick a
+baseline/candidate pair in the gap-analysis section to see which
+requirements newly pass, and try the sensor-removal sweep to see
+"removable" vs. "policy-critical" reported explicitly. See
+[examples/profiles/README.md](examples/profiles/README.md) for the full
+derivation and [docs/decision-support.md](docs/decision-support.md) for
+the domain model and API.
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to
@@ -242,6 +280,7 @@ Full v0.1 API surface: [docs/connector-api.md](docs/connector-api.md#backend-api
 Full evaluation API surface: [docs/evaluation.md](docs/evaluation.md#api-surface).
 Full comparison API surface: [docs/comparison.md](docs/comparison.md#api-surface).
 Full profile/coverage API surface: [docs/profiles.md](docs/profiles.md#api-surface) / [docs/coverage.md](docs/coverage.md#api-surface).
+Full decision-support API surface: [docs/decision-support.md](docs/decision-support.md#api-surface).
 
 ## ROS topics
 
@@ -287,18 +326,32 @@ filtering/faceting, 1D breakdown and 2D cross-tabulation, a failure
 explorer, an N/A breakdown that distinguishes a missing experiment from
 an evaluation gap, and full requirement-to-evidence traceability — never
 re-deciding `PASS`/`FAIL`/`N/A`, never a causal claim — see
-[docs/condition-explorer.md](docs/condition-explorer.md).
+[docs/condition-explorer.md](docs/condition-explorer.md). v0.6 added
+decision support on top of that: an explicit, caller-supplied
+`DecisionPolicy` (never a default) judges each configuration
+`SUFFICIENT`/`INSUFFICIENT`/`UNDETERMINED`, minimum sufficient sensor
+sets by strict set-inclusion minimality (never sensor-count sorting,
+never narrowed to one when several tie), a Pareto/dominance trade-off
+front, and requirement-gap closure across four separately-exposed
+transition categories — never re-deciding `PASS`/`FAIL`/`N/A`, never a
+causal claim, and never a universal sensor-importance score — see
+[docs/decision-support.md](docs/decision-support.md).
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
 claims (no p-values, no confidence intervals, no "sensor X caused Y"),
 detection/regression metric engines (the domain model already supports
 them; the evaluators don't exist yet), NCAP/DMS/OMS-specific logic or any
-other built-in regulatory/certification framework, decision support
-("minimum sufficient configuration"), weighted/mandatory requirement
-aggregation, a simultaneous 3+-dimension cross-tab, saved/named filter
-presets, real depth/thermal sensor conversion, a file-import API
-endpoint, authentication, cloud deployment. See
+other built-in regulatory/certification framework, per-requirement
+weighted/mandatory-scoped aggregation (v0.6's mandatory flag is an
+all-or-nothing population setting, not a per-requirement list), cost/
+power/latency decision objectives (only `minimize_sensor_count` exists),
+sensor-identity/ROS migration for simultaneous live dual-camera viewing
+(decision support itself needed none of this — see
+[docs/decision-support.md](docs/decision-support.md#sensor-instance-identity-not-modality)),
+a simultaneous 3+-dimension cross-tab, saved/named filter presets, real
+depth/thermal sensor conversion, a file-import API endpoint,
+authentication, cloud deployment. See
 [CHANGELOG.md](CHANGELOG.md) for how each release was built and verified.
 
 ## Documentation
@@ -316,6 +369,9 @@ endpoint, authentication, cloud deployment. See
 - [docs/condition-explorer.md](docs/condition-explorer.md) — filtering,
   faceting, grouping/cross-tabs, failure/N/A exploration, evidence
   traceability, API surface, frontend (v0.5)
+- [docs/decision-support.md](docs/decision-support.md) — policy model,
+  sufficiency semantics, minimum sufficient sets, Pareto/dominance,
+  requirement gap closure, API surface, frontend (v0.6)
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

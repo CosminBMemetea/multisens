@@ -5,7 +5,9 @@ the domain model, validation, storage, and the profile API surface. See
 [coverage.md](coverage.md) for how a profile's requirements are actually
 evaluated against evidence and aggregated into coverage,
 [condition-explorer.md](condition-explorer.md) for the v0.5 layer that
-filters/groups/cross-tabulates that coverage by condition, and
+filters/groups/cross-tabulates that coverage by condition,
+[decision-support.md](decision-support.md) for the v0.6 layer that
+judges a configuration's coverage against an explicit policy, and
 [comparison.md](comparison.md) for the layer directly below this one.
 
 ## What this layer answers

@@ -5,9 +5,10 @@ gets turned into evidence-backed `PASS`/`FAIL`/`N/A` results and
 aggregated coverage: evidence selection, the acceptance engine,
 recursive aggregation, the `/coverage` API, and the frontend. See
 [profiles.md](profiles.md) for the profile document this layer consumes,
-and [condition-explorer.md](condition-explorer.md) for the v0.5 layer
+[condition-explorer.md](condition-explorer.md) for the v0.5 layer
 built directly on top of this one's `RequirementResult`/`GroupCoverage`
-output.
+output, and [decision-support.md](decision-support.md) for the v0.6
+layer that judges that same output against an explicit policy.
 
 ## Evidence selection
 

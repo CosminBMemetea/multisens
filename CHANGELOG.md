@@ -5,6 +5,164 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [0.6.0] — v0.6 decision support & minimum sufficient sensor set
+
+Built phase by phase (Phase 53 through Phase 62), same discipline as
+v0.1-v0.5: a 25-question architecture review *before* any code, explicit
+self-review checkpoints per phase, nothing merged without running
+against a real container. Adds a policy-driven decision layer on top of
+v0.4's already-computed `RequirementResult`/`AggregateCoverage` evidence
+— **never re-decides `PASS`/`FAIL`/`N/A`**, never re-implements v0.5's
+condition matching/grouping. No v0.1-v0.5 behavior changed. Full domain
+model, algorithm, and API reference:
+[docs/decision-support.md](docs/decision-support.md).
+
+### Added
+
+- **`DecisionPolicy`/`PolicyStatus` foundation** (`backend/app/domain/decision.py`,
+  Phase 53): `DecisionPolicy` (`minimum_requirement_coverage`,
+  `minimum_evidence_completeness`, `mandatory_requirements_must_pass`,
+  `objective`) — no default on any field, an omitted policy is always
+  `422`, never silently applied. `PolicyStatus`
+  (`sufficient`/`insufficient`/`undetermined`) — never a binary good/bad.
+  Phase 57 (sensor-identity/ROS migration) reviewed and explicitly
+  deferred in the same architecture review: `Prediction.sensor_ids` was
+  already a free-form `list[str]` with zero ROS/modality coupling, so
+  `front_rgb`/`rear_rgb` needed no new identity model to be separable
+  configuration members.
+- **Policy/minimality/dominance engine** (Phase 54):
+  `evaluate_policy` — completeness checked against the population's
+  *real* N/A count (never hypothetically resolved, since it can only
+  improve as N/A resolves — a shortfall is always `undetermined`, never
+  `insufficient`); coverage/mandatory-pass bounded via best-case/worst-
+  case N/A-resolution hypotheticals. `find_minimal_sufficient_sets` —
+  strict set-inclusion minimality (`frozenset` proper-subset check), not
+  sensor-count sorting; returns every tied minimal configuration, sorted
+  deterministically. `find_dominated_configurations`/`find_pareto_front`
+  — `A` dominates `B` iff same-or-fewer sensors, same-or-better coverage
+  *and* completeness, strictly better in ≥1 dimension; `None` treated as
+  strictly worse than any real value, two `None`s tie; O(n²) pairwise,
+  bounded by evaluated-configuration count, never a generated power set.
+- **Requirement gap engine** (Phase 55): `compute_requirement_transitions`
+  — four separately-exposed categories (`fail_to_pass`/`na_to_pass`/
+  `pass_to_fail`/`pass_to_na`), never collapsed into one delta; raises on
+  a mismatched requirement population rather than diffing a meaningless
+  comparison. `compute_condition_gap_summary` — reuses v0.5's
+  `group_by_condition` per side, then subtracts bucket-by-bucket, no
+  grouping logic duplicated. `find_direct_removals` — scoped wording only
+  ("removable without violating the current policy" /
+  "policy-critical within this configuration"), `NO EVIDENCE` (both
+  `configuration_id`/`policy_status` `None`) for a removal never
+  evaluated, never estimated. `analyze_sensor_addition` — composes
+  added/removed sensor ids (reusing v0.3's `classify_relationship`
+  set-difference directly), coverage/completeness deltas, transitions,
+  and both configurations' policy status into one structured result —
+  deliberately many small fields, never a single `importance_score`.
+- **Decision API** (`backend/app/api/profiles.py`, Phase 56):
+  `POST /{profile_id}/decision-analysis` — one consolidated endpoint, not
+  a second `/gap-analysis` route; `gap_analysis` is an optional nested
+  request/response section reusing `/coverage`/`/analysis`'s exact
+  evidence-gathering helpers. A named-but-never-evaluated
+  `configuration_id` reports `policy_status: null` with empty
+  `sensor_ids` — `NO EVIDENCE`, never silently dropped. A
+  `gap_analysis.baseline_configuration_id`/`candidate_configuration_id`
+  naming a configuration with no evidence in this analysis is `422`
+  (nothing real to compare); the removal sweep instead reports each
+  removal, `NO EVIDENCE` and all. `repo.get_sensor_ids_for_configuration`
+  added — fetches sensor ids from a representative persisted prediction,
+  never reverse-parses the `configuration_id` string itself.
+- **Decision UI** (`ProfileDetail.tsx`'s new Decision tab, Phase 58-60):
+  `DecisionPanel.tsx` — an editable policy form (objective shown but
+  disabled, since only `minimize_sensor_count` exists), the condition
+  facet filters reused from v0.5, and a per-configuration summary table.
+  `PolicyStatusBadge.tsx` — four states, `sufficient`/`insufficient`/
+  `undetermined`/`null` (rendered "No evidence"), always distinguishing
+  "policy not met" from "never evaluated." `MinimalSufficientSets` — one
+  card per tied minimal configuration, each showing exactly which policy
+  criteria it met and why, never narrowed to one. `ParetoFront` — the
+  non-dominated trade-off table shown prominently, dominated
+  configurations collapsed underneath and labeled `Dominated`, never
+  "bad." `GapAnalysisSection` — baseline/candidate pickers (populated
+  only from already-evaluated configurations), a sensor-removal-sweep
+  checkbox, the four transition counts as clickable buttons opening a
+  drill-down built from the candidate's own `requirement_results` —
+  reusing `CellDrillDown`/`RequirementDrillDown` verbatim, never a new
+  requirement detail renderer. `SensorChips` renders a `SourceTypeBadge`
+  only when a sensor id has a matching `config/sensors.yaml` entry,
+  otherwise the id alone with no badge — graceful degradation, never an
+  error.
+- **Front/rear camera synthetic decision demo** (Phase 61):
+  "Generic Exterior Sensing Decision Demo" — a second, genuinely
+  different synthetic profile/dataset from the cabin-safety demo, not a
+  variant squeezed into it. Four reference sensor ids (`front_rgb`,
+  `rear_rgb`, `sim_thermal`, `sim_depth`), four accuracy requirements
+  (50%/70%/85%/97%), eight configurations — hand-verified (independently,
+  via plain-Python re-derivation with zero `app.domain.decision` imports)
+  to produce exactly one minimal sufficient configuration
+  (`cfg-front_rgb-rear_rgb-sim_thermal`) and a clean four-point Pareto
+  trade-off curve. `front_rgb`/`rear_rgb`/`sim_thermal`/`sim_depth`
+  deliberately **not** added to `config/sensors.yaml` — doing so would
+  trip the one-sensor-per-modality live-ingestion launch guard
+  (`front_rgb`/`rear_rgb` share modality `rgb`;
+  `sim_thermal`/`sim_depth` would collide with the already-live
+  `thermal`/`depth` entries) — `SensorChips`' graceful no-badge fallback
+  covers display instead. A standing "SYNTHETIC DECISION DEMO" banner on
+  the Decision tab, gated on the profile's own
+  `metadata.synthetic: true`. `scripts/load_decision_demo_data.py` added,
+  ending its summary with a `/decision-analysis` call (policy status,
+  minimal set, Pareto front) rather than `/coverage`.
+- **54 new backend tests** (389 → 443) — the `DecisionPolicy`/
+  `PolicyStatus` contract, `evaluate_policy`'s every branch (including
+  the completeness-is-always-undetermined case), minimality/dominance
+  (subset exclusion, multi-way ties, `None`-handling), the gap engine
+  (transitions, condition deltas, direct removals, sensor-addition
+  composition), the `/decision-analysis` API's wiring and malformed-
+  request handling, the synthetic demo's independent verification, and a
+  dedicated Phase 62 robustness pass (a zero-sufficient-configuration
+  set, an every-configuration-sufficient set, a three-way disjoint
+  minimal-set tie, non-subset identical-coverage dominance, a
+  removal-sweep `NO EVIDENCE` case, an N/A-heavy configuration landing
+  `undetermined` through the real pipeline, a mandatory-requirement
+  failure forcing `insufficient` through the real pipeline, a legacy
+  v0.4/v0.5-conditioned profile working unchanged against
+  decision-analysis, and two more malformed-request shapes). **No new
+  frontend unit tests this release** — the Decision tab's UI was
+  live-verified via Playwright against the real running stack at every
+  phase instead, same convention as v0.5; frontend suite stays 34/34.
+- `docs/decision-support.md` (new); `README.md`, `docs/profiles.md`,
+  `docs/coverage.md`, `docs/condition-explorer.md`, `docs/comparison.md`,
+  `docs/limitations.md` updated for the decision-support layer.
+
+### Fixed
+
+One real bug, caught by this project's own before-it-ships discipline (a
+failing test written to lock in the intended semantics) before the phase
+that introduced it was committed:
+
+- **`evaluate_policy`'s initial draft bounded evidence completeness the
+  same best-case/worst-case way as coverage.** Because "every N/A
+  resolved" always means completeness = 1.0 in *both* hypotheticals, the
+  `minimum_evidence_completeness` threshold could never actually fire —
+  a 5-pass/0-fail/5-na aggregate against a 0.5/0.95 policy incorrectly
+  returned `sufficient` instead of `undetermined`. Fixed by checking
+  completeness against the population's real, current N/A count
+  directly, before any best/worst-case branching — documented
+  permanently as a code comment on `PolicyStatus` itself so the
+  reasoning survives past the commit that fixed it.
+
+### Known limitations
+
+`DecisionPolicy.objective` supports only `minimize_sensor_count` (no
+cost/power/latency objective exists yet), `mandatory_requirements_must_pass`
+is an all-or-nothing population flag rather than a per-requirement scoped
+list (`Requirement` still has no `mandatory` field), dominance/Pareto
+computation is O(n²) bounded by evaluated-configuration count,
+`DecisionAnalysisResponse` is never persisted (recomputed fresh every
+call), and sensor-identity/ROS migration for live simultaneous dual-
+camera *viewing* remains deferred and unchanged from before v0.6 — this
+release's decision-support feature never needed it. Full list:
+[docs/limitations.md](docs/limitations.md).
+
 ## [0.5.0] — v0.5 condition explorer & evidence analysis
 
 Built phase by phase (Phase 42 through Phase 51), same discipline as

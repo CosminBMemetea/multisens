@@ -4,9 +4,11 @@ The authoritative reference for MultiSens's condition-exploration layer:
 filtering, faceting, grouping/cross-tabulation, failure/N/A exploration,
 and evidence traceability, all built on top of what
 [coverage.md](coverage.md) already decided. See
-[profiles.md](profiles.md) for the profile document this layer reads and
+[profiles.md](profiles.md) for the profile document this layer reads,
 [coverage.md](coverage.md) for the `RequirementResult`/`GroupCoverage`
-shapes it analyzes.
+shapes it analyzes, and [decision-support.md](decision-support.md) for
+the v0.6 layer built directly on top of this one's `AggregateCoverage`/
+`group_by_condition` output.
 
 ## What this layer answers
 

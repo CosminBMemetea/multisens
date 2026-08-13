@@ -18,8 +18,11 @@ release, not silently worked around now.
   compliance or certification claim; v0.5 added condition exploration
   (see below) - filtering, grouping, and cross-tabulating that same
   judgment by condition, explicitly never a causal or statistical claim
-  about what a condition *caused*. See the project's own original scope
-  statement in the README.
+  about what a condition *caused*; v0.6 added decision support (see
+  below) - judging a configuration's already-computed coverage against
+  an explicit, caller-supplied policy, explicitly never a causal claim
+  and never a universal sensor-importance score. See the project's own
+  original scope statement in the README.
 - **Comparison validity does not check matched-label-set divergence.**
   Two configurations whose matched samples span different label sets
   (e.g. one config's matched set never saw the "absent" class) would
@@ -52,11 +55,17 @@ release, not silently worked around now.
   rejected as exactly the kind of nuance-hiding shortcut this layer's
   design works to avoid. See
   [coverage.md](coverage.md#no-profile-level-status).
-- **No weighted or mandatory-requirement aggregation.** `Requirement`/
-  `RequirementGroup` carry no `weight`/`mandatory` field - neither has
-  an aggregation semantic defined yet, and an unused field would invite
-  premature use before one exists. Additive migration territory for a
-  later release, not a schema change.
+- **No per-requirement weighted or mandatory-requirement aggregation.**
+  `Requirement`/`RequirementGroup` carry no `weight`/`mandatory` field -
+  neither has an aggregation semantic defined yet, and an unused field
+  would invite premature use before one exists. v0.6's
+  `mandatory_requirements_must_pass` is a population-wide boolean ("every
+  requirement in the filtered population must pass"), not a scoped list
+  of specific mandatory requirements - the more general per-requirement
+  version remains additive migration territory for a later release, not
+  built here because nothing in v0.6's own scope demonstrates the need
+  for it yet. See
+  [decision-support.md](decision-support.md#decisionpolicy-has-no-default-ever).
 - **`RequirementResult`/`ConfigurationCoverage` are never persisted.**
   Recomputed fresh on every `/coverage` call from already-persisted
   evidence, same "recompute, don't persist" decision v0.3 made for
@@ -99,6 +108,20 @@ release, not silently worked around now.
   requirement/session/profile dependency-graph visualization, which the
   v0.5 master prompt explicitly rejected as unneeded for this project's
   scale.
+- **`DecisionPolicy.objective` supports only `minimize_sensor_count`.**
+  Cost/power/latency objectives are architected for (an additive
+  `Literal` extension) but not implemented - v0.6 has no reliable
+  hardware-characteristic data to build them on yet. See
+  [decision-support.md](decision-support.md#decisionpolicy-has-no-default-ever).
+- **Dominance/Pareto computation is O(n²) pairwise**, with no
+  optimization library - fine at the realistic scale here since
+  configuration count is bounded by *evaluated evidence*, never a
+  generated power set, but genuinely quadratic if that assumption ever
+  stops holding.
+- **`DecisionAnalysisResponse` is never persisted** - same "recompute,
+  don't persist" decision as `RequirementResult`/`AnalysisResponse`
+  above, extended to the v0.6 layer. Every `/decision-analysis` call
+  recomputes fresh.
 - **`metric` lookup is limited to what `ComparisonMetrics` already
   exposes** (`accuracy`, `precision_macro`, `recall_macro`, `f1_macro`,
   `precision_micro`, `recall_micro`, `f1_micro`, the synthetic
@@ -132,11 +155,18 @@ release, not silently worked around now.
   calls via a script (`scripts/load_demo_data.py`), not a dedicated
   import route - deferred deliberately until a second example file
   actually needs one (see [evaluation.md](evaluation.md#import-format-format_version-10)).
-- **One sensor per modality.** Topics are keyed by modality
-  (`/multisens/sensors/rgb/image_raw`), not by sensor ID. Two cameras
-  sharing a modality collide on the same topic - guarded against with a
-  hard, tested launch-time error, not silently broken, but genuinely not
-  supported.
+- **One sensor per modality, for live ingestion only.** Topics are keyed
+  by modality (`/multisens/sensors/rgb/image_raw`), not by sensor ID. Two
+  cameras sharing a modality collide on the same topic - guarded against
+  with a hard, tested launch-time error, not silently broken, but
+  genuinely not supported for **live, simultaneous dashboard viewing**.
+  Reviewed for v0.6 and explicitly deferred (issue #58, closed): decision
+  support reasons entirely over already-ingested evaluation data via the
+  same REST batch path every synthetic demo uses, so `front_rgb`/
+  `rear_rgb` are already distinct, valid configuration members there with
+  zero code changes - this restriction is unchanged, and blocks only live
+  video viewing of two same-modality physical sensors at once. See
+  [decision-support.md](decision-support.md#sensor-instance-identity-not-modality).
 - **RTSP only.** `config/sensors.yaml`'s `transport` field exists for
   future extension, but only `"rtsp"` does anything; other values are
   skipped with a logged warning.
