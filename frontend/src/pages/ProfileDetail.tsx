@@ -376,6 +376,10 @@ export function ProfileDetail() {
             {activeTab === "decision" && profileId && (
               <DecisionPanel
                 profileId={profileId}
+                profileName={profile.name}
+                profileVersion={profile.version}
+                requirements={profile.requirements}
+                groups={profile.groups}
                 conditionParams={conditionParams}
                 onConditionChange={handleConditionChange}
               />
