@@ -171,6 +171,59 @@ def test_analysis_status_filter(client):
     assert resp.json()['configurations'][0]['requirement_results'] == []
 
 
+# --- /analysis: failure_root / na_breakdown (Phase 48) ---------------------
+
+def test_analysis_failure_root_reflects_a_real_failure(client):
+    _create_scenario(client)
+    _create_session(client, metadata={'illumination': 'night'})
+    _seed_ground_truth(client)
+    _seed_predictions(client, all_correct=False)  # 4/5 = 0.8, still >= 0.7 -> pass
+    _evaluate(client)
+    # req-001's own threshold (0.7) passes at 0.8 - build a stricter profile
+    # so this scenario produces a real, hand-traceable failure instead.
+    resp = client.post('/api/profiles', json={
+        'id': 'p1', 'name': 'Strict', 'version': '1.0',
+        'groups': [{'id': 'g1', 'name': 'Group 1'}],
+        'requirements': [{
+            'id': 'req-001', 'group_id': 'g1', 'name': 'Variant 1', 'task': 'presence',
+            'conditions': {'illumination': 'night'},
+            'acceptance': [{'metric': 'accuracy', 'operator': '>=', 'value': 0.95}],
+        }],
+    })
+    assert resp.status_code == 201, resp.text
+
+    resp = client.post('/api/profiles/p1/analysis', json={})
+    assert resp.status_code == 200, resp.text
+    config = resp.json()['configurations'][0]
+    assert config['failure_root']['fail_count'] == 1
+    assert config['failure_root']['pass_count'] == 0
+    assert config['failure_root']['na_count'] == 0
+    # failure_breakdown deliberately isn't pre-filtered to fail-only - the
+    # group's own child list (if any) is still present, not stripped out.
+    assert config['failure_root']['group_id'] is None
+    assert config['na_breakdown'] == {}
+
+
+def test_analysis_na_breakdown_classifies_no_matching_evidence(client):
+    # A configuration exists (so it shows up in the response at all), but
+    # its only session is illumination=day - req-001 (illumination=night)
+    # has nothing matching to select as evidence, so this must classify as
+    # 'no_matching_evidence' via the real classify_na_reason path, not a
+    # hand-typed string re-implemented in this test.
+    _create_scenario(client)
+    _create_session(client, metadata={'illumination': 'day'})
+    _seed_ground_truth(client)
+    _seed_predictions(client)
+    _evaluate(client)
+    _create_profile(client)
+
+    resp = client.post('/api/profiles/p1/analysis', json={})
+    assert resp.status_code == 200, resp.text
+    config = resp.json()['configurations'][0]
+    assert config['na_breakdown'] == {'no_matching_evidence': 1}
+    assert config['failure_root']['na_count'] == 1
+
+
 # --- /analysis: group_by --------------------------------------------------
 
 def test_analysis_group_by_zero_dims_has_no_groups(client):

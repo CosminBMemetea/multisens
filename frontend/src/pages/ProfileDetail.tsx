@@ -3,6 +3,8 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { CoverageMatrix } from "../components/CoverageMatrix";
 import { ExplorerPanel } from "../components/ExplorerPanel";
+import { FailuresPanel } from "../components/FailuresPanel";
+import { NABreakdownPanel } from "../components/NABreakdownPanel";
 import { ApiError, computeProfileCoverage, fetchProfile } from "../api";
 import { buildGroupTree } from "../groupTree";
 import type { GroupNode } from "../groupTree";
@@ -336,12 +338,22 @@ export function ProfileDetail() {
               />
             )}
 
-            {activeTab === "failures" && (
-              <p className="text-sm text-slate-500">Failure and N/A exploration is coming in a later phase.</p>
+            {activeTab === "failures" && profileId && (
+              <FailuresPanel
+                profileId={profileId}
+                requirements={profile.requirements}
+                conditionParams={conditionParams}
+                onConditionChange={handleConditionChange}
+              />
             )}
 
-            {activeTab === "evidence" && (
-              <p className="text-sm text-slate-500">Evidence traceability is coming in a later phase.</p>
+            {activeTab === "evidence" && profileId && (
+              <NABreakdownPanel
+                profileId={profileId}
+                requirements={profile.requirements}
+                conditionParams={conditionParams}
+                onConditionChange={handleConditionChange}
+              />
             )}
           </>
         )}

@@ -44,11 +44,14 @@ from app.domain.analysis import (
     aggregate_requirement_results,
     cross_tabulate,
     discover_facets,
+    failure_breakdown,
     filter_requirement_results,
     group_by_condition,
+    na_breakdown,
 )
 from app.domain.coverage import (
     ConfigurationCoverage,
+    GroupCoverage,
     RequirementResult,
     RequirementStatus,
     compute_configuration_coverage,
@@ -311,6 +314,16 @@ class ConfigurationAnalysis(BaseModel):
     # The filtered results themselves - so a failure/N/A list can render
     # directly from this one response, no second round trip.
     requirement_results: list[RequirementResult]
+    # Same group tree compute_configuration_coverage builds (Phase 44's
+    # aggregate_group_tree, reused via failure_breakdown), over the
+    # filtered population - the Failures tab's top-failing-groups list
+    # (Phase 48) flattens/sorts this client-side rather than a second
+    # API field, since that ordering carries no domain logic of its own.
+    failure_root: GroupCoverage
+    # classify_na_reason counts (Phase 44/48) - real backend classification,
+    # never reimplemented client-side, so the UI can never silently drift
+    # from evidence.py/coverage.py's actual reason strings.
+    na_breakdown: dict[str, int]
 
 
 class AnalysisResponse(BaseModel):
@@ -366,6 +379,8 @@ def analyze_profile(
             summary=_to_aggregate_response(summary),
             groups=groups,
             requirement_results=filtered,
+            failure_root=failure_breakdown(profile, filtered),
+            na_breakdown=na_breakdown(filtered),
         ))
 
     return AnalysisResponse(configurations=configurations)

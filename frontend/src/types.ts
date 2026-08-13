@@ -355,6 +355,13 @@ export interface ConfigurationAnalysis {
   summary: AggregateCoverage;
   groups: GroupCell[];
   requirement_results: RequirementResult[];
+  // Same group tree GroupCoverage/aggregate_group_tree builds (v0.4/v0.5),
+  // over the filtered population - the Failures tab flattens/sorts this
+  // client-side for its top-failing-groups list.
+  failure_root: GroupCoverage;
+  // classify_na_reason counts (backend-computed, never reimplemented
+  // client-side) - category key -> count.
+  na_breakdown: Record<string, number>;
 }
 
 export interface AnalysisResponse {
