@@ -1,7 +1,59 @@
-"""Object-detection domain model (v0.8, Phase 80). Shapes and validation
-only - IoU/matching is Phase 81's job, metrics are Phase 82's. Pure
-functions/dataclasses - no persistence, no FastAPI, no ROS, same
-discipline as matching.py/metrics.py.
+"""Object-detection domain model (v0.8, Phase 80-81). Phase 80 shipped
+the schema/validation; Phase 81 adds object-level IoU matching within an
+already-timestamp-matched frame. Metrics aggregation (precision/recall/
+F1/mean_iou_matched) and wiring into `DetectionEvaluator.evaluate()` are
+Phase 82's job. Pure functions/dataclasses - no persistence, no FastAPI,
+no ROS, same discipline as matching.py/metrics.py.
+
+## Object matching is a second pass, strictly within an already-frame-matched pair
+
+`compute_detection_evidence` takes a `MatchResult` - matching.py's own,
+completely untouched, timestamp-based frame association - and performs
+object-level matching *within* each already-matched (one GT row, one
+Prediction row) pair. It never re-derives which GT frame corresponds to
+which prediction frame; that question stays matching.py's alone (master
+prompt §14, confirmed unchanged by grep: `match_by_timestamp` has zero
+diff across the whole v0.8 arc so far).
+
+An entire *frame* that timestamp matching couldn't pair at all
+(`match_result.unmatched_ground_truth`/`unmatched_predictions`) has no
+counterpart to match objects against - every object in an unmatched GT
+frame is a false negative, every detection in an unmatched prediction
+frame is a false positive. This is reported explicitly per unmatched
+frame, not folded into the matched-frame numbers.
+
+## Greedy IoU matching, not Hungarian assignment
+
+Sorted by descending IoU (not prediction-insertion order), deterministic
+tie-break by `(gt_index, detection_index)` - v0.8 architecture review
+Q12. This project has zero numerical dependencies (no numpy/scipy
+anywhere, even v0.7's p95 percentile was hand-rolled to avoid one); a
+Hungarian assignment would be this codebase's first. Greedy-with-a-
+documented-tiebreak is this project's own established precedent -
+`match_by_timestamp` already works exactly this way for frame matching,
+and documents its own known limitation honestly rather than hiding it.
+The same honesty applies here: in a dense, multi-object frame with
+overlapping candidate pairs, greedy assignment can produce a
+non-globally-optimal total-IoU match (a case Hungarian would avoid) -
+`test_greedy_matching_can_be_locally_suboptimal_by_design` pins this
+down explicitly so it's a known, accepted trade-off, never a silent bug.
+
+## Label filtering happens before IoU, not after
+
+A GT object and a detection are only ever candidates for matching if
+they share the same `label` - a correctly-localized-but-wrong-label
+detection counts as both a miss (the GT object is unmatched -> false
+negative) and a false positive (the detection is unmatched), never
+partial credit (architecture review Q13). Same posture classification
+already has for a wrong label: simply wrong, not a fractional match.
+
+## The IoU threshold gates candidacy, not just a post-hoc label
+
+A same-label pair with IoU below `iou_threshold` is never a matching
+*candidate* at all - it cannot be forced into a match just because
+nothing else is available. This is what makes "IoU below threshold"
+(master prompt §70) produce a false positive + false negative, not a
+low-quality match.
 
 ## Why this isn't a change to GroundTruth/Prediction
 
@@ -32,15 +84,17 @@ zero-area box can never represent a real detected/annotated object, and
 rejecting it now avoids deferring a zero-area IoU edge case to Phase 81
 for no real benefit.
 
-## `DetectionEvaluator` is deliberately not registered yet
+## `DetectionEvaluator` is still deliberately not registered
 
-A class with `evaluator_type`/`format_version` exists below so Phase 81
+A class with `evaluator_type`/`format_version` exists below so Phase 82
 has a concrete home to add `evaluate()` to, but it is **not** added to
-`EVALUATOR_REGISTRY` this phase - same "the registry only ever contains
+`EVALUATOR_REGISTRY` yet - same "the registry only ever contains
 fully-working entries" discipline Phase 78 established (it started
-empty rather than holding a stub). An `evaluator_type` listed as
-"supported" in `/evaluate`'s own error message that immediately crashed
-on use would be exactly the kind of dishonesty this project's culture
+empty rather than holding a stub). Phase 81 adds matching, not a
+complete evaluator - `evaluate()` still doesn't exist. An
+`evaluator_type` listed as "supported" in `/evaluate`'s own error
+message that immediately crashed on use would be exactly the kind of
+dishonesty this project's culture
 rejects. Phase 81 adds the registration line once `evaluate()` is real
 and tested.
 """
@@ -48,6 +102,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+
+from app.domain.matching import MatchResult
 
 _COORDINATE_RANGE = (0.0, 1.0)
 
@@ -183,6 +239,136 @@ def parse_ground_truth_objects(value: dict[str, Any]) -> list[DetectedObject]:
         bbox = _parse_bbox(raw['bbox'], context)
         objects.append(DetectedObject(id=object_id, label=str(raw['label']), bbox=bbox))
     return objects
+
+
+# --- object-level IoU matching (v0.8, Phase 81) -----------------------------
+#
+# Operates strictly *within* an already-timestamp-matched frame - see this
+# module's own docstring for why matching.py's frame association is never
+# re-derived here.
+
+def compute_iou(a: BoundingBox, b: BoundingBox) -> float:
+    """Standard axis-aligned intersection-over-union. `a`/`b` are always
+    valid, positive-area boxes by construction (BoundingBox's own
+    `__post_init__`), so the union is always > 0 - no zero-denominator
+    case to guard against here."""
+    x_left = max(a.x, b.x)
+    y_top = max(a.y, b.y)
+    x_right = min(a.x + a.width, b.x + b.width)
+    y_bottom = min(a.y + a.height, b.y + b.height)
+    if x_right <= x_left or y_bottom <= y_top:
+        return 0.0
+    intersection = (x_right - x_left) * (y_bottom - y_top)
+    area_a = a.width * a.height
+    area_b = b.width * b.height
+    return intersection / (area_a + area_b - intersection)
+
+
+@dataclass(frozen=True)
+class ObjectMatch:
+    ground_truth_object: DetectedObject
+    detection: Detection
+    iou: float
+
+
+@dataclass(frozen=True)
+class FrameDetectionEvidence:
+    """One frame's (one already-timestamp-matched GT/prediction pair, or
+    one entirely unmatched frame from either side) object-level matching
+    result - master prompt §15's bounded per-frame evidence, not massive
+    per-object persistence. `mean_iou` is `None` (never a fabricated 0.0)
+    whenever `matched_count == 0` - same `MetricValue` "no denominator,
+    no answer" rule as everywhere else in this codebase. `matches` is the
+    full per-object detail for anyone who needs it (e.g. a UI drill-down,
+    Phase 86) - bounded by how many objects/detections one frame actually
+    has, never unbounded."""
+    predicted_count: int
+    ground_truth_count: int
+    matched_count: int
+    false_positive_count: int
+    false_negative_count: int
+    mean_iou: float | None
+    matches: list[ObjectMatch]
+
+
+def match_objects_in_frame(
+    ground_truth_objects: list[DetectedObject], detections: list[Detection], iou_threshold: float,
+) -> FrameDetectionEvidence:
+    """Greedy IoU matching, sorted by descending IoU, deterministic
+    tie-break by `(gt_index, detection_index)` - explicitly not Hungarian
+    assignment (this module's own docstring explains why). A GT object
+    and a detection are only ever candidates if they share the same
+    `label` *and* their IoU already meets `iou_threshold` - a pair below
+    threshold can never be forced into a match just because nothing else
+    is available."""
+    candidates: list[tuple[float, int, int]] = []
+    for gi, gt in enumerate(ground_truth_objects):
+        for di, det in enumerate(detections):
+            if gt.label != det.label:
+                continue
+            iou = compute_iou(gt.bbox, det.bbox)
+            if iou >= iou_threshold:
+                candidates.append((iou, gi, di))
+
+    candidates.sort(key=lambda c: (-c[0], c[1], c[2]))
+
+    matched_gt: set[int] = set()
+    matched_det: set[int] = set()
+    matches: list[ObjectMatch] = []
+    for iou, gi, di in candidates:
+        if gi in matched_gt or di in matched_det:
+            continue
+        matched_gt.add(gi)
+        matched_det.add(di)
+        matches.append(ObjectMatch(ground_truth_object=ground_truth_objects[gi], detection=detections[di], iou=iou))
+
+    matched_count = len(matches)
+    return FrameDetectionEvidence(
+        predicted_count=len(detections),
+        ground_truth_count=len(ground_truth_objects),
+        matched_count=matched_count,
+        false_positive_count=len(detections) - matched_count,
+        false_negative_count=len(ground_truth_objects) - matched_count,
+        mean_iou=(sum(m.iou for m in matches) / matched_count) if matched_count > 0 else None,
+        matches=matches,
+    )
+
+
+def compute_detection_evidence(
+    match_result: MatchResult, confidence_threshold: float, iou_threshold: float,
+) -> list[FrameDetectionEvidence]:
+    """The full per-frame evidence for one `MatchResult` (matching.py) -
+    one `FrameDetectionEvidence` per matched pair, plus one per entirely
+    unmatched frame on either side (their objects/detections have no
+    counterpart to match against at all - every GT object in an unmatched
+    ground-truth frame is a false negative, every detection in an
+    unmatched prediction frame is a false positive, reported explicitly
+    rather than folded into the matched-frame numbers). Predictions below
+    `confidence_threshold` are dropped before matching, never after."""
+    evidence: list[FrameDetectionEvidence] = []
+
+    for pair in match_result.matched:
+        ground_truth_objects = parse_ground_truth_objects(pair.ground_truth.value)
+        detections = [d for d in parse_detections(pair.prediction.value) if d.confidence >= confidence_threshold]
+        evidence.append(match_objects_in_frame(ground_truth_objects, detections, iou_threshold))
+
+    for gt in match_result.unmatched_ground_truth:
+        ground_truth_objects = parse_ground_truth_objects(gt.value)
+        evidence.append(FrameDetectionEvidence(
+            predicted_count=0, ground_truth_count=len(ground_truth_objects), matched_count=0,
+            false_positive_count=0, false_negative_count=len(ground_truth_objects),
+            mean_iou=None, matches=[],
+        ))
+
+    for pred in match_result.unmatched_predictions:
+        detections = [d for d in parse_detections(pred.value) if d.confidence >= confidence_threshold]
+        evidence.append(FrameDetectionEvidence(
+            predicted_count=len(detections), ground_truth_count=0, matched_count=0,
+            false_positive_count=len(detections), false_negative_count=0,
+            mean_iou=None, matches=[],
+        ))
+
+    return evidence
 
 
 @dataclass(frozen=True)
