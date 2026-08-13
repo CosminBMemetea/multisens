@@ -113,6 +113,11 @@ class EvaluationResult(BaseModel):
     configuration_id: str
     task: str
     format_version: str = '1.0'
+    # Which Evaluator (app/domain/evaluators.py, v0.8) produced this result -
+    # 'classification' for every pre-v0.8 row (migration 0005's column
+    # default), explicit on every new one. Never inferred from metric
+    # names or task strings - see evaluators.py's own module docstring.
+    evaluator_type: str = 'classification'
     # Stored, not just passed in at evaluate-time and forgotten: a metric
     # number is not reproducible/auditable without knowing the tolerance
     # that produced its matched/unmatched split.
@@ -123,6 +128,12 @@ class EvaluationResult(BaseModel):
     unmatched_ground_truth: int
     metrics: dict[str, MetricValue]
     confusion_matrix: dict[str, Any] | None = None
+    # Generic evaluator-specific structured evidence that doesn't fit the
+    # flat metrics dict - e.g. a detection evaluator's per-class precision/
+    # recall breakdown. None whenever an evaluator has nothing beyond its
+    # flat metrics to report. Deliberately one shared slot, not a second
+    # confusion_matrix-shaped special case per future evaluator type.
+    details: dict[str, Any] | None = None
     computed_at: datetime
 
 

@@ -144,6 +144,47 @@ def test_evaluation_result_na_metric_round_trips_as_none(conn):
     assert fetched.tolerance_ms == 100.0
 
 
+def test_evaluation_result_evaluator_type_defaults_to_classification(conn):
+    # Phase 78 (v0.8): every pre-v0.8-shaped construction (no evaluator_type
+    # passed) must keep behaving exactly as it did before this field
+    # existed - the migration's own column default and the pydantic
+    # model's own field default must agree.
+    repo.create_scenario(conn, Scenario(id='sc1', name='demo'))
+    repo.create_session(conn, Session(id='s1', name='demo', scenario_id='sc1', started_at=_now()))
+
+    result = EvaluationResult(
+        id='e1', session_id='s1', configuration_id='cfg-rgb', task='presence',
+        tolerance_ms=100.0, sample_count=1, matched_samples=1, unmatched_predictions=0,
+        unmatched_ground_truth=0, metrics={'accuracy': 1.0}, computed_at=_now(),
+    )
+    assert result.evaluator_type == 'classification'
+    repo.upsert_evaluation_result(conn, result)
+
+    fetched = repo.get_evaluation_result(conn, 's1', 'cfg-rgb', 'presence')
+    assert fetched.evaluator_type == 'classification'
+    assert fetched.details is None
+
+
+def test_evaluation_result_evaluator_type_and_details_round_trip(conn):
+    repo.create_scenario(conn, Scenario(id='sc1', name='demo'))
+    repo.create_session(conn, Session(id='s1', name='demo', scenario_id='sc1', started_at=_now()))
+
+    result = EvaluationResult(
+        id='e1', session_id='s1', configuration_id='cfg-rgb', task='obstacle_detection',
+        evaluator_type='object_detection', tolerance_ms=100.0, sample_count=1, matched_samples=1,
+        unmatched_predictions=0, unmatched_ground_truth=0,
+        metrics={'precision': 0.9, 'recall': None},
+        details={'per_class': {'person': {'precision': 0.9, 'recall': None}}},
+        computed_at=_now(),
+    )
+    repo.upsert_evaluation_result(conn, result)
+
+    fetched = repo.get_evaluation_result(conn, 's1', 'cfg-rgb', 'obstacle_detection')
+    assert fetched.evaluator_type == 'object_detection'
+    assert fetched.metrics['recall'] is None  # never coerced to 0.0
+    assert fetched.details == {'per_class': {'person': {'precision': 0.9, 'recall': None}}}
+
+
 def test_data_persists_across_reconnect(tmp_path):
     db_path = str(tmp_path / 'restart.db')
 
