@@ -302,6 +302,26 @@ for the full derivation and
 [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) for the
 domain model and API.
 
+## Multi-task evaluation quick start (v0.8)
+
+A first standalone exercise of the v0.8 object-detection evaluator,
+extending the RideSafe reference story above with two detection tasks -
+no new demo family, same personal dashcam framing:
+
+```bash
+docker compose up -d
+python3 scripts/load_ridesafe_detection_demo_data.py
+open http://localhost:8080/sessions/ridesafe-detection-demo-session
+```
+
+Select `front_scene_object_detection` or `rear_scene_object_detection` in
+the session's Evaluation panel to see per-class precision/recall/F1 and
+mean matched IoU - front-camera detection is deliberately built stronger
+than rear (0.80 vs. 0.57 F1), the same "genuinely different pattern per
+configuration" story every other demo in this project tells. See
+[examples/profiles/README.md](examples/profiles/README.md) for the full
+by-construction derivation.
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to

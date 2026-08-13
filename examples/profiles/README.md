@@ -325,6 +325,58 @@ python3 scripts/load_ridesafe_demo_data.py
 Then open the Profiles page, select "RideSafe — Ride Monitoring Demo",
 and open its Decision or Resources tab.
 
+## `ridesafe-detection-demo-data.json`
+
+A deterministic, **entirely synthetic** object-detection dataset (v0.8,
+Phase 87) - the first real exercise of the v0.8 detection evaluator,
+extending the RideSafe reference story above with two new tasks,
+`front_scene_object_detection` and `rear_scene_object_detection`, one per
+camera position. No profile/requirements/resources - this is a
+standalone evaluator demo, viewed directly on the session detail page's
+Evaluation panel (v0.8, Phase 86), not through the Decision/Resources
+tabs. Same ride-monitoring-and-incident-evidence framing as
+`ridesafe-demo.json` - no face recognition, driver monitoring, occupant
+classification, or regulatory use case.
+
+One session (`ridesafe-detection-demo-session`), 100 ground-truth frames
+per task (`vehicle`/`pedestrian` objects, alternating by frame index),
+evaluated with `confidence_threshold=0.5`/`iou_threshold=0.5`. Every
+frame falls into one of five hand-constructed categories - see
+`scripts/generate_ridesafe_detection_demo_data.py`'s own docstring for
+the exact bbox geometry:
+
+| Category | What happens | Frames (front / rear) |
+|---|---|---|
+| A - clean hit | same-label detection, IoU 0.6 (above threshold) | 70 / 45 |
+| B - too imprecise | same-label detection, IoU 0.25 (below threshold) | 10 / 20 |
+| C - filtered by confidence | perfect IoU=1.0 but confidence 0.30 (below threshold) | 5 / 15 |
+| D - missing prediction | no Prediction row for this frame at all | 5 / 15 |
+| E - clean hit + spurious extra | one matching detection plus one non-overlapping extra | 10 / 5 |
+
+By construction, front camera detection is notably stronger than rear -
+the same "genuinely different pattern per configuration" discipline
+`ridesafe-demo-data.json`'s own front/rear split already uses:
+
+| Task | Config | Precision | Recall | F1 | Mean IoU (matched) |
+|---|---|---|---|---|---|
+| `front_scene_object_detection` | `cfg-ridesafe_front_rgb` | 0.80 | 0.80 | 0.80 | 0.65 |
+| `rear_scene_object_detection` | `cfg-ridesafe_rear_rgb` | 0.667 | 0.50 | 0.571 | 0.64 |
+
+Independently re-derived - a completely separate reimplementation of IoU
+and greedy per-frame object matching, zero imports from
+`app.domain.detection` - and cross-checked against the live `/evaluate`
+API in `backend/tests/test_ridesafe_detection_demo.py`.
+
+### Loading it
+
+```bash
+docker compose up -d
+python3 scripts/load_ridesafe_detection_demo_data.py
+```
+
+Then open `http://localhost:8080/sessions/ridesafe-detection-demo-session`
+and select either detection task in the Evaluation panel.
+
 ## `propertywatch-demo.json` + `propertywatch-demo-data.json`
 
 A deterministic, **entirely synthetic** reference profile and dataset for
