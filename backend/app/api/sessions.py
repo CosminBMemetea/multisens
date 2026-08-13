@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
 from app.api.deps import get_db, require_session
+from app.domain.evidence import matches_conditions
 from app.domain.models import GroundTruth, Prediction, Session
 from app.persistence import repository as repo
 
@@ -200,3 +201,38 @@ def list_session_predictions(
 ) -> list[Prediction]:
     require_session(conn, session_id)
     return repo.list_predictions(conn, session_id, configuration_id=configuration_id, task=task)
+
+
+class ProfileUsageEntry(BaseModel):
+    profile_id: str
+    profile_name: str
+    profile_version: str
+    requirement_ids: list[str]
+
+
+@router.get('/{session_id}/profile-usage')
+def list_session_profile_usage(
+    session_id: str, conn: sqlite3.Connection = Depends(get_db),
+) -> list[ProfileUsageEntry]:
+    """v0.5, Phase 45 - "which profile requirements could use evidence
+    from this session?" A simple reverse reference for dataset auditing,
+    not a full dependency graph. Defined as candidacy (this session's
+    metadata is a superset of the requirement's declared conditions - the
+    same matches_conditions rule v0.4's evidence selection uses, reused
+    directly), never as "is currently the actually-resolved evidence" -
+    a session that lost an ambiguity contest is still relevant to an
+    auditor deciding whether a dataset is still needed, so computing true
+    resolution (with its own ambiguity/binding machinery) would be both
+    more expensive and the wrong question to ask here."""
+    session = require_session(conn, session_id)
+    usage = []
+    for profile in repo.list_profiles(conn):
+        matching_requirement_ids = [
+            r.id for r in profile.requirements if matches_conditions(session, r.conditions)
+        ]
+        if matching_requirement_ids:
+            usage.append(ProfileUsageEntry(
+                profile_id=profile.id, profile_name=profile.name, profile_version=profile.version,
+                requirement_ids=matching_requirement_ids,
+            ))
+    return usage
