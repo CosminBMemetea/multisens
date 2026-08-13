@@ -332,3 +332,94 @@ python3 scripts/load_ridesafe_demo_data.py
 
 Then open the Profiles page, select "RideSafe — Ride Monitoring Demo",
 and open its Decision or Resources tab.
+
+## `propertywatch-demo.json` + `propertywatch-demo-data.json`
+
+A deterministic, **entirely synthetic** reference profile and dataset for
+the MultiSens v0.7 deployment/resource-tradeoff workflow, built around a
+personal multi-camera property monitoring setup - a **home, garage,
+workshop, storage space, or small warehouse**, deliberately never
+hardcoded to one building type. **No surveillance-identification or
+face-recognition features of any kind** - every task here is plain area
+visibility (present/absent-style classification), nothing more. This is
+the second of the two v0.7 demos (see `ridesafe-demo.json`, Phase 73)
+marking this project's deliberate pivot away from cabin/occupant-style
+examples toward independent personal-camera scenarios.
+
+**`propertywatch-demo.json`** is the profile document: two groups (`Area
+Coverage`, `Reliability`), four requirements. Unlike `ridesafe-demo.json`,
+each area has its **own task** (`entrance_visibility`/
+`storage_visibility`/`indoor_visibility`) rather than one task shared
+across sensors - a configuration only ever produces evidence for a task
+if it actually includes that area's camera, so a camera-less area is
+genuinely **N/A**, never a fabricated fail.
+
+**`propertywatch-demo-data.json`** is the underlying evidence: one
+scenario, one session, 300 `*_visibility` ground-truth samples (100 per
+task) and predictions from three **nested** configurations across three
+reference sensor ids - `property_entrance_rgb`, `property_storage_rgb`,
+`property_indoor_rgb` (three separate physical camera positions, reusing
+the same sensor-instance-not-modality precedent every prior v0.6/v0.7
+demo already established):
+
+| Configuration | Entrance | Storage | Indoor |
+|---|---|---|---|
+| `cfg-property_entrance_rgb` | 78% | — | — |
+| `cfg-property_entrance_rgb-property_storage_rgb` | 85% | 72% | — |
+| `cfg-property_entrance_rgb-property_indoor_rgb-property_storage_rgb` | 92% | 80% | 88% |
+
+("—" means that configuration never produced any predictions for that
+task at all - no camera, no evidence, not a measured 0%.) Against the
+profile's four requirements (three 70% area-visibility baselines, one
+stricter 90% "reliability" bar on the entrance area) this produces:
+
+| Configuration | Requirements passed | Coverage | Completeness |
+|---|---|---|---|
+| `cfg-property_entrance_rgb` | 1 / 2 decided | 50% | 50% |
+| `cfg-property_entrance_rgb-property_storage_rgb` | 2 / 3 decided | 67% | 75% |
+| `cfg-property_entrance_rgb-property_indoor_rgb-property_storage_rgb` | 4 / 4 decided | 100% | 100% |
+
+Under the standard demo policy (100% coverage, 95% completeness,
+mandatory-pass off), exactly **one** configuration is minimally
+sufficient - the fully-equipped one - and the two partial configurations
+report **UNDETERMINED**, never INSUFFICIENT: real evidence completeness
+is genuinely below the bar (a camera-less area's evidence could always
+still arrive later by adding that camera, unlike a measured-and-failing
+result). All **three** configurations sit on the Pareto front - a
+genuine 3-point staircase where every additional camera costs more
+sensors but also reaches strictly more coverage, never a dominated
+point. This is the flagship "is the third camera worth its resource
+load" worked example this whole layer exists to answer, composing a
+v0.6 minimal-sufficient-set question with a v0.7 resource-cost question.
+Independently re-derived by hand and cross-checked against the live API
+in `backend/tests/test_propertywatch_demo.py`, with no imports from
+`app.domain.decision`/`coverage`/`analysis`/`resources` themselves.
+
+### SYNTHETIC RESOURCE DATA (v0.7)
+
+The dataset also carries resource observations for its one session -
+CPU/memory/network/latency/FPS numbers scaling roughly **linearly per
+added camera** (a deliberately different shape from `ridesafe-demo`'s
+"two cameras share some overhead" story), never measured from real
+hardware:
+
+| Configuration | CPU | RAM | Network | Latency |
+|---|---|---|---|---|
+| `cfg-property_entrance_rgb` | 15.0% | 480 MB | 3.8↓/0.9↑ Mbps | 28 ms |
+| `cfg-property_entrance_rgb-property_storage_rgb` | 26.5% | 730 MB | 7.5↓/1.8↑ Mbps | 34 ms |
+| `cfg-property_entrance_rgb-property_indoor_rgb-property_storage_rgb` | 38.0% | 980 MB | 11.4↓/2.7↑ Mbps | 41 ms |
+
+Real, physically MEASURED resource numbers are only ever obtainable by
+running `POST /api/sessions/{id}/resource-observations/batch` locally
+against actual connected camera hardware and a real collector - never
+shipped as committed demo content (v0.7 architecture review, Q25).
+
+### Loading it
+
+```bash
+docker compose up -d
+python3 scripts/load_propertywatch_demo_data.py
+```
+
+Then open the Profiles page, select "PropertyWatch — Property Monitoring
+Demo", and open its Decision or Resources tab.

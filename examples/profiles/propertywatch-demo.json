@@ -1,0 +1,53 @@
+{
+  "id": "propertywatch-demo-v1.0",
+  "name": "PropertyWatch — Property Monitoring Demo",
+  "version": "1.0",
+  "description": "Deterministic synthetic reference profile for the MultiSens v0.7 deployment/resource-tradeoff workflow. PropertyWatch is a personal multi-camera property monitoring setup - a home, garage, workshop, storage space, or small warehouse, never one hardcoded building type - with no surveillance-identification or face-recognition features of any kind. Reference sensor ids (property_entrance_rgb, property_storage_rgb, property_indoor_rgb) are three separate physical camera positions, never merged just because they share a modality. SYNTHETIC DATA - demonstrates functionality only, not a claim about real camera performance. See examples/profiles/README.md.",
+  "metadata": { "synthetic": true },
+  "groups": [
+    { "id": "area-coverage", "name": "Area Coverage" },
+    { "id": "reliability", "name": "Reliability" }
+  ],
+  "requirements": [
+    {
+      "id": "req-entrance-baseline",
+      "group_id": "area-coverage",
+      "name": "Entrance area visible",
+      "description": "Can this configuration see the entrance area?",
+      "task": "entrance_visibility",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.70 }
+      ]
+    },
+    {
+      "id": "req-storage-visible",
+      "group_id": "area-coverage",
+      "name": "Storage area visible",
+      "description": "Can this configuration see the storage/garage/workshop area? Genuinely N/A (not fail) for any configuration that never included a storage-facing camera at all.",
+      "task": "storage_visibility",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.70 }
+      ]
+    },
+    {
+      "id": "req-indoor-visible",
+      "group_id": "area-coverage",
+      "name": "Indoor area visible",
+      "description": "Can this configuration see the indoor/hallway area? Genuinely N/A for any configuration without an indoor-facing camera.",
+      "task": "indoor_visibility",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.70 }
+      ]
+    },
+    {
+      "id": "req-entrance-strict",
+      "group_id": "reliability",
+      "name": "Entrance reliability, stricter bar",
+      "description": "A stricter accuracy bar on the same entrance area - representing reduced-lighting/edge-case reliability, reachable only by the fully-equipped configuration in this demo.",
+      "task": "entrance_visibility",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.90 }
+      ]
+    }
+  ]
+}
