@@ -7,7 +7,6 @@ from app.domain.comparison import (
     assess_validity,
     build_comparison_side,
     classify_relationship,
-    comparison_metrics_from_classification,
     comparison_metrics_from_evaluation_result,
     compare_configurations,
     compute_metric_delta,
@@ -393,3 +392,39 @@ def test_compare_configurations_self_comparison_is_invalid():
     )
     assert comparison.validity.status == 'invalid'
     assert 'same configuration' in comparison.validity.reasons[0]
+
+
+def test_compare_configurations_evaluator_type_mismatch_is_invalid():
+    # Phase 79 (v0.8): a baseline evaluated as 'classification' and a
+    # candidate evaluated as some other evaluator_type have nothing
+    # meaningful to re-evaluate over a common set with one engine - this
+    # must be reported explicitly, never silently resolved by picking one
+    # side's evaluator. No real second evaluator exists yet (Phase 80-83),
+    # so the mismatch is constructed directly rather than through the API.
+    ground_truth = [_gt('g0', 0, 'present'), _gt('g1', 100, 'absent')]
+    predictions = [_pred('p0', 1, 'present', ['rgb']), _pred('p1', 101, 'absent', ['rgb'])]
+    baseline_result = _eval_result('cfg-rgb', sample_count=2, matched_samples=2, accuracy=1.0)
+    candidate_result = EvaluationResult(
+        id='e-cfg-depth', session_id='s1', configuration_id='cfg-depth', task='presence',
+        evaluator_type='object_detection', tolerance_ms=100.0, sample_count=2, matched_samples=2,
+        unmatched_predictions=0, unmatched_ground_truth=0, metrics={'precision': 1.0}, computed_at=_now(),
+    )
+
+    comparison = compare_configurations(
+        session_id='s1', task='presence',
+        baseline_configuration_id='cfg-rgb', candidate_configuration_id='cfg-depth',
+        baseline_source_id='rgb_model', candidate_source_id='depth_model',
+        baseline_sensor_ids=['rgb'], candidate_sensor_ids=['depth'],
+        ground_truth=ground_truth,
+        baseline_predictions=predictions, candidate_predictions=predictions,
+        baseline_evaluation_result=baseline_result, candidate_evaluation_result=candidate_result,
+        tolerance_ms=50.0,
+    )
+    assert comparison.validity.status == 'invalid'
+    assert "'classification' vs 'object_detection'" in comparison.validity.reasons[0]
+    # The common population size is still honestly reported...
+    assert comparison.common_set.common_sample_count == 2
+    # ...but no metrics were computed for it, since there's no single
+    # evaluator to produce them consistently for both sides.
+    assert comparison.common_set.baseline.metrics == {}
+    assert comparison.common_set.candidate.metrics == {}

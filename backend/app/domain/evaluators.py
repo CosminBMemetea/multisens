@@ -1,12 +1,12 @@
-"""Generic evaluator abstraction (v0.8, Phase 78).
+"""Generic evaluator abstraction (v0.8, Phase 78-79).
 
-Shapes only this phase - `EVALUATOR_REGISTRY` starts empty. Phase 79 wraps
-the existing classification metric engine (metrics.py) behind this
-interface and populates the registry; Phase 80-83 add detection/
-regression. Nothing in `api/evaluation.py`/`comparison.py` changes yet -
-both stay hardcoded to `evaluate_classification` until Phase 79's own
-explicit "refactor without behavior regression" pass. See the v0.8
-architecture review (issue #79) for the full reasoning.
+`ClassificationEvaluator` (Phase 79) is the first real entry in
+`EVALUATOR_REGISTRY` - a thin wrapper around the existing, completely
+unchanged `evaluate_classification` (metrics.py). Phase 80-83 add
+detection/regression the same way: a small `Evaluator`-shaped wrapper
+living here, delegating to its own algorithm module, registered at the
+bottom of this file. See the v0.8 architecture review (issue #79) for
+the full reasoning.
 
 ## Why `Evaluator.evaluate` takes a `MatchResult`, not raw ground truth/predictions
 
@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.domain.matching import MatchResult
+from app.domain.metrics import evaluate_classification
 from app.domain.models import MetricValue
 
 
@@ -83,10 +84,46 @@ class Evaluator(Protocol):
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput: ...
 
 
+class ClassificationEvaluator:
+    """Wraps `evaluate_classification` (metrics.py) - that function itself
+    is completely unchanged by this phase; this class only translates its
+    `ClassificationMetrics` shape into the generic `EvaluatorOutput` shape.
+    `parameters` is accepted (protocol conformance) but unused - v0.8's
+    classification evaluator has no configurable parameters, same as
+    before this phase existed. The confusion matrix moves into
+    `details['confusion_matrix']` - the generic structured-evidence slot -
+    rather than a dedicated field on `EvaluatorOutput` itself, so future
+    evaluators that also want a confusion-matrix-shaped result (or
+    anything else structured) don't need a second special-cased field."""
+    evaluator_type = 'classification'
+    format_version = '1.0'
+
+    def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
+        cm = evaluate_classification(match_result)
+        return EvaluatorOutput(
+            sample_count=cm.sample_count,
+            matched_samples=cm.matched_samples,
+            unmatched_predictions=cm.unmatched_predictions,
+            unmatched_ground_truth=cm.unmatched_ground_truth,
+            metrics={
+                'accuracy': cm.accuracy,
+                'precision_macro': cm.precision_macro,
+                'recall_macro': cm.recall_macro,
+                'f1_macro': cm.f1_macro,
+                'precision_micro': cm.precision_micro,
+                'recall_micro': cm.recall_micro,
+                'f1_micro': cm.f1_micro,
+            },
+            details={'confusion_matrix': {'labels': cm.confusion_matrix.labels, 'counts': cm.confusion_matrix.counts}},
+        )
+
+
 # Static, not a dynamic plugin-loading mechanism (master prompt §6) -
 # realistically 3-4 evaluator types will ever exist for this project.
-# Empty this phase; Phase 79 adds 'classification', Phase 80-83 add
-# 'object_detection'/'regression'. An `evaluator_type` absent from this
-# dict is always a clear validation error at the API layer (Phase 79/84) -
-# never a silent fallback to classification.
-EVALUATOR_REGISTRY: dict[str, Evaluator] = {}
+# Phase 80-83 add 'object_detection'/'regression' here the same way. An
+# `evaluator_type` absent from this dict is always a clear validation
+# error at the API layer (see api/evaluation.py) - never a silent
+# fallback to classification.
+EVALUATOR_REGISTRY: dict[str, Evaluator] = {
+    'classification': ClassificationEvaluator(),
+}

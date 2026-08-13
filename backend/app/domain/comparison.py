@@ -17,15 +17,22 @@ either/or:
   isn't guaranteed to reproduce the pairs the original full-population
   match found, if two ground-truth points had been competing for the same
   prediction), then re-evaluates each side over exactly that population
-  using the existing, unmodified evaluate_classification.
+  using `EVALUATOR_REGISTRY` (v0.8, Phase 79) - whichever evaluator
+  actually produced `baseline_evaluation_result`/`candidate_evaluation_
+  result`, read straight off those already-persisted rows, never assumed
+  or re-requested. If the two sides used *different* evaluator types,
+  there is nothing meaningful to re-evaluate over a common set with one
+  engine - that's reported as an explicit comparison-invalidity reason
+  (see `compare_configurations`), never silently resolved by picking one
+  side's evaluator.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Literal
 
+from app.domain.evaluators import EVALUATOR_REGISTRY, EvaluatorOutput
 from app.domain.matching import MatchResult, match_by_timestamp
-from app.domain.metrics import ClassificationMetrics, evaluate_classification
 from app.domain.models import (
     ComparisonMetrics,
     ComparisonSide,
@@ -89,22 +96,14 @@ def comparison_metrics_from_evaluation_result(result: EvaluationResult) -> Compa
     )
 
 
-def comparison_metrics_from_classification(cm: ClassificationMetrics) -> ComparisonMetrics:
+def comparison_metrics_from_evaluator_output(output: EvaluatorOutput) -> ComparisonMetrics:
     return ComparisonMetrics(
-        sample_count=cm.sample_count,
-        matched_samples=cm.matched_samples,
-        unmatched_predictions=cm.unmatched_predictions,
-        unmatched_ground_truth=cm.unmatched_ground_truth,
-        coverage=_coverage(cm.matched_samples, cm.sample_count),
-        metrics={
-            'accuracy': cm.accuracy,
-            'precision_macro': cm.precision_macro,
-            'recall_macro': cm.recall_macro,
-            'f1_macro': cm.f1_macro,
-            'precision_micro': cm.precision_micro,
-            'recall_micro': cm.recall_micro,
-            'f1_micro': cm.f1_micro,
-        },
+        sample_count=output.sample_count,
+        matched_samples=output.matched_samples,
+        unmatched_predictions=output.unmatched_predictions,
+        unmatched_ground_truth=output.unmatched_ground_truth,
+        coverage=_coverage(output.matched_samples, output.sample_count),
+        metrics=dict(output.metrics),
     )
 
 
@@ -218,14 +217,37 @@ def compare_configurations(
     candidate_match = match_by_timestamp(ground_truth, candidate_predictions, tolerance_ms)
     common_gt_ids = intersect_matched_ground_truth_ids(baseline_match, candidate_match)
 
-    baseline_common_cm = evaluate_classification(filter_matched_by_ground_truth_ids(baseline_match, common_gt_ids))
-    candidate_common_cm = evaluate_classification(filter_matched_by_ground_truth_ids(candidate_match, common_gt_ids))
+    # Which evaluator actually produced each side - read straight off the
+    # already-persisted results, never assumed or re-requested (v0.8,
+    # Phase 79). Both sides using the same evaluator is required to
+    # re-evaluate a common set with one engine; a mismatch is reported as
+    # an explicit invalidity reason below, never silently resolved by
+    # picking one side's evaluator over the other's.
+    evaluator_type_mismatch = baseline_evaluation_result.evaluator_type != candidate_evaluation_result.evaluator_type
 
-    common_side = build_comparison_side(
-        comparison_metrics_from_classification(baseline_common_cm),
-        comparison_metrics_from_classification(candidate_common_cm),
-        common_sample_count=len(common_gt_ids),
-    )
+    if evaluator_type_mismatch:
+        # The common population size (a pure frame-matching fact,
+        # evaluator-independent) is still honestly reported; the metrics
+        # themselves are not, since there is no single evaluator to
+        # produce them consistently for both sides.
+        empty_common_metrics = ComparisonMetrics(
+            sample_count=len(common_gt_ids), matched_samples=len(common_gt_ids),
+            unmatched_predictions=0, unmatched_ground_truth=0,
+            coverage=1.0 if common_gt_ids else None, metrics={},
+        )
+        common_side = build_comparison_side(
+            empty_common_metrics, empty_common_metrics, common_sample_count=len(common_gt_ids),
+        )
+    else:
+        evaluator = EVALUATOR_REGISTRY[baseline_evaluation_result.evaluator_type]
+        baseline_common_output = evaluator.evaluate(filter_matched_by_ground_truth_ids(baseline_match, common_gt_ids), {})
+        candidate_common_output = evaluator.evaluate(filter_matched_by_ground_truth_ids(candidate_match, common_gt_ids), {})
+
+        common_side = build_comparison_side(
+            comparison_metrics_from_evaluator_output(baseline_common_output),
+            comparison_metrics_from_evaluator_output(candidate_common_output),
+            common_sample_count=len(common_gt_ids),
+        )
 
     if baseline_configuration_id == candidate_configuration_id:
         # A self-comparison is still computed - never hidden, per the
@@ -235,6 +257,14 @@ def compare_configurations(
         # would otherwise conclude.
         validity = ComparisonValidity(
             status='invalid', reasons=['baseline and candidate are the same configuration'],
+        )
+    elif evaluator_type_mismatch:
+        validity = ComparisonValidity(
+            status='invalid',
+            reasons=[
+                f"baseline/candidate evaluator_type differ: "
+                f"'{baseline_evaluation_result.evaluator_type}' vs '{candidate_evaluation_result.evaluator_type}'"
+            ],
         )
     else:
         validity = assess_validity(reported_side, common_side, coverage_warning_threshold_pp, min_common_sample_count)

@@ -2,24 +2,26 @@
 persisted ground-truth/prediction data for a session, and persists the
 result.
 
-Classification-only end to end, matching evaluate_classification - the
-only evaluator that exists yet (see app/domain/metrics.py). A future
-DetectionEvaluator would need a task-type lookup here; not built until a
-second evaluator actually exists.
+Dispatches through `EVALUATOR_REGISTRY` (Phase 79, v0.8) rather than
+calling `evaluate_classification` directly - `evaluator_type` defaults to
+`'classification'` so every pre-v0.8 caller keeps working unchanged, but
+is never silently assumed for an explicitly-named, unrecognized type
+(422 instead - see `evaluate_session` below).
 """
 from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import get_db, require_session
+from app.domain.evaluators import EVALUATOR_REGISTRY
 from app.domain.matching import match_by_timestamp
-from app.domain.metrics import evaluate_classification, extract_label
+from app.domain.metrics import extract_label
 from app.domain.models import EvaluationResult
 from app.persistence import repository as repo
 
@@ -38,6 +40,14 @@ class EvaluateRequest(BaseModel):
     # this task" - discovered from the data, not enumerated by the caller.
     configuration_ids: list[str] | None = None
     tolerance_ms: float = DEFAULT_TOLERANCE_MS
+    # Defaults to 'classification' so every pre-v0.8 caller (script, test,
+    # frontend build) keeps working byte-for-byte unchanged - this default
+    # is not an arbitrary guess, it's literally what every existing caller
+    # already got before this field existed. New callers should state it
+    # explicitly; an unrecognized value is always a 422 (see below), never
+    # silently coerced to classification.
+    evaluator_type: str = 'classification'
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 @router.post('/{session_id}/evaluate')
@@ -47,6 +57,16 @@ def evaluate_session(
     require_session(conn, session_id)
     if body.tolerance_ms < 0:
         raise HTTPException(status_code=422, detail=f'tolerance_ms must be >= 0, got {body.tolerance_ms}')
+
+    evaluator = EVALUATOR_REGISTRY.get(body.evaluator_type)
+    if evaluator is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"unknown evaluator_type '{body.evaluator_type}' - "
+                f"supported: {sorted(EVALUATOR_REGISTRY)}"
+            ),
+        )
 
     configuration_ids = body.configuration_ids
     if configuration_ids is None:
@@ -62,31 +82,33 @@ def evaluate_session(
         predictions = repo.list_predictions(conn, session_id, configuration_id=configuration_id, task=body.task)
         match_result = match_by_timestamp(ground_truth, predictions, tolerance_ms=body.tolerance_ms)
         try:
-            metrics = evaluate_classification(match_result)
+            output = evaluator.evaluate(match_result, body.parameters)
         except ValueError as e:
-            # A matched ground-truth/prediction value missing the 'label'
-            # field is a data problem, not a server bug - 422, not 500.
+            # A malformed matched value (e.g. classification's missing
+            # 'label' field) is a data problem, not a server bug - 422,
+            # not 500. Generic across every evaluator, not classification-
+            # specific - any Evaluator.evaluate() raising ValueError gets
+            # the same treatment.
             raise HTTPException(status_code=422, detail=str(e)) from e
+
+        # confusion_matrix stays populated for backward compatibility with
+        # the pre-Phase-86 frontend, which still reads it as its own
+        # dedicated field - sourced generically from details, not a
+        # classification-specific branch here. Any evaluator that puts a
+        # 'confusion_matrix' key in its details gets the same treatment;
+        # one that doesn't (detection, regression) leaves this column null.
+        confusion_matrix = output.details.get('confusion_matrix') if output.details else None
 
         result = EvaluationResult(
             id=str(uuid4()), session_id=session_id, configuration_id=configuration_id, task=body.task,
+            format_version=evaluator.format_version, evaluator_type=body.evaluator_type,
             tolerance_ms=body.tolerance_ms,
-            sample_count=metrics.sample_count, matched_samples=metrics.matched_samples,
-            unmatched_predictions=metrics.unmatched_predictions,
-            unmatched_ground_truth=metrics.unmatched_ground_truth,
-            metrics={
-                'accuracy': metrics.accuracy,
-                'precision_macro': metrics.precision_macro,
-                'recall_macro': metrics.recall_macro,
-                'f1_macro': metrics.f1_macro,
-                'precision_micro': metrics.precision_micro,
-                'recall_micro': metrics.recall_micro,
-                'f1_micro': metrics.f1_micro,
-            },
-            confusion_matrix={
-                'labels': metrics.confusion_matrix.labels,
-                'counts': metrics.confusion_matrix.counts,
-            },
+            sample_count=output.sample_count, matched_samples=output.matched_samples,
+            unmatched_predictions=output.unmatched_predictions,
+            unmatched_ground_truth=output.unmatched_ground_truth,
+            metrics=output.metrics,
+            confusion_matrix=confusion_matrix,
+            details=output.details,
             computed_at=datetime.now(timezone.utc),
         )
         repo.upsert_evaluation_result(conn, result)

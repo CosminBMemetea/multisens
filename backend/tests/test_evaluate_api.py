@@ -128,6 +128,43 @@ def test_evaluate_negative_tolerance_rejected(client):
     assert resp.status_code == 422
 
 
+# --- evaluator_type dispatch (Phase 79, v0.8) --------------------------------
+
+def test_evaluate_unknown_evaluator_type_422_never_silently_classification(client):
+    _seed(client)
+    resp = client.post('/api/sessions/s1/evaluate', json={'task': 'presence', 'evaluator_type': 'object_detection'})
+    assert resp.status_code == 422
+    assert 'object_detection' in resp.json()['detail']
+
+    # And it must genuinely reject, not silently fall back - no result
+    # persisted for this (unrecognized-evaluator) call at all.
+    assert client.get('/api/sessions/s1/evaluation').json() == []
+
+
+def test_evaluate_omitted_evaluator_type_defaults_to_classification(client):
+    # Every pre-v0.8 caller keeps working byte-for-byte unchanged - this
+    # is the single most important guarantee of this phase.
+    _seed(client)
+    resp = client.post('/api/sessions/s1/evaluate', json={'task': 'presence'})
+    assert resp.status_code == 200
+    results = {r['configuration_id']: r for r in resp.json()}
+    assert results['cfg-rgb']['evaluator_type'] == 'classification'
+    assert results['cfg-rgb']['metrics']['accuracy'] == 1.0
+    # The dedicated confusion_matrix field stays populated (pre-Phase-86
+    # frontend backward compatibility), sourced from the same place the
+    # new generic `details` field carries it.
+    assert results['cfg-rgb']['confusion_matrix'] == results['cfg-rgb']['details']['confusion_matrix']
+
+
+def test_evaluate_explicit_classification_evaluator_type_matches_default(client):
+    _seed(client)
+    resp = client.post('/api/sessions/s1/evaluate', json={'task': 'presence', 'evaluator_type': 'classification'})
+    assert resp.status_code == 200
+    results = {r['configuration_id']: r for r in resp.json()}
+    assert results['cfg-rgb']['evaluator_type'] == 'classification'
+    assert results['cfg-rgb']['metrics']['accuracy'] == 1.0
+
+
 def test_get_evaluation_unknown_session_404(client):
     resp = client.get('/api/sessions/nope/evaluation')
     assert resp.status_code == 404
