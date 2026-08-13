@@ -8,6 +8,42 @@ export function formatMs(value: string | undefined): string {
   return `${value}ms`;
 }
 
+// Friendly labels for metric keys across every evaluator type (v0.8) -
+// classification, object_detection, and regression each produce a
+// different, small, fixed metric set (see backend/app/domain/evaluators.py/
+// detection.py/regression.py), all rendered generically through the same
+// EvaluationPanel/ComparisonMetricTable/Comparison components rather than
+// hardcoded per-evaluator UI. Any key not listed here (a future evaluator
+// type this frontend build doesn't know about yet) falls back to the raw
+// key - never a broken page.
+const METRIC_LABELS: Record<string, string> = {
+  // classification
+  accuracy: "Accuracy",
+  precision_macro: "Precision (macro)",
+  recall_macro: "Recall (macro)",
+  f1_macro: "F1 (macro)",
+  precision_micro: "Precision (micro)",
+  recall_micro: "Recall (micro)",
+  f1_micro: "F1 (micro)",
+  // object_detection
+  precision: "Precision",
+  recall: "Recall",
+  f1: "F1",
+  true_positives: "TP",
+  false_positives: "FP",
+  false_negatives: "FN",
+  mean_iou_matched: "Mean IoU",
+  // regression
+  mae: "MAE",
+  rmse: "RMSE",
+  bias: "Bias",
+  median_absolute_error: "Median |err|",
+};
+
+export function labelForMetric(key: string): string {
+  return METRIC_LABELS[key] ?? key;
+}
+
 // Evaluation metrics (v0.2): a `null` metric means "not calculable" (e.g.
 // a class that was never predicted), which the backend deliberately never
 // coerces to 0.0 - see backend/app/domain/metrics.py. Rendering it as "0"

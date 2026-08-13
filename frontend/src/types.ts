@@ -115,7 +115,16 @@ export interface ConfusionMatrix {
   counts: number[][]; // counts[actual_index][predicted_index]
 }
 
-export interface EvaluationResult {
+// Discriminated on evaluator_type (v0.8) - mirrors backend/app/domain/
+// evaluator_output.py's EvaluatorOutput plus the per-evaluator `details`
+// shape each evaluator actually produces (evaluators.py/detection.py/
+// regression.py). `evaluator_type` stays an open string at the wire
+// level - the backend's own registry can grow, and an unrecognized value
+// must render through the generic fallback, never a broken page (v0.8
+// architecture review Q29) - so this union includes a catch-all
+// `GenericEvaluationResult` member rather than only the three known
+// evaluator types.
+interface EvaluationResultBase {
   id: string;
   session_id: string;
   configuration_id: string;
@@ -127,8 +136,63 @@ export interface EvaluationResult {
   unmatched_predictions: number;
   unmatched_ground_truth: number;
   metrics: Record<string, number | null>;
+  // Backward-compat field, still populated for classification results
+  // specifically (dual-written alongside details.confusion_matrix, v0.8
+  // Phase 79) - null for every other evaluator type.
   confusion_matrix: ConfusionMatrix | null;
   computed_at: string;
+}
+
+export interface ClassificationEvaluationResult extends EvaluationResultBase {
+  evaluator_type: "classification";
+  details: { confusion_matrix: ConfusionMatrix } | null;
+}
+
+export interface DetectionClassMetrics {
+  true_positives: number;
+  false_positives: number;
+  false_negatives: number;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+}
+
+export interface DetectionEvaluationResult extends EvaluationResultBase {
+  evaluator_type: "object_detection";
+  details: {
+    parameters: { confidence_threshold: number; iou_threshold: number };
+    per_class: Record<string, DetectionClassMetrics>;
+  } | null;
+}
+
+export interface RegressionEvaluationResult extends EvaluationResultBase {
+  evaluator_type: "regression";
+  details: { unit: string } | null;
+}
+
+// Any evaluator_type not yet known to this frontend build - the generic
+// fallback path (a raw metrics table, no evaluator-specific panel).
+export interface GenericEvaluationResult extends EvaluationResultBase {
+  evaluator_type: string;
+  details: Record<string, unknown> | null;
+}
+
+export type EvaluationResult =
+  | ClassificationEvaluationResult
+  | DetectionEvaluationResult
+  | RegressionEvaluationResult
+  | GenericEvaluationResult;
+
+export function isClassificationResult(r: EvaluationResult): r is ClassificationEvaluationResult {
+  return r.evaluator_type === "classification";
+}
+
+export function isDetectionResult(r: EvaluationResult): r is DetectionEvaluationResult {
+  return r.evaluator_type === "object_detection";
+}
+
+export function isRegressionResult(r: EvaluationResult): r is RegressionEvaluationResult {
+  return r.evaluator_type === "regression";
 }
 
 export type TimelineEventKind = "correct" | "incorrect" | "missing_prediction" | "unmatched_prediction";

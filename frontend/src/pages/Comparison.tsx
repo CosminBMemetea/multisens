@@ -5,7 +5,7 @@ import { ComparisonValidityBadge } from "../components/Badge";
 import { SensorAdditionCard } from "../components/SensorAdditionCard";
 import { AblationCard } from "../components/AblationCard";
 import { GeneralComparisonCard } from "../components/GeneralComparisonCard";
-import { formatCoverage, formatDelta, formatMetric } from "../format";
+import { formatCoverage, formatDelta, formatMetric, labelForMetric } from "../format";
 import {
   fetchSessionConfigurations,
   fetchSessionGroundTruth,
@@ -20,13 +20,13 @@ const RELATIONSHIP_LABELS: Record<PairwiseComparison["relationship"], string> = 
   general: "General comparison",
 };
 
-const METRIC_OPTIONS = [
-  { value: "accuracy", label: "Accuracy" },
-  { value: "precision_macro", label: "Precision (macro)" },
-  { value: "recall_macro", label: "Recall (macro)" },
-  { value: "f1_macro", label: "F1 (macro)" },
-] as const;
-type SortMetric = (typeof METRIC_OPTIONS)[number]["value"];
+// A comparison's own evaluator_type isn't exposed on PairwiseComparison
+// (deliberately - see ComparisonMetricTable.tsx's own note); the
+// available metric keys already say everything needed. Sort/leaderboard
+// options are built dynamically from whatever `reported.metric_deltas`
+// keys the actual comparison data has (v0.8, Phase 86) - never a
+// hardcoded classification-only list.
+type SortMetric = string;
 
 // Sorts by the magnitude of the selected metric's absolute delta,
 // largest observed change first - purely a display order, never a
@@ -56,7 +56,22 @@ export function Comparison() {
   const [comparisons, setComparisons] = useState<PairwiseComparison[] | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sortMetric, setSortMetric] = useState<SortMetric>("f1_macro");
+  const [sortMetric, setSortMetric] = useState<SortMetric>("");
+
+  // Whatever metric keys this run's evaluator_type actually produced,
+  // sorted for a stable option order - never assumed to be
+  // classification's own accuracy/precision/recall/F1 set.
+  const availableMetrics = useMemo(
+    () => (comparisons && comparisons.length > 0 ? Object.keys(comparisons[0].reported.metric_deltas).sort() : []),
+    [comparisons],
+  );
+
+  useEffect(() => {
+    // Keep sortMetric valid as the underlying comparison data changes -
+    // falls back to the first available metric, same convention
+    // EvaluationPanel's own evaluator-aware column selection uses.
+    setSortMetric((current) => (availableMetrics.includes(current) ? current : (availableMetrics[0] ?? "")));
+  }, [availableMetrics]);
 
   useEffect(() => {
     fetchSessions()
@@ -252,10 +267,11 @@ export function Comparison() {
                   <tr>
                     <th className="px-3 py-2 font-medium">Configuration</th>
                     <th className="px-3 py-2 font-medium">Relationship</th>
-                    <th className="px-3 py-2 font-medium">F1</th>
-                    <th className="px-3 py-2 font-medium">ΔF1</th>
-                    <th className="px-3 py-2 font-medium">Recall</th>
-                    <th className="px-3 py-2 font-medium">ΔRecall</th>
+                    {/* Whichever metric this evaluator_type actually produced and the
+                        "Sort detail cards by" picker is currently set to - never a
+                        hardcoded classification-only F1/Recall pair (v0.8, Phase 86). */}
+                    <th className="px-3 py-2 font-medium">{sortMetric ? labelForMetric(sortMetric) : "Metric"}</th>
+                    <th className="px-3 py-2 font-medium">Δ</th>
                     <th className="px-3 py-2 font-medium">Coverage</th>
                     <th className="px-3 py-2 font-medium">Validity</th>
                   </tr>
@@ -263,7 +279,7 @@ export function Comparison() {
                 <tbody>
                   {comparisons.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-slate-500">
+                      <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
                         No comparable configurations found.
                       </td>
                     </tr>
@@ -279,11 +295,7 @@ export function Comparison() {
                         </td>
                         <td className="px-3 py-2 text-slate-600">—</td>
                         <td className="px-3 py-2 font-mono-data text-slate-200">
-                          {formatMetric(comparisons[0].reported.baseline.metrics.f1_macro ?? null)}
-                        </td>
-                        <td className="px-3 py-2 font-mono-data text-slate-600">—</td>
-                        <td className="px-3 py-2 font-mono-data text-slate-200">
-                          {formatMetric(comparisons[0].reported.baseline.metrics.recall_macro ?? null)}
+                          {formatMetric(comparisons[0].reported.baseline.metrics[sortMetric] ?? null)}
                         </td>
                         <td className="px-3 py-2 font-mono-data text-slate-600">—</td>
                         <td className="px-3 py-2 font-mono-data text-slate-200">
@@ -301,16 +313,10 @@ export function Comparison() {
                           </td>
                           <td className="px-3 py-2 text-slate-400">{RELATIONSHIP_LABELS[c.relationship]}</td>
                           <td className="px-3 py-2 font-mono-data text-slate-200">
-                            {formatMetric(c.reported.candidate.metrics.f1_macro ?? null)}
+                            {formatMetric(c.reported.candidate.metrics[sortMetric] ?? null)}
                           </td>
                           <td className="px-3 py-2 font-mono-data text-slate-200">
-                            {formatDelta(c.reported.metric_deltas.f1_macro?.absolute ?? null)}
-                          </td>
-                          <td className="px-3 py-2 font-mono-data text-slate-200">
-                            {formatMetric(c.reported.candidate.metrics.recall_macro ?? null)}
-                          </td>
-                          <td className="px-3 py-2 font-mono-data text-slate-200">
-                            {formatDelta(c.reported.metric_deltas.recall_macro?.absolute ?? null)}
+                            {formatDelta(c.reported.metric_deltas[sortMetric]?.absolute ?? null)}
                           </td>
                           <td className="px-3 py-2 font-mono-data text-slate-200">
                             {formatCoverage(c.reported.candidate.matched_samples, c.reported.candidate.sample_count)}
@@ -333,12 +339,12 @@ export function Comparison() {
             Sort detail cards by
             <select
               value={sortMetric}
-              onChange={(e) => setSortMetric(e.target.value as SortMetric)}
+              onChange={(e) => setSortMetric(e.target.value)}
               className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 focus:border-cyan-500/50 focus:outline-none"
             >
-              {METRIC_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
+              {availableMetrics.map((key) => (
+                <option key={key} value={key}>
+                  {labelForMetric(key)}
                 </option>
               ))}
             </select>

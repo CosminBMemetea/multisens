@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchSessionEvaluation, fetchSessionTimeline, runEvaluation } from "../api";
+import { summaryColumnsFor } from "../evaluationColumns";
 import { formatCoverage, formatMetric } from "../format";
-import type { EvaluationResult, TimelineEvent } from "../types";
+import {
+  isClassificationResult,
+  isDetectionResult,
+  isRegressionResult,
+  type DetectionEvaluationResult,
+  type EvaluationResult,
+  type RegressionEvaluationResult,
+  type TimelineEvent,
+} from "../types";
 
 const TIMELINE_STYLES: Record<TimelineEvent["kind"], string> = {
   correct: "bg-emerald-400",
@@ -64,6 +73,68 @@ function ConfusionMatrixView({ result }: { result: EvaluationResult }) {
         </table>
       </div>
     </div>
+  );
+}
+
+// Per-class precision/recall/F1 breakdown - genuinely additional detail
+// beyond the summary row's own overall numbers, the same role the
+// confusion matrix plays for classification. Never a confusion matrix
+// forced onto detection - a fundamentally different question (which
+// classes get confused for which) that object-level TP/FP/FN doesn't
+// answer at all.
+function DetectionPerClassView({ result }: { result: DetectionEvaluationResult }) {
+  const perClass = result.details?.per_class;
+  const labels = perClass ? Object.keys(perClass).sort() : [];
+  if (labels.length === 0) {
+    return <span className="text-sm text-slate-500">No per-class breakdown available.</span>;
+  }
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Per-class · {result.configuration_id}
+      </h3>
+      <div className="overflow-x-auto rounded border border-slate-800">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-800 bg-slate-950/60 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-1.5 font-medium">Class</th>
+              <th className="px-3 py-1.5 font-medium">TP</th>
+              <th className="px-3 py-1.5 font-medium">FP</th>
+              <th className="px-3 py-1.5 font-medium">FN</th>
+              <th className="px-3 py-1.5 font-medium">Precision</th>
+              <th className="px-3 py-1.5 font-medium">Recall</th>
+              <th className="px-3 py-1.5 font-medium">F1</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono-data">
+            {labels.map((label) => {
+              const m = perClass![label];
+              return (
+                <tr key={label} className="border-b border-slate-800/60 last:border-0">
+                  <td className="px-3 py-1.5 font-sans text-slate-300">{label}</td>
+                  <td className="px-3 py-1.5 text-slate-200">{m.true_positives}</td>
+                  <td className="px-3 py-1.5 text-slate-200">{m.false_positives}</td>
+                  <td className="px-3 py-1.5 text-slate-200">{m.false_negatives}</td>
+                  <td className="px-3 py-1.5 text-slate-200">{formatMetric(m.precision)}</td>
+                  <td className="px-3 py-1.5 text-slate-200">{formatMetric(m.recall)}</td>
+                  <td className="px-3 py-1.5 text-slate-200">{formatMetric(m.f1)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RegressionUnitNote({ result }: { result: RegressionEvaluationResult }) {
+  const unit = result.details?.unit;
+  if (!unit) return null;
+  return (
+    <span className="text-xs text-slate-500">
+      Values reported in <span className="font-mono-data text-slate-400">{unit}</span>.
+    </span>
   );
 }
 
@@ -148,8 +219,16 @@ export function EvaluationPanel({ sessionId, tasks }: EvaluationPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, selectedTask]);
 
+  const taskResults = (results ?? []).filter((r) => r.task === selectedTask);
+  const selectedResult = taskResults.find((r) => r.configuration_id === selectedConfig) ?? null;
+  // /timeline is classification-only (v0.8, Phase 84 - a documented scope
+  // boundary, not an oversight); fetching it for any other evaluator_type
+  // would just 422. Skip the request entirely rather than surface that as
+  // a generic page-level error.
+  const timelineEligible = selectedResult !== null && isClassificationResult(selectedResult);
+
   useEffect(() => {
-    if (!selectedConfig || !selectedTask) {
+    if (!selectedConfig || !selectedTask || !timelineEligible) {
       setTimeline(null);
       return;
     }
@@ -165,7 +244,8 @@ export function EvaluationPanel({ sessionId, tasks }: EvaluationPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, selectedConfig, selectedTask]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, selectedConfig, selectedTask, timelineEligible]);
 
   async function handleRunEvaluation() {
     setRunning(true);
@@ -189,8 +269,7 @@ export function EvaluationPanel({ sessionId, tasks }: EvaluationPanelProps) {
     );
   }
 
-  const taskResults = (results ?? []).filter((r) => r.task === selectedTask);
-  const selectedResult = taskResults.find((r) => r.configuration_id === selectedConfig) ?? null;
+  const columns = summaryColumnsFor(taskResults);
 
   return (
     <section className="flex flex-col gap-4 rounded border border-slate-800 bg-slate-900/40 p-4">
@@ -240,10 +319,11 @@ export function EvaluationPanel({ sessionId, tasks }: EvaluationPanelProps) {
                 <tr>
                   <th className="px-3 py-2 font-medium">Configuration</th>
                   <th className="px-3 py-2 font-medium">Coverage</th>
-                  <th className="px-3 py-2 font-medium">Accuracy</th>
-                  <th className="px-3 py-2 font-medium">Precision</th>
-                  <th className="px-3 py-2 font-medium">Recall</th>
-                  <th className="px-3 py-2 font-medium">F1</th>
+                  {columns.map((col) => (
+                    <th key={col.key} className="px-3 py-2 font-medium">
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -262,22 +342,41 @@ export function EvaluationPanel({ sessionId, tasks }: EvaluationPanelProps) {
                         ({r.matched_samples}/{r.sample_count})
                       </span>
                     </td>
-                    <td className="px-3 py-2 font-mono-data text-slate-200">{formatMetric(r.metrics.accuracy)}</td>
-                    <td className="px-3 py-2 font-mono-data text-slate-200">
-                      {formatMetric(r.metrics.precision_macro)}
-                    </td>
-                    <td className="px-3 py-2 font-mono-data text-slate-200">
-                      {formatMetric(r.metrics.recall_macro)}
-                    </td>
-                    <td className="px-3 py-2 font-mono-data text-slate-200">{formatMetric(r.metrics.f1_macro)}</td>
+                    {columns.map((col) => (
+                      <td key={col.key} className="px-3 py-2 font-mono-data text-slate-200">
+                        {formatMetric(r.metrics[col.key] ?? null)}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {selectedResult && <ConfusionMatrixView result={selectedResult} />}
-          {selectedResult && <Timeline events={timeline} />}
+          {selectedResult && isClassificationResult(selectedResult) && (
+            <ConfusionMatrixView result={selectedResult} />
+          )}
+          {selectedResult && isDetectionResult(selectedResult) && (
+            <DetectionPerClassView result={selectedResult} />
+          )}
+          {selectedResult && isRegressionResult(selectedResult) && (
+            <RegressionUnitNote result={selectedResult} />
+          )}
+          {selectedResult &&
+            !isClassificationResult(selectedResult) &&
+            !isDetectionResult(selectedResult) &&
+            !isRegressionResult(selectedResult) && (
+              // An evaluator_type this frontend build doesn't recognize yet
+              // (master prompt §78) - the summary table above already
+              // rendered its raw metrics generically; this is just an
+              // honest note that there's no dedicated detail panel for it,
+              // never a broken page.
+              <span className="text-sm text-slate-500">
+                No evaluator-specific visualization available for evaluator_type &apos;
+                {selectedResult.evaluator_type}&apos;.
+              </span>
+            )}
+          {timelineEligible && <Timeline events={timeline} />}
         </>
       )}
     </section>
