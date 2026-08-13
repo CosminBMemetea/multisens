@@ -374,3 +374,86 @@ export interface ProfileUsageEntry {
   profile_version: string;
   requirement_ids: string[];
 }
+
+// Mirrors backend/app/domain/decision.py and the /decision-analysis API
+// shape (v0.6). Consumes v0.4/v0.5's already-computed coverage - never
+// re-decides pass/fail/na, and never picks one "best" configuration;
+// only evaluates every discovered configuration against a caller-
+// supplied DecisionPolicy and reports sufficiency/minimality/dominance.
+
+export type DecisionObjective = "minimize_sensor_count";
+
+export interface DecisionPolicy {
+  minimum_requirement_coverage: number;
+  minimum_evidence_completeness: number;
+  mandatory_requirements_must_pass: boolean;
+  objective: DecisionObjective;
+}
+
+// null means "the real answer depends on evidence that doesn't exist
+// yet" (see docs/decision-support.md) - never coerced to insufficient.
+export type PolicyStatus = "sufficient" | "insufficient" | "undetermined";
+
+export interface ConfigurationDecision {
+  configuration_id: string;
+  sensor_ids: string[];
+  sensor_count: number;
+  summary: AggregateCoverage;
+  // null means NO EVIDENCE - this configuration_id was named but no
+  // prediction anywhere has ever used it (sensor_ids/sensor_count are
+  // then empty/zero too) - never silently dropped from the response.
+  policy_status: PolicyStatus | null;
+  dominated: boolean;
+  requirement_results: RequirementResult[];
+}
+
+export interface RequirementTransitions {
+  fail_to_pass: string[];
+  na_to_pass: string[];
+  pass_to_fail: string[];
+  pass_to_na: string[];
+}
+
+export interface ConditionGapEntry {
+  value: ConditionValue;
+  baseline: AggregateCoverage;
+  candidate: AggregateCoverage;
+  coverage_delta_pp: number | null;
+}
+
+export interface SensorAdditionAnalysis {
+  baseline_configuration_id: string;
+  candidate_configuration_id: string;
+  added_sensor_ids: string[];
+  removed_sensor_ids: string[];
+  coverage_delta_pp: number | null;
+  completeness_delta_pp: number | null;
+  transitions: RequirementTransitions;
+  baseline_policy_status: PolicyStatus;
+  candidate_policy_status: PolicyStatus;
+  condition_gap_summaries: Record<string, ConditionGapEntry[]>;
+}
+
+export interface DirectRemoval {
+  removed_sensor_id: string;
+  // Both null together when this exact removal was never evaluated -
+  // NO EVIDENCE, never estimated.
+  configuration_id: string | null;
+  policy_status: PolicyStatus | null;
+}
+
+export interface GapAnalysisResult {
+  addition: SensorAdditionAnalysis | null;
+  removal_sweep: DirectRemoval[] | null;
+}
+
+export interface DecisionAnalysisResponse {
+  policy: DecisionPolicy;
+  configurations: ConfigurationDecision[];
+  sufficient_configuration_ids: string[];
+  // May contain several tied configuration ids - never arbitrarily
+  // narrowed to one.
+  minimal_sufficient_configuration_ids: string[];
+  pareto_front_configuration_ids: string[];
+  gap_analysis: GapAnalysisResult | null;
+}

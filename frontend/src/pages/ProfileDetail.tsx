@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { CoverageMatrix } from "../components/CoverageMatrix";
+import { DecisionPanel } from "../components/DecisionPanel";
 import { ExplorerPanel } from "../components/ExplorerPanel";
 import { FailuresPanel } from "../components/FailuresPanel";
 import { NABreakdownPanel } from "../components/NABreakdownPanel";
@@ -10,13 +11,14 @@ import { buildGroupTree } from "../groupTree";
 import type { GroupNode } from "../groupTree";
 import type { ConfigurationCoverage, EvaluationProfile, RequirementStatus, Requirement } from "../types";
 
-type TabId = "coverage" | "explorer" | "failures" | "evidence";
+type TabId = "coverage" | "explorer" | "failures" | "evidence" | "decision";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "coverage", label: "Coverage" },
   { id: "explorer", label: "Explorer" },
   { id: "failures", label: "Failures" },
   { id: "evidence", label: "Evidence" },
+  { id: "decision", label: "Decision" },
 ];
 
 // Filter/tab state is URL-addressable (same pattern Comparison.tsx
@@ -366,6 +368,14 @@ export function ProfileDetail() {
                 profileVersion={profile.version}
                 requirements={profile.requirements}
                 groups={profile.groups}
+                conditionParams={conditionParams}
+                onConditionChange={handleConditionChange}
+              />
+            )}
+
+            {activeTab === "decision" && profileId && (
+              <DecisionPanel
+                profileId={profileId}
                 conditionParams={conditionParams}
                 onConditionChange={handleConditionChange}
               />

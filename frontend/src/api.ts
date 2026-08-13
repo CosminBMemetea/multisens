@@ -3,6 +3,8 @@ import type {
   AnalysisResponse,
   ConfigurationCoverage,
   ConfigurationSummary,
+  DecisionAnalysisResponse,
+  DecisionPolicy,
   EvaluationProfile,
   EvaluationResult,
   Facet,
@@ -186,4 +188,23 @@ export function runProfileAnalysis(
 
 export function fetchSessionProfileUsage(sessionId: string): Promise<ProfileUsageEntry[]> {
   return getJson(`/api/sessions/${sessionId}/profile-usage`);
+}
+
+export function runDecisionAnalysis(
+  profileId: string,
+  input: {
+    policy: DecisionPolicy;
+    configuration_ids?: string[];
+    session_ids?: string[];
+    requirement_bindings?: Record<string, { session_id: string; source_id?: string }>;
+    filters?: AnalysisFilter;
+    gap_analysis?: {
+      baseline_configuration_id: string;
+      candidate_configuration_id?: string;
+      include_removal_sweep?: boolean;
+      group_by?: string[];
+    };
+  },
+): Promise<DecisionAnalysisResponse> {
+  return postJson(`/api/profiles/${profileId}/decision-analysis`, input);
 }
