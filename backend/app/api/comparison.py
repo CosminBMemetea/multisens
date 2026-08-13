@@ -11,6 +11,7 @@ Experiment entity, why no persistence" note in domain/models.py).
 from __future__ import annotations
 
 import sqlite3
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -71,6 +72,14 @@ class CompareRequest(BaseModel):
     tolerance_ms: float = DEFAULT_TOLERANCE_MS
     coverage_warning_threshold_pp: float = DEFAULT_COVERAGE_WARNING_THRESHOLD_PP
     min_common_sample_count: int = DEFAULT_MIN_COMMON_SAMPLE_COUNT
+    # Passed to the common-set re-evaluation (v0.8, Phase 84) - required
+    # for an object_detection comparison (confidence_threshold/
+    # iou_threshold have no default, same as /evaluate), ignored by
+    # classification/regression. Each side's *original* /evaluate call
+    # may have used different parameters (same "each side may have used a
+    # different tolerance_ms" posture the reported comparison already
+    # has); this is what the common-set re-match uses for both sides.
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class CompareResponse(BaseModel):
@@ -165,23 +174,33 @@ def compare_session_configurations(
         candidate_sensor_ids = candidate_predictions[0].sensor_ids if candidate_predictions else []
         candidate_result = repo.get_evaluation_result(conn, session_id, candidate_id, body.task)
 
-        comparisons.append(compare_configurations(
-            session_id=session_id,
-            task=body.task,
-            baseline_configuration_id=body.baseline_configuration_id,
-            candidate_configuration_id=candidate_id,
-            baseline_source_id=baseline_source_id,
-            candidate_source_id=candidate_source_id,
-            baseline_sensor_ids=baseline_sensor_ids,
-            candidate_sensor_ids=candidate_sensor_ids,
-            ground_truth=ground_truth,
-            baseline_predictions=baseline_predictions,
-            candidate_predictions=candidate_predictions,
-            baseline_evaluation_result=baseline_result,
-            candidate_evaluation_result=candidate_result,
-            tolerance_ms=body.tolerance_ms,
-            coverage_warning_threshold_pp=body.coverage_warning_threshold_pp,
-            min_common_sample_count=body.min_common_sample_count,
-        ))
+        try:
+            comparison = compare_configurations(
+                session_id=session_id,
+                task=body.task,
+                baseline_configuration_id=body.baseline_configuration_id,
+                candidate_configuration_id=candidate_id,
+                baseline_source_id=baseline_source_id,
+                candidate_source_id=candidate_source_id,
+                baseline_sensor_ids=baseline_sensor_ids,
+                candidate_sensor_ids=candidate_sensor_ids,
+                ground_truth=ground_truth,
+                baseline_predictions=baseline_predictions,
+                candidate_predictions=candidate_predictions,
+                baseline_evaluation_result=baseline_result,
+                candidate_evaluation_result=candidate_result,
+                tolerance_ms=body.tolerance_ms,
+                coverage_warning_threshold_pp=body.coverage_warning_threshold_pp,
+                min_common_sample_count=body.min_common_sample_count,
+                evaluator_parameters=body.parameters,
+            )
+        except ValueError as e:
+            # A malformed matched value or missing required evaluator
+            # parameters (e.g. object_detection's confidence_threshold/
+            # iou_threshold) is a data/request problem, not a server bug -
+            # 422, not 500. Generic across every evaluator, the same
+            # treatment /evaluate's own dispatch already gives (Phase 79).
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        comparisons.append(comparison)
 
     return CompareResponse(comparisons=comparisons)

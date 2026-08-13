@@ -29,7 +29,7 @@ either/or:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 
 from app.domain.evaluators import EVALUATOR_REGISTRY, EvaluatorOutput
 from app.domain.matching import MatchResult, match_by_timestamp
@@ -199,11 +199,24 @@ def compare_configurations(
     tolerance_ms: float,
     coverage_warning_threshold_pp: float = DEFAULT_COVERAGE_WARNING_THRESHOLD_PP,
     min_common_sample_count: int = DEFAULT_MIN_COMMON_SAMPLE_COUNT,
+    evaluator_parameters: dict[str, Any] | None = None,
 ) -> PairwiseComparison:
     """The one place all of the above composes into a PairwiseComparison.
     Takes already-fetched domain objects - no sqlite3/fastapi import here;
     Phase 22's API layer owns fetching baseline_evaluation_result etc. from
-    the repository and resolving source_id ambiguity before calling this."""
+    the repository and resolving source_id ambiguity before calling this.
+
+    `evaluator_parameters` (v0.8, Phase 84) is what the common-set
+    re-evaluation passes to `Evaluator.evaluate()` - explicit from the
+    caller, the same "caller states it, never derived from persisted
+    state" posture `tolerance_ms` itself already has here (each side's
+    *original* evaluation may have used a different tolerance_ms; the
+    common-set re-match uses the one this call was given). Classification
+    and regression ignore it; object_detection requires it (no default -
+    a bug caught during Phase 84's own review: passing `{}` unconditionally
+    used to crash any object_detection comparison with an unhandled
+    `ValueError`, since `confidence_threshold`/`iou_threshold` have no
+    default)."""
     added_sensors, removed_sensors, relationship = classify_relationship(
         baseline_sensor_ids, candidate_sensor_ids,
     )
@@ -239,9 +252,10 @@ def compare_configurations(
             empty_common_metrics, empty_common_metrics, common_sample_count=len(common_gt_ids),
         )
     else:
+        parameters = evaluator_parameters if evaluator_parameters is not None else {}
         evaluator = EVALUATOR_REGISTRY[baseline_evaluation_result.evaluator_type]
-        baseline_common_output = evaluator.evaluate(filter_matched_by_ground_truth_ids(baseline_match, common_gt_ids), {})
-        candidate_common_output = evaluator.evaluate(filter_matched_by_ground_truth_ids(candidate_match, common_gt_ids), {})
+        baseline_common_output = evaluator.evaluate(filter_matched_by_ground_truth_ids(baseline_match, common_gt_ids), parameters)
+        candidate_common_output = evaluator.evaluate(filter_matched_by_ground_truth_ids(candidate_match, common_gt_ids), parameters)
 
         common_side = build_comparison_side(
             comparison_metrics_from_evaluator_output(baseline_common_output),

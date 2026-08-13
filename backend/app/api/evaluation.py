@@ -153,6 +153,25 @@ def get_session_timeline(
     if tolerance_ms < 0:
         raise HTTPException(status_code=422, detail=f'tolerance_ms must be >= 0, got {tolerance_ms}')
 
+    # This view is classification-specific (a label-vs-label strip), never
+    # generalized to detection/regression (v0.8, Phase 84) - a known,
+    # documented scope boundary, not an oversight. Checked explicitly
+    # against the persisted evaluator_type, rather than left to fail
+    # accidentally inside extract_label below, so the error names the
+    # real reason plainly instead of a generic "no label field" guess.
+    # If nothing has been evaluated yet, this falls through unchanged -
+    # same as every pre-v0.8 behavior.
+    evaluation_result = repo.get_evaluation_result(conn, session_id, configuration_id, task)
+    if evaluation_result is not None and evaluation_result.evaluator_type != 'classification':
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"/timeline only supports classification results - configuration "
+                f"'{configuration_id}' task '{task}' was evaluated with evaluator_type "
+                f"'{evaluation_result.evaluator_type}'"
+            ),
+        )
+
     ground_truth = repo.list_ground_truth(conn, session_id, task=task)
     predictions = repo.list_predictions(conn, session_id, configuration_id=configuration_id, task=task)
     match_result = match_by_timestamp(ground_truth, predictions, tolerance_ms=tolerance_ms)
