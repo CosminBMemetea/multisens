@@ -202,6 +202,21 @@ release, not silently worked around now.
   images (`ros:humble-ros-base`) are confirmed multi-arch (arm64/v8
   manifest present), and no code path is architecture-specific - but
   x86_64/Jetson has not been run, only reasoned about.
+- **v0.7 resource trade-offs (`docs/decision-support.md`) have only ever
+  been measured on one machine/platform.** `ExecutionPlatform` and the
+  `platform_id`-based comparability warning in
+  `backend/app/domain/resources.py` were built to support comparing
+  observations across genuinely different machines, but no second
+  platform's data has actually been captured to exercise that path.
+  Reviewed for v0.7 and explicitly deferred (issue #76, closed): no
+  Jetson Orin (or any second machine) was reachable in the environment
+  this release was built in, and no cross-platform numbers are
+  fabricated to fill the gap. The domain model gained zero
+  Jetson/NVIDIA-specific fields either way - a GPU metric, if ever
+  collected, is just another entry in the open `metric` vocabulary. See
+  `check_comparability` in `backend/app/domain/resources.py` for what the
+  cross-platform warning does today with only one platform ever observed;
+  full v0.7 documentation lands in `docs/resources.md` (issue #78).
 
 ## Honestly-reported, not yet resolved
 
