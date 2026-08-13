@@ -1,4 +1,4 @@
-"""Generic evaluator abstraction / registry (v0.8, Phase 78-82).
+"""Generic evaluator abstraction / registry (v0.8, Phase 78-83).
 
 `Evaluator`/`EvaluatorOutput` themselves live in `evaluator_output.py`
 (split out in Phase 82, see that module's own docstring for the import-
@@ -12,8 +12,9 @@ unaffected.
 `ClassificationEvaluator` (Phase 79) wraps the completely unchanged
 `evaluate_classification` (metrics.py) directly here, since it has no
 algorithm module of its own beyond that one function.
-`DetectionEvaluator` (Phase 80-82) has a real algorithm module
-(`detection.py`) and is imported from there. See the v0.8 architecture
+`DetectionEvaluator` (Phase 80-82) and `RegressionEvaluator` (Phase 83)
+each have a real algorithm module of their own (`detection.py`/
+`regression.py`) and are imported from there. See the v0.8 architecture
 review (issue #79) for the full reasoning behind this whole layer.
 
 ## Why `Evaluator.evaluate` takes a `MatchResult`, not raw ground truth/predictions
@@ -48,6 +49,7 @@ from app.domain.detection import DetectionEvaluator
 from app.domain.evaluator_output import Evaluator, EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import evaluate_classification
+from app.domain.regression import RegressionEvaluator
 
 __all__ = ['Evaluator', 'EvaluatorOutput', 'ClassificationEvaluator', 'EVALUATOR_REGISTRY']
 
@@ -88,11 +90,11 @@ class ClassificationEvaluator:
 
 # Static, not a dynamic plugin-loading mechanism (master prompt §6) -
 # realistically 3-4 evaluator types will ever exist for this project.
-# Phase 83 adds 'regression' here the same way. An `evaluator_type`
-# absent from this dict is always a clear validation error at the API
-# layer (see api/evaluation.py) - never a silent fallback to
-# classification.
+# An `evaluator_type` absent from this dict is always a clear validation
+# error at the API layer (see api/evaluation.py) - never a silent
+# fallback to classification.
 EVALUATOR_REGISTRY: dict[str, Evaluator] = {
     'classification': ClassificationEvaluator(),
     'object_detection': DetectionEvaluator(),
+    'regression': RegressionEvaluator(),
 }
