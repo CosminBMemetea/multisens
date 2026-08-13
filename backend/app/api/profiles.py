@@ -39,15 +39,25 @@ _resolve_sessions/_resolve_configuration_ids/
 _compute_requirement_results_by_configuration helpers /coverage and
 /analysis already use - no new discovery logic. Never re-decides
 PASS/FAIL/N/A and never re-implements v0.5's condition grouping.
+
+POST .../tradeoffs (v0.7, Phase 70) exposes Phase 64-69's resource-
+observation/summary/trade-off/constraint/Pareto engine - reuses
+_resolve_configuration_ids/_compute_requirement_results_by_configuration
+exactly like the routes above, and never re-implements
+build_configuration_tradeoff/evaluate_resource_constraint/
+find_pareto_front_general at this layer. Resource evidence is inherently
+single-session-scoped (see app/domain/resources.py's own module
+docstring), so this route takes one required session_id rather than the
+optional session_ids list every other route above accepts.
 """
 from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.deps import get_db
 from app.domain.analysis import (
@@ -85,7 +95,30 @@ from app.domain.decision import (
 )
 from app.domain.evidence import EvidenceBinding, SessionCandidate
 from app.domain.models import Session
-from app.domain.profiles import ConditionValue, EvaluationProfile, Requirement, RequirementGroup, validate_profile
+from app.domain.profiles import (
+    AcceptanceCriterion,
+    AcceptanceOperator,
+    ConditionValue,
+    EvaluationProfile,
+    Requirement,
+    RequirementGroup,
+    validate_profile,
+)
+from app.domain.resources import (
+    SUPPORTED_RESOURCE_METRICS,
+    UNKNOWN_PLATFORM_ID,
+    ConfigurationResourceProfile,
+    ConfigurationTradeoff,
+    ParetoDirection,
+    ParetoPoint,
+    QualificationStatus,
+    build_configuration_tradeoff,
+    compute_configuration_resource_profile,
+    compute_resource_delta,
+    evaluate_resource_constraint,
+    evaluate_resource_qualification,
+    find_pareto_front_general,
+)
 from app.persistence import repository as repo
 
 router = APIRouter(prefix='/api/profiles', tags=['profiles'])
@@ -663,4 +696,341 @@ def analyze_decision(
         minimal_sufficient_configuration_ids=minimal_ids,
         pareto_front_configuration_ids=pareto_ids,
         gap_analysis=gap_analysis_response,
+    )
+
+
+# --- resource trade-offs (v0.7, Phase 70) ------------------------------------
+#
+# POST .../tradeoffs joins v0.6's decision evidence with v0.7's resource
+# evidence via app.domain.resources.build_configuration_tradeoff - reuses
+# _resolve_configuration_ids/_compute_requirement_results_by_configuration
+# exactly like /coverage, /analysis, and /decision-analysis already do,
+# and never re-implements the trade-off engine's comparability/
+# constraint/Pareto logic at this layer. Resource evidence is inherently
+# single-session-scoped (Session, not a new ResourceMeasurementRun
+# entity - v0.7 architecture review) - unlike /decision-analysis, this
+# route takes one required session_id, not an optional session_ids list.
+
+class ResourceConstraintRequest(BaseModel):
+    metric: str
+    operator: AcceptanceOperator
+    value: float
+
+
+class ResourceComparisonRequest(BaseModel):
+    baseline_configuration_id: str
+    candidate_configuration_id: str
+
+
+class TradeoffRequest(BaseModel):
+    policy: DecisionPolicyRequest
+    session_id: str
+    filters: AnalysisFilterRequest = Field(default_factory=AnalysisFilterRequest)
+    configuration_ids: list[str] | None = None
+    requirement_bindings: dict[str, RequirementBindingRequest] = Field(default_factory=dict)
+    # Empty means "no resource evidence requested" - every configuration's
+    # resource_profile stays None, distinct from a profile that was
+    # sought but found unavailable (see ConfigurationTradeoff's own
+    # docstring in app/domain/resources.py).
+    resource_metrics: list[str] = Field(default_factory=list)
+    resource_constraints: list[ResourceConstraintRequest] = Field(default_factory=list)
+    # Dimension name -> minimize/maximize. Keys must each be one of the
+    # three decision-side fields or an entry already in resource_metrics -
+    # never an unrequested resource metric, which would be silently
+    # all-None for every configuration.
+    pareto_dimensions: dict[str, ParetoDirection] = Field(default_factory=dict)
+    # Optional nested section, not a separate route - same "gap_analysis
+    # on /decision-analysis" pattern (v0.6, Phase 56): a resource
+    # comparison always needs the same evidence this call already
+    # gathered for baseline_configuration_id/candidate_configuration_id.
+    resource_comparison: ResourceComparisonRequest | None = None
+
+    @field_validator('resource_metrics')
+    @classmethod
+    def _metrics_supported(cls, v: list[str]) -> list[str]:
+        unsupported = sorted(set(v) - set(SUPPORTED_RESOURCE_METRICS))
+        if unsupported:
+            raise ValueError(
+                f'unsupported resource metric(s): {unsupported} - supported: {sorted(SUPPORTED_RESOURCE_METRICS)}'
+            )
+        return v
+
+    @field_validator('resource_constraints')
+    @classmethod
+    def _constraints_reference_supported_metrics(cls, v: list[ResourceConstraintRequest]) -> list[ResourceConstraintRequest]:
+        unsupported = sorted({c.metric for c in v} - set(SUPPORTED_RESOURCE_METRICS))
+        if unsupported:
+            raise ValueError(f'unsupported resource metric(s) in resource_constraints: {unsupported}')
+        return v
+
+    @model_validator(mode='after')
+    def _pareto_dimensions_reference_requested_or_decision_fields(self) -> TradeoffRequest:
+        allowed = {'sensor_count', 'requirement_coverage', 'evidence_completeness'} | set(self.resource_metrics)
+        unknown = sorted(set(self.pareto_dimensions) - allowed)
+        if unknown:
+            raise ValueError(
+                f'pareto_dimensions references metric(s) not in resource_metrics or the decision '
+                f'fields (sensor_count/requirement_coverage/evidence_completeness): {unknown}'
+            )
+        return self
+
+
+class ResourceMetricSummaryResponse(BaseModel):
+    mean: float
+    median: float
+    p95: float
+    min: float
+    max: float
+    sample_count: int
+    unit: str
+
+
+class ConfigurationResourceProfileResponse(BaseModel):
+    configuration_id: str
+    session_id: str
+    platform_id: str
+    metrics: dict[str, ResourceMetricSummaryResponse]
+    measurement_window: tuple[datetime, datetime] | None
+    validity: Literal['complete', 'partial', 'unavailable']
+    warnings: list[str]
+
+
+class ResourceConstraintResultResponse(BaseModel):
+    metric: str
+    operator: AcceptanceOperator
+    threshold: float
+    observed: float | None
+    status: Literal['pass', 'fail', 'na']
+
+
+class ConfigurationTradeoffResponse(BaseModel):
+    configuration_id: str
+    sensor_count: int
+    requirement_coverage: float | None
+    evidence_completeness: float | None
+    # Both None together only for a named-but-never-evaluated
+    # configuration_id (NO EVIDENCE) - same convention
+    # ConfigurationDecisionResponse already established in Phase 56.
+    policy_status: PolicyStatus | None
+    resource_profile: ConfigurationResourceProfileResponse | None
+    resource_validity: Literal['complete', 'partial', 'unavailable'] | None
+    constraint_results: list[ResourceConstraintResultResponse]
+    qualification: QualificationStatus
+
+
+class ResourceMetricDeltaResponse(BaseModel):
+    metric: str
+    unit: str
+    baseline: float | None
+    candidate: float | None
+    delta: float | None
+
+
+class ComparabilityResponse(BaseModel):
+    comparable: bool
+    warnings: list[str]
+
+
+class ResourceComparisonResponse(BaseModel):
+    baseline_configuration_id: str
+    candidate_configuration_id: str
+    comparability: ComparabilityResponse
+    metric_deltas: list[ResourceMetricDeltaResponse]
+
+
+class TradeoffResponse(BaseModel):
+    policy: DecisionPolicyRequest
+    session_id: str
+    configurations: list[ConfigurationTradeoffResponse]
+    pareto_front_configuration_ids: list[str]
+    resource_comparison: ResourceComparisonResponse | None = None
+
+
+def _to_resource_profile_response(profile: ConfigurationResourceProfile) -> ConfigurationResourceProfileResponse:
+    return ConfigurationResourceProfileResponse(
+        configuration_id=profile.configuration_id, session_id=profile.session_id, platform_id=profile.platform_id,
+        metrics={
+            metric: ResourceMetricSummaryResponse(
+                mean=s.mean, median=s.median, p95=s.p95, min=s.min, max=s.max,
+                sample_count=s.sample_count, unit=s.unit,
+            )
+            for metric, s in profile.metrics.items()
+        },
+        measurement_window=profile.measurement_window, validity=profile.validity, warnings=profile.warnings,
+    )
+
+
+def _extract_pareto_value(tradeoff: ConfigurationTradeoff, dimension: str) -> float | None:
+    if dimension == 'sensor_count':
+        return float(tradeoff.sensor_count)
+    if dimension == 'requirement_coverage':
+        return tradeoff.requirement_coverage
+    if dimension == 'evidence_completeness':
+        return tradeoff.evidence_completeness
+    if tradeoff.resource_profile is None:
+        return None
+    summary = tradeoff.resource_profile.metrics.get(dimension)
+    return summary.mean if summary is not None else None
+
+
+@router.post('/{profile_id}/tradeoffs')
+def compute_profile_tradeoffs(
+    profile_id: str, body: TradeoffRequest, conn: sqlite3.Connection = Depends(get_db),
+) -> TradeoffResponse:
+    profile = _require_profile(conn, profile_id)
+    session = repo.get_session(conn, body.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"session '{body.session_id}' not found")
+
+    sessions = [session]
+    tasks = sorted({r.task for r in profile.requirements})
+    configuration_ids = _resolve_configuration_ids(conn, sessions, tasks, body.configuration_ids)
+    bindings = {
+        requirement_id: EvidenceBinding(session_id=b.session_id, source_id=b.source_id)
+        for requirement_id, b in body.requirement_bindings.items()
+    }
+    results_by_configuration = _compute_requirement_results_by_configuration(
+        conn, profile, sessions, tasks, configuration_ids, bindings,
+    )
+
+    criteria = AnalysisFilter(
+        conditions=body.filters.conditions, group_id=body.filters.group_id,
+        task=body.filters.task, status=body.filters.status,
+    )
+    policy = DecisionPolicy(
+        minimum_requirement_coverage=body.policy.minimum_requirement_coverage,
+        minimum_evidence_completeness=body.policy.minimum_evidence_completeness,
+        mandatory_requirements_must_pass=body.policy.mandatory_requirements_must_pass,
+        objective=body.policy.objective,
+    )
+
+    no_evidence_ids: list[str] = []
+    evidence_list: list[ConfigurationEvidence] = []
+    for configuration_id, results in results_by_configuration.items():
+        filtered = filter_requirement_results(profile, results, criteria)
+        summary = aggregate_requirement_results(filtered)
+        sensor_ids = repo.get_sensor_ids_for_configuration(conn, configuration_id)
+        if sensor_ids is None:
+            no_evidence_ids.append(configuration_id)
+            continue
+        evidence_list.append(ConfigurationEvidence(
+            configuration_id=configuration_id, sensor_ids=frozenset(sensor_ids),
+            aggregate=summary, requirement_results=filtered,
+        ))
+
+    decisions = evaluate_configurations(evidence_list, policy)
+    constraint_criteria = [
+        AcceptanceCriterion(metric=c.metric, operator=c.operator, value=c.value)
+        for c in body.resource_constraints
+    ]
+
+    tradeoffs: list[ConfigurationTradeoff] = []
+    # One representative ResourceObservation.metadata per configuration -
+    # comparability needs resolution/target_fps, which live on the raw
+    # observation, not on ConfigurationResourceProfile itself (see
+    # check_comparability's own docstring for why it stays a
+    # caller-supplied parameter rather than growing that shape).
+    metadata_by_configuration_id: dict[str, dict[str, Any]] = {}
+    configurations_response: list[ConfigurationTradeoffResponse] = []
+
+    for decision in decisions:
+        resource_profile = None
+        if body.resource_metrics:
+            observations = repo.list_resource_observations(
+                conn, body.session_id, configuration_id=decision.configuration_id,
+            )
+            platform_ids = {o.platform_id for o in observations}
+            platform_id = platform_ids.pop() if len(platform_ids) == 1 else UNKNOWN_PLATFORM_ID
+            resource_profile = compute_configuration_resource_profile(
+                session_id=body.session_id, configuration_id=decision.configuration_id, platform_id=platform_id,
+                requested_metrics=body.resource_metrics, observations=observations,
+            )
+            metadata_by_configuration_id[decision.configuration_id] = observations[0].metadata if observations else {}
+
+        tradeoff = build_configuration_tradeoff(decision, resource_profile)
+        tradeoffs.append(tradeoff)
+
+        constraint_results = (
+            [evaluate_resource_constraint(c, resource_profile) for c in constraint_criteria]
+            if resource_profile is not None else []
+        )
+        qualification = evaluate_resource_qualification(constraint_results)
+
+        configurations_response.append(ConfigurationTradeoffResponse(
+            configuration_id=tradeoff.configuration_id,
+            sensor_count=tradeoff.sensor_count,
+            requirement_coverage=tradeoff.requirement_coverage,
+            evidence_completeness=tradeoff.evidence_completeness,
+            policy_status=tradeoff.policy_status,
+            resource_profile=_to_resource_profile_response(resource_profile) if resource_profile is not None else None,
+            resource_validity=tradeoff.resource_validity if resource_profile is not None else None,
+            constraint_results=[
+                ResourceConstraintResultResponse(
+                    metric=r.criterion.metric, operator=r.criterion.operator, threshold=r.criterion.value,
+                    observed=r.observed, status=r.status,
+                )
+                for r in constraint_results
+            ],
+            qualification=qualification,
+        ))
+
+    for configuration_id in no_evidence_ids:
+        configurations_response.append(ConfigurationTradeoffResponse(
+            configuration_id=configuration_id, sensor_count=0, requirement_coverage=None,
+            evidence_completeness=None, policy_status=None, resource_profile=None, resource_validity=None,
+            constraint_results=[], qualification='undetermined',
+        ))
+
+    pareto_front_ids: list[str] = []
+    if body.pareto_dimensions:
+        points = [
+            ParetoPoint(id=t.configuration_id, values={
+                dim: _extract_pareto_value(t, dim) for dim in body.pareto_dimensions
+            })
+            for t in tradeoffs
+        ]
+        pareto_front_ids = sorted(p.id for p in find_pareto_front_general(points, body.pareto_dimensions))
+
+    resource_comparison_response = None
+    if body.resource_comparison is not None:
+        tradeoffs_by_id = {t.configuration_id: t for t in tradeoffs}
+        baseline = tradeoffs_by_id.get(body.resource_comparison.baseline_configuration_id)
+        if baseline is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"resource_comparison.baseline_configuration_id "
+                    f"'{body.resource_comparison.baseline_configuration_id}' has no evidence in this analysis"
+                ),
+            )
+        candidate = tradeoffs_by_id.get(body.resource_comparison.candidate_configuration_id)
+        if candidate is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"resource_comparison.candidate_configuration_id "
+                    f"'{body.resource_comparison.candidate_configuration_id}' has no evidence in this analysis"
+                ),
+            )
+        delta = compute_resource_delta(
+            baseline, metadata_by_configuration_id.get(baseline.configuration_id, {}),
+            candidate, metadata_by_configuration_id.get(candidate.configuration_id, {}),
+        )
+        resource_comparison_response = ResourceComparisonResponse(
+            baseline_configuration_id=delta.baseline_configuration_id,
+            candidate_configuration_id=delta.candidate_configuration_id,
+            comparability=ComparabilityResponse(
+                comparable=delta.comparability.comparable, warnings=delta.comparability.warnings,
+            ),
+            metric_deltas=[
+                ResourceMetricDeltaResponse(metric=d.metric, unit=d.unit, baseline=d.baseline,
+                                             candidate=d.candidate, delta=d.delta)
+                for d in delta.metric_deltas
+            ],
+        )
+
+    return TradeoffResponse(
+        policy=body.policy, session_id=body.session_id,
+        configurations=configurations_response, pareto_front_configuration_ids=pareto_front_ids,
+        resource_comparison=resource_comparison_response,
     )

@@ -1,10 +1,12 @@
-"""Session lifecycle plus ground-truth/prediction batch ingestion.
+"""Session lifecycle plus ground-truth/prediction/resource-observation
+batch ingestion.
 
-Ground truth and predictions nest under /api/sessions/{id}/... rather than
-living at the top level - neither means anything without a session, and a
-top-level POST /api/predictions would just be the same resource reached a
-second way (see docs/architecture.md-style "avoid RPC-like endpoint
-explosion" reasoning applied here).
+Ground truth, predictions, and (v0.7, Phase 70) resource observations all
+nest under /api/sessions/{id}/... rather than living at the top level -
+none of them mean anything without a session, and a top-level
+POST /api/predictions would just be the same resource reached a second
+way (see docs/architecture.md-style "avoid RPC-like endpoint explosion"
+reasoning applied here).
 
 Batch items are accepted as loose dicts (not a typed Pydantic list) and
 validated one at a time against the domain model. That's deliberate: if the
@@ -26,6 +28,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app.api.deps import get_db, require_session
 from app.domain.evidence import matches_conditions
 from app.domain.models import GroundTruth, Prediction, Session
+from app.domain.resources import ResourceObservation
 from app.persistence import repository as repo
 
 router = APIRouter(prefix='/api/sessions', tags=['sessions'])
@@ -48,6 +51,10 @@ class GroundTruthBatchRequest(BaseModel):
 
 
 class PredictionBatchRequest(BaseModel):
+    items: list[dict[str, Any]]
+
+
+class ResourceObservationBatchRequest(BaseModel):
     items: list[dict[str, Any]]
 
 
@@ -184,6 +191,44 @@ def ingest_predictions_batch(
     return BatchIngestResponse(
         accepted=len(indexed_valid) - len(insert_errors), rejected=len(all_errors), errors=all_errors,
     )
+
+
+@router.post('/{session_id}/resource-observations/batch', status_code=201)
+def ingest_resource_observations_batch(
+    session_id: str, body: ResourceObservationBatchRequest, conn: sqlite3.Connection = Depends(get_db),
+) -> BatchIngestResponse:
+    """v0.7, Phase 70 - same loose-dict/partial-failure batch pattern as
+    ground-truth/predictions above, not a special case."""
+    require_session(conn, session_id)
+    if len(body.items) > MAX_BATCH_SIZE:
+        raise HTTPException(status_code=422, detail=f'batch too large: {len(body.items)} (max {MAX_BATCH_SIZE})')
+
+    indexed_valid: list[tuple[int, ResourceObservation]] = []
+    errors: list[BatchItemError] = []
+    for index, raw in enumerate(body.items):
+        try:
+            obs = ResourceObservation.model_validate(
+                {**raw, 'session_id': session_id, 'id': raw.get('id') or str(uuid4())}
+            )
+        except ValidationError as e:
+            errors.append(BatchItemError(index=index, error=_format_validation_error(e)))
+        else:
+            indexed_valid.append((index, obs))
+
+    insert_errors = _insert_with_partial_failure(conn, indexed_valid, repo.insert_resource_observations_batch)
+    all_errors = sorted(errors + insert_errors, key=lambda e: e.index)
+    return BatchIngestResponse(
+        accepted=len(indexed_valid) - len(insert_errors), rejected=len(all_errors), errors=all_errors,
+    )
+
+
+@router.get('/{session_id}/resource-observations')
+def list_session_resource_observations(
+    session_id: str, configuration_id: str | None = None, metric: str | None = None,
+    conn: sqlite3.Connection = Depends(get_db),
+) -> list[ResourceObservation]:
+    require_session(conn, session_id)
+    return repo.list_resource_observations(conn, session_id, configuration_id=configuration_id, metric=metric)
 
 
 @router.get('/{session_id}/ground-truth')
