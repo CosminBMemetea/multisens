@@ -1,11 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { CoverageMatrix } from "../components/CoverageMatrix";
+import { ExplorerPanel } from "../components/ExplorerPanel";
 import { ApiError, computeProfileCoverage, fetchProfile } from "../api";
 import { buildGroupTree } from "../groupTree";
 import type { GroupNode } from "../groupTree";
-import type { ConfigurationCoverage, EvaluationProfile, Requirement } from "../types";
+import type { ConfigurationCoverage, EvaluationProfile, RequirementStatus, Requirement } from "../types";
+
+type TabId = "coverage" | "explorer" | "failures" | "evidence";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "coverage", label: "Coverage" },
+  { id: "explorer", label: "Explorer" },
+  { id: "failures", label: "Failures" },
+  { id: "evidence", label: "Evidence" },
+];
+
+// Filter/tab state is URL-addressable (same pattern Comparison.tsx
+// established) - any query param other than these two reserved names is
+// read as a condition-facet filter, e.g. ?illumination=night&status=fail.
+const RESERVED_PARAMS = new Set(["tab", "status"]);
+
+function extractConditionParams(searchParams: URLSearchParams): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of searchParams.entries()) {
+    if (!RESERVED_PARAMS.has(key)) result[key] = value;
+  }
+  return result;
+}
 
 function ConditionChips({ conditions }: { conditions: Record<string, string | number | boolean> }) {
   const entries = Object.entries(conditions);
@@ -80,6 +103,44 @@ export function ProfileDetail() {
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [selectedConfigIds, setSelectedConfigIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as TabId | null) ?? "coverage";
+  const conditionParams = useMemo(() => extractConditionParams(searchParams), [searchParams]);
+  const status = searchParams.get("status") as RequirementStatus | null;
+
+  function setTab(tab: TabId) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === "coverage") next.delete("tab"); else next.set("tab", tab);
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  function handleConditionChange(key: string, rawValue: string | null) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (rawValue === null) next.delete(key); else next.set(key, rawValue);
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  function handleStatusChange(nextStatus: RequirementStatus | null) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextStatus === null) next.delete("status"); else next.set("status", nextStatus);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   useEffect(() => {
     if (!profileId) return;
@@ -178,67 +239,109 @@ export function ProfileDetail() {
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
-              {tree.map((node) => (
-                <GroupNodeView key={node.group.id} node={node} depth={0} />
+            <div className="flex gap-1 border-b border-slate-800">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    activeTab === t.id
+                      ? "border-b-2 border-cyan-400 text-cyan-400"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  {t.label}
+                </button>
               ))}
             </div>
 
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Coverage</h2>
-                <button
-                  onClick={handleComputeCoverage}
-                  disabled={computing}
-                  className="rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-sm font-medium text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-50"
-                >
-                  {computing ? "Computing…" : coverages ? "Recompute coverage" : "Compute coverage"}
-                </button>
-              </div>
-
-              {coverageError && (
-                <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
-                  {coverageError}
+            {activeTab === "coverage" && (
+              <>
+                <div className="flex flex-col gap-2">
+                  {tree.map((node) => (
+                    <GroupNodeView key={node.group.id} node={node} depth={0} />
+                  ))}
                 </div>
-              )}
 
-              {coverages && coverages.length === 0 && (
-                <p className="text-sm text-slate-500">
-                  No evaluated configuration matches this profile's tasks yet - run evaluation on a session first.
-                </p>
-              )}
-
-              {coverages && coverages.length > 0 && (
-                <>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex flex-wrap gap-3">
-                      {coverages.map((c) => (
-                        <label key={c.configuration_id} className="flex items-center gap-1.5 text-xs text-slate-400">
-                          <input
-                            type="checkbox"
-                            checked={selectedConfigIds.has(c.configuration_id)}
-                            onChange={() => toggleConfig(c.configuration_id)}
-                          />
-                          <span className="font-mono-data">{c.configuration_id}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search requirements…"
-                      className="ml-auto rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-cyan-500/50 focus:outline-none"
-                    />
+                <section className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Coverage</h2>
+                    <button
+                      onClick={handleComputeCoverage}
+                      disabled={computing}
+                      className="rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-sm font-medium text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-50"
+                    >
+                      {computing ? "Computing…" : coverages ? "Recompute coverage" : "Compute coverage"}
+                    </button>
                   </div>
 
-                  {visibleCoverages.length === 0 ? (
-                    <p className="text-sm text-slate-500">No configurations selected.</p>
-                  ) : (
-                    <CoverageMatrix groupTree={tree} configurationCoverages={visibleCoverages} search={search} />
+                  {coverageError && (
+                    <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+                      {coverageError}
+                    </div>
                   )}
-                </>
-              )}
-            </section>
+
+                  {coverages && coverages.length === 0 && (
+                    <p className="text-sm text-slate-500">
+                      No evaluated configuration matches this profile's tasks yet - run evaluation on a session
+                      first.
+                    </p>
+                  )}
+
+                  {coverages && coverages.length > 0 && (
+                    <>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex flex-wrap gap-3">
+                          {coverages.map((c) => (
+                            <label
+                              key={c.configuration_id}
+                              className="flex items-center gap-1.5 text-xs text-slate-400"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedConfigIds.has(c.configuration_id)}
+                                onChange={() => toggleConfig(c.configuration_id)}
+                              />
+                              <span className="font-mono-data">{c.configuration_id}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <input
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          placeholder="Search requirements…"
+                          className="ml-auto rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+
+                      {visibleCoverages.length === 0 ? (
+                        <p className="text-sm text-slate-500">No configurations selected.</p>
+                      ) : (
+                        <CoverageMatrix groupTree={tree} configurationCoverages={visibleCoverages} search={search} />
+                      )}
+                    </>
+                  )}
+                </section>
+              </>
+            )}
+
+            {activeTab === "explorer" && profileId && (
+              <ExplorerPanel
+                profileId={profileId}
+                conditionParams={conditionParams}
+                status={status}
+                onConditionChange={handleConditionChange}
+                onStatusChange={handleStatusChange}
+              />
+            )}
+
+            {activeTab === "failures" && (
+              <p className="text-sm text-slate-500">Failure and N/A exploration is coming in a later phase.</p>
+            )}
+
+            {activeTab === "evidence" && (
+              <p className="text-sm text-slate-500">Evidence traceability is coming in a later phase.</p>
+            )}
           </>
         )}
       </main>

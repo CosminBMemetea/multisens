@@ -1,12 +1,16 @@
 import type {
+  AnalysisFilter,
+  AnalysisResponse,
   ConfigurationCoverage,
   ConfigurationSummary,
   EvaluationProfile,
   EvaluationResult,
+  Facet,
   GroundTruthEvent,
   PairwiseComparison,
   PredictionEvent,
   ProfileSummary,
+  ProfileUsageEntry,
   Scenario,
   SensorConfig,
   Session,
@@ -161,4 +165,25 @@ export function computeProfileCoverage(
   } = {},
 ): Promise<{ configuration_coverages: ConfigurationCoverage[] }> {
   return postJson(`/api/profiles/${profileId}/coverage`, input);
+}
+
+export function fetchProfileFacets(profileId: string): Promise<Facet[]> {
+  return getJson(`/api/profiles/${profileId}/facets`);
+}
+
+export function runProfileAnalysis(
+  profileId: string,
+  input: {
+    configuration_ids?: string[];
+    session_ids?: string[];
+    requirement_bindings?: Record<string, { session_id: string; source_id?: string }>;
+    filters?: AnalysisFilter;
+    group_by?: string[];
+  } = {},
+): Promise<AnalysisResponse> {
+  return postJson(`/api/profiles/${profileId}/analysis`, input);
+}
+
+export function fetchSessionProfileUsage(sessionId: string): Promise<ProfileUsageEntry[]> {
+  return getJson(`/api/sessions/${sessionId}/profile-usage`);
 }

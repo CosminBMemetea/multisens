@@ -312,3 +312,58 @@ export interface ConfigurationCoverage {
   requirement_results: RequirementResult[];
   root: GroupCoverage;
 }
+
+// Mirrors backend/app/domain/analysis.py and the /facets, /analysis API
+// shapes (v0.5). A pure exploration layer over v0.4's already-computed
+// RequirementResult/GroupCoverage - never re-decides pass/fail/na, only
+// filters, groups, and cross-tabulates what v0.4 already decided.
+
+export interface FacetValue {
+  value: ConditionValue;
+  requirement_count: number;
+}
+
+export interface Facet {
+  key: string;
+  values: FacetValue[];
+}
+
+export interface AnalysisFilter {
+  conditions: Record<string, ConditionValue>;
+  group_id?: string | null;
+  task?: string | null;
+  status?: RequirementStatus | null;
+}
+
+export interface AggregateCoverage {
+  pass_count: number;
+  fail_count: number;
+  na_count: number;
+  requirement_coverage: number | null;
+  evidence_completeness: number | null;
+}
+
+export interface GroupCell {
+  // length 1 = breakdown (single group_by dimension), length 2 = cross-tab.
+  key: ConditionValue[];
+  aggregate: AggregateCoverage;
+}
+
+export interface ConfigurationAnalysis {
+  configuration_id: string;
+  // Over the filtered population, independent of group_by.
+  summary: AggregateCoverage;
+  groups: GroupCell[];
+  requirement_results: RequirementResult[];
+}
+
+export interface AnalysisResponse {
+  configurations: ConfigurationAnalysis[];
+}
+
+export interface ProfileUsageEntry {
+  profile_id: string;
+  profile_name: string;
+  profile_version: string;
+  requirement_ids: string[];
+}
