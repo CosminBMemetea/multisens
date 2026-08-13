@@ -334,6 +334,24 @@ open http://localhost:8080/sessions/propertywatch-detection-demo-session
 Entrance detects best (F1 0.821), indoor worst (F1 0.529) - by
 construction, see [examples/profiles/README.md](examples/profiles/README.md).
 
+A third demo (Phase 89) introduces the first generic robotics-ready
+reference example - a mobile robot/small drone platform, entirely
+synthetic, never an autonomous navigation, drone control, or flight
+safety system:
+
+```bash
+docker compose up -d
+python3 scripts/load_robot_drone_demo_data.py
+open http://localhost:8080/sessions/robot-drone-demo-session
+```
+
+Select `obstacle_detection` (camera vs. depth-derived detection) or
+`distance_estimation` (a dedicated range sensor vs. a depth-camera
+estimate, regression evaluator) - both task profiles over the same
+generic v0.8 evaluators, no new evaluator logic. See
+[examples/profiles/README.md](examples/profiles/README.md) for the full
+by-construction derivation.
+
 ## Docker requirements
 
 - Docker Desktop. Developed and verified with 6GB RAM / 7 CPU allocated to

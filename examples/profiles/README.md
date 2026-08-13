@@ -507,3 +507,69 @@ python3 scripts/load_propertywatch_detection_demo_data.py
 Then open
 `http://localhost:8080/sessions/propertywatch-detection-demo-session`
 and select any of the three detection tasks in the Evaluation panel.
+
+## `robot-drone-demo-data.json`
+
+A deterministic, **entirely synthetic** dataset (v0.8, Phase 89) - the
+first generic robotics-ready reference example in this project, built
+around a generic mobile robot or small drone platform. Reference sensor
+ids `robot_front_rgb`/`sim_depth`/`sim_range` are entirely synthetic, not
+added to `config/sensors.yaml` - the same "evaluation-only, graceful
+no-badge fallback" precedent `exterior-decision-demo.json`'s own
+`sim_thermal`/`sim_depth` already established.
+
+**This is a generic robotics sensor-evaluation demonstration only** - it
+is not an autonomous navigation system, not a drone control system, and
+not a flight safety system. MultiSens performs no control, planning, or
+flight functions of any kind, and a synthetic detection or distance
+result here is never a validated obstacle-avoidance guarantee for
+real-world use. Deliberately distinct in name and theme from the
+unrelated, older "Generic Sensor Evaluation Lab" (`sensor-lab-demo.json`,
+v0.4/v0.5) - a completely different demo from a different release.
+
+Two tasks, both **task profiles over the already-generic v0.8
+evaluators** (architecture review Q20/§20) - no dedicated
+"range_estimation" logic exists or is needed:
+
+| Task | Evaluator | Configurations |
+|---|---|---|
+| `obstacle_detection` | `object_detection` | `cfg-robot_front_rgb`, `cfg-sim_depth` |
+| `distance_estimation` | `regression` | `cfg-sim_range`, `cfg-sim_depth` |
+
+`obstacle_detection` reuses Phase 87/88's own five frame categories
+verbatim - the camera (`robot_front_rgb`) detects obstacles better than
+the depth-derived path (`sim_depth`):
+
+| Config | Precision | Recall | F1 | Mean IoU (matched) |
+|---|---|---|---|---|
+| `cfg-robot_front_rgb` | 0.824 | 0.70 | 0.757 | 0.629 |
+| `cfg-sim_depth` | 0.688 | 0.55 | 0.611 | 0.636 |
+
+`distance_estimation` ground truth ramps linearly (2.00m-6.95m); each
+configuration applies its own fixed 5-value error cycle (never
+randomness) - a dedicated range sensor is, by construction, far more
+accurate than a depth-camera-derived distance estimate:
+
+| Config | MAE | RMSE | Bias | Median abs. error |
+|---|---|---|---|---|
+| `cfg-sim_range` | 0.06 m | 0.071 m | 0.00 m | 0.05 m |
+| `cfg-sim_depth` | 0.30 m | 0.332 m | 0.06 m | 0.30 m |
+
+No profile/requirements/resources - standalone, viewed directly on the
+session detail page's Evaluation panel. Independently re-derived - a
+completely separate reimplementation of IoU/greedy matching and plain
+MAE/RMSE/bias/median, zero imports from `app.domain.detection`/
+`app.domain.regression` - and cross-checked against the live `/evaluate`
+API in `backend/tests/test_robot_drone_demo.py`, which also carries this
+demo's own explicit overclaim scan (no "autonomous"/"navigation"/"flight
+safety" language anywhere in the shipped dataset).
+
+### Loading it
+
+```bash
+docker compose up -d
+python3 scripts/load_robot_drone_demo_data.py
+```
+
+Then open `http://localhost:8080/sessions/robot-drone-demo-session` and
+select either task in the Evaluation panel.
