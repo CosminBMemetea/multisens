@@ -1,4 +1,4 @@
-"""Resource-observation domain model (v0.7, Phase 64-67).
+"""Resource-observation domain model (v0.7, Phase 64-68).
 
 Phase 64 fixed the shape; Phase 65 added this module's own field/
 cross-field validation (value-vs-quality consistency, non-empty
@@ -6,10 +6,12 @@ identity/unit/source fields, an ordered time window) plus persistence
 (see app/persistence/migrations/0004_resource_observations.sql and
 repository.py's resource_observations functions); Phase 66 added real
 collection (app/resource_collector.py, deliberately NOT in this module -
-see that module's own docstring for why); Phase 67 adds
+see that module's own docstring for why); Phase 67 added
 ResourceMetricSummary/ConfigurationResourceProfile, pure aggregation
-over already-persisted rows. Comparability/trade-off joining (Phase 68)
-and constraints/Pareto (Phase 69) still don't live here yet.
+over already-persisted rows; Phase 68 adds ConfigurationTradeoff
+(joining v0.6 decision evidence with v0.7 resource evidence, without
+merging their semantics), comparability rules, and resource deltas.
+Explicit constraints/Pareto (Phase 69) still don't live here yet.
 
 Transport-agnostic like every other domain module - no fastapi, sqlite3,
 rclpy, or psutil import. `ResourceObservation` is a pydantic `BaseModel`
@@ -80,6 +82,8 @@ from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.domain.decision import ConfigurationDecision, PolicyStatus
 
 # Every value has an explicit provenance - never just a number.
 #
@@ -354,4 +358,172 @@ def compute_configuration_resource_profile(
     return ConfigurationResourceProfile(
         configuration_id=configuration_id, session_id=session_id, platform_id=platform_id,
         metrics=metrics, measurement_window=measurement_window, validity=validity, warnings=warnings,
+    )
+
+
+# --- trade-off engine (v0.7, Phase 68) --------------------------------------
+#
+# Joins v0.4/v0.6 decision evidence with v0.7 resource evidence, without
+# merging their semantics - a pure composition, never a re-decision. If
+# this layer and evaluate_configurations/compute_configuration_resource_
+# profile ever disagree about a value, that's a bug in this layer, never
+# a second opinion (same posture v0.5's own module docstring already
+# states for its relationship to v0.4).
+
+@dataclass
+class ConfigurationTradeoff:
+    """One configuration's decision evidence and resource evidence,
+    side by side - never blended into one number (master prompt §16,
+    already enforced in decision.py: no universal importance/efficiency
+    score exists anywhere in this project, and this type doesn't add
+    one either)."""
+    configuration_id: str
+    sensor_count: int
+    requirement_coverage: float | None
+    evidence_completeness: float | None
+    policy_status: PolicyStatus
+    resource_profile: ConfigurationResourceProfile | None
+    resource_validity: Literal['complete', 'partial', 'unavailable']
+
+
+def build_configuration_tradeoff(
+    decision: ConfigurationDecision, resource_profile: ConfigurationResourceProfile | None,
+) -> ConfigurationTradeoff:
+    """Pure composition. Never re-decides policy_status/coverage/
+    completeness - those come straight from `decision`, exactly as
+    v0.6's evaluate_configurations already computed them. `resource_
+    profile` is None whenever no resource evidence was ever gathered for
+    this configuration (distinct from a profile that exists with
+    validity='unavailable', meaning evidence was sought but none found) -
+    resource_validity normalizes both cases to one honest status without
+    losing the underlying distinction, which remains visible via
+    resource_profile itself."""
+    return ConfigurationTradeoff(
+        configuration_id=decision.configuration_id,
+        sensor_count=len(decision.sensor_ids),
+        requirement_coverage=decision.aggregate.requirement_coverage,
+        evidence_completeness=decision.aggregate.evidence_completeness,
+        policy_status=decision.policy_status,
+        resource_profile=resource_profile,
+        resource_validity=resource_profile.validity if resource_profile is not None else 'unavailable',
+    )
+
+
+# A generous, explicitly-heuristic bound - same "documented heuristic,
+# not evidence-based" honesty treatment as min_common_sample_count/
+# coverage_warning_threshold_pp (docs/limitations.md). 10x is "not
+# remotely the same order of magnitude," not a precisely justified
+# statistical threshold.
+_DURATION_ORDER_OF_MAGNITUDE_RATIO = 10.0
+
+
+@dataclass
+class ComparabilityResult:
+    """Two resource profiles are directly comparable only if every rule
+    below holds. Numbers and caveats are always returned together -
+    `comparable` never silently gates the caller away from seeing the
+    values, and a non-empty `warnings` list never silently normalizes
+    the difference away."""
+    comparable: bool
+    warnings: list[str]
+
+
+def check_comparability(
+    profile_a: ConfigurationResourceProfile | None, metadata_a: dict[str, Any],
+    profile_b: ConfigurationResourceProfile | None, metadata_b: dict[str, Any],
+) -> ComparabilityResult:
+    """`metadata_a`/`metadata_b` are the caller's own representative
+    metadata for each side (e.g. one contributing ResourceObservation's
+    `metadata`) - comparability needs `resolution`/`target_fps`, which
+    live on ResourceObservation, not on ConfigurationResourceProfile
+    itself (Phase 67 deliberately didn't carry it - this is the first
+    layer that needs it, so it stays a caller-supplied parameter here
+    rather than growing Phase 67's shape after the fact)."""
+    warnings: list[str] = []
+
+    if profile_a is None or profile_b is None:
+        return ComparabilityResult(comparable=False, warnings=['no resource evidence on one or both sides'])
+
+    if profile_a.platform_id == UNKNOWN_PLATFORM_ID or profile_b.platform_id == UNKNOWN_PLATFORM_ID:
+        warnings.append("at least one side has an unresolved execution platform - never comparable, even to itself")
+    elif profile_a.platform_id != profile_b.platform_id:
+        warnings.append(f"different execution platforms: '{profile_a.platform_id}' vs '{profile_b.platform_id}'")
+
+    resolution_a, resolution_b = metadata_a.get('resolution'), metadata_b.get('resolution')
+    if resolution_a != resolution_b:
+        warnings.append(f'different resolution: {resolution_a!r} vs {resolution_b!r}')
+
+    fps_a, fps_b = metadata_a.get('target_fps'), metadata_b.get('target_fps')
+    if fps_a != fps_b:
+        warnings.append(f'different requested FPS: {fps_a!r} vs {fps_b!r}')
+
+    if profile_a.measurement_window and profile_b.measurement_window:
+        duration_a = (profile_a.measurement_window[1] - profile_a.measurement_window[0]).total_seconds()
+        duration_b = (profile_b.measurement_window[1] - profile_b.measurement_window[0]).total_seconds()
+        if duration_a > 0 and duration_b > 0:
+            ratio = max(duration_a, duration_b) / min(duration_a, duration_b)
+            if ratio > _DURATION_ORDER_OF_MAGNITUDE_RATIO:
+                warnings.append(
+                    f'measurement durations differ by {ratio:.1f}x '
+                    f'({duration_a:.1f}s vs {duration_b:.1f}s) - not directly comparable durations'
+                )
+
+    return ComparabilityResult(comparable=len(warnings) == 0, warnings=warnings)
+
+
+@dataclass
+class ResourceMetricDelta:
+    """One metric's baseline/candidate values and their difference -
+    `delta` is None whenever either side lacks this metric, never a
+    fabricated partial delta."""
+    metric: str
+    unit: str
+    baseline: float | None
+    candidate: float | None
+    delta: float | None
+
+
+@dataclass
+class ConfigurationResourceDelta:
+    """Composed the same way v0.6's SensorAdditionAnalysis composes a
+    decision-evidence delta: many small, structured fields, never a
+    single magic number. Describes an OBSERVED resource delta only -
+    "candidate used +5.1 Mbps more than baseline," never "the added
+    sensor cost 5.1 Mbps" or any other causal phrasing."""
+    baseline_configuration_id: str
+    candidate_configuration_id: str
+    comparability: ComparabilityResult
+    metric_deltas: list[ResourceMetricDelta]
+
+
+def compute_resource_delta(
+    baseline: ConfigurationTradeoff, baseline_metadata: dict[str, Any],
+    candidate: ConfigurationTradeoff, candidate_metadata: dict[str, Any],
+) -> ConfigurationResourceDelta:
+    """Uses each side's per-metric mean as the representative value -
+    the same statistic a headline comparison table would show first;
+    median/p95/min/max remain available on each side's own
+    ConfigurationResourceProfile for anyone who needs the fuller
+    picture, not discarded here."""
+    comparability = check_comparability(
+        baseline.resource_profile, baseline_metadata, candidate.resource_profile, candidate_metadata,
+    )
+
+    baseline_metrics = baseline.resource_profile.metrics if baseline.resource_profile else {}
+    candidate_metrics = candidate.resource_profile.metrics if candidate.resource_profile else {}
+    metric_deltas = []
+    for metric in sorted(set(baseline_metrics) | set(candidate_metrics)):
+        b_summary = baseline_metrics.get(metric)
+        c_summary = candidate_metrics.get(metric)
+        b_value = b_summary.mean if b_summary else None
+        c_value = c_summary.mean if c_summary else None
+        delta = c_value - b_value if b_value is not None and c_value is not None else None
+        unit = (b_summary or c_summary).unit
+        metric_deltas.append(ResourceMetricDelta(metric=metric, unit=unit, baseline=b_value, candidate=c_value, delta=delta))
+
+    return ConfigurationResourceDelta(
+        baseline_configuration_id=baseline.configuration_id,
+        candidate_configuration_id=candidate.configuration_id,
+        comparability=comparability,
+        metric_deltas=metric_deltas,
     )
