@@ -261,14 +261,20 @@ def compute_requirement_results(
     return results
 
 
-def _status_counts(results: list[RequirementResult]) -> tuple[int, int, int]:
+def status_counts(results: list[RequirementResult]) -> tuple[int, int, int]:
+    """Public since Phase 44 (app/domain/analysis.py) needs the identical
+    tally for arbitrary filtered/grouped result subsets, not just whole
+    groups - reused directly rather than reimplemented a second time."""
     pass_count = sum(1 for r in results if r.status == 'pass')
     fail_count = sum(1 for r in results if r.status == 'fail')
     na_count = sum(1 for r in results if r.status == 'na')
     return pass_count, fail_count, na_count
 
 
-def _coverage_and_completeness(pass_count: int, fail_count: int, na_count: int) -> tuple[MetricValue, MetricValue]:
+def coverage_and_completeness(pass_count: int, fail_count: int, na_count: int) -> tuple[MetricValue, MetricValue]:
+    """Public since Phase 44 needs the identical formula for arbitrary
+    filtered/grouped/cross-tabbed populations, not just whole groups -
+    reused directly rather than reimplemented a second time."""
     decided = pass_count + fail_count
     total = decided + na_count
     # None (not 0) when nothing was decided, or nothing exists at all -
@@ -286,7 +292,7 @@ def _build_group_coverage(
     child_groups_by_parent: dict[str | None, list[RequirementGroup]],
 ) -> GroupCoverage:
     own_results = results_by_group.get(group_id, [])
-    own_pass, own_fail, own_na = _status_counts(own_results)
+    own_pass, own_fail, own_na = status_counts(own_results)
 
     children = [
         _build_group_coverage(child.id, child.name, results_by_group, child_groups_by_parent)
@@ -301,13 +307,39 @@ def _build_group_coverage(
     pass_count = own_pass + sum(c.pass_count for c in children)
     fail_count = own_fail + sum(c.fail_count for c in children)
     na_count = own_na + sum(c.na_count for c in children)
-    requirement_coverage, evidence_completeness = _coverage_and_completeness(pass_count, fail_count, na_count)
+    requirement_coverage, evidence_completeness = coverage_and_completeness(pass_count, fail_count, na_count)
 
     return GroupCoverage(
         group_id=group_id, name=name, pass_count=pass_count, fail_count=fail_count, na_count=na_count,
         requirement_coverage=requirement_coverage, evidence_completeness=evidence_completeness,
         children=children,
     )
+
+
+def aggregate_group_tree(profile: EvaluationProfile, results: list[RequirementResult]) -> GroupCoverage:
+    """The recursive group-tree walk, over an arbitrary - possibly
+    partial or filtered - result list. Deliberately does NOT enforce
+    compute_configuration_coverage's "one result per requirement"
+    invariant: a result list missing some requirements simply makes
+    those requirements contribute nothing to the tree, which is exactly
+    right for a filtered subset (v0.5's analysis.py reuses this directly
+    for failure/condition breakdowns over an already-filtered result
+    list) but would silently undercount a *full* coverage computation -
+    that invariant is compute_configuration_coverage's job, checked
+    before it delegates here, not this function's."""
+    requirements_by_id = {r.id: r for r in profile.requirements}
+    results_by_group: dict[str, list[RequirementResult]] = {}
+    for result in results:
+        requirement = requirements_by_id.get(result.requirement_id)
+        if requirement is None:
+            continue
+        results_by_group.setdefault(requirement.group_id, []).append(result)
+
+    child_groups_by_parent: dict[str | None, list[RequirementGroup]] = {}
+    for group in profile.groups:
+        child_groups_by_parent.setdefault(group.parent_id, []).append(group)
+
+    return _build_group_coverage(None, profile.name, results_by_group, child_groups_by_parent)
 
 
 def compute_configuration_coverage(
@@ -330,17 +362,7 @@ def compute_configuration_coverage(
             f'missing: {sorted(missing)}, unexpected: {sorted(unexpected)}'
         )
 
-    requirements_by_id = {r.id: r for r in profile.requirements}
-    results_by_group: dict[str, list[RequirementResult]] = {}
-    for result in requirement_results:
-        group_id = requirements_by_id[result.requirement_id].group_id
-        results_by_group.setdefault(group_id, []).append(result)
-
-    child_groups_by_parent: dict[str | None, list[RequirementGroup]] = {}
-    for group in profile.groups:
-        child_groups_by_parent.setdefault(group.parent_id, []).append(group)
-
-    root = _build_group_coverage(None, profile.name, results_by_group, child_groups_by_parent)
+    root = aggregate_group_tree(profile, requirement_results)
 
     return ConfigurationCoverage(
         profile_id=profile.id, profile_version=profile.version, configuration_id=configuration_id,

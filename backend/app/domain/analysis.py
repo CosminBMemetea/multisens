@@ -19,9 +19,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from app.domain.coverage import RequirementResult, RequirementStatus
+from app.domain.coverage import (
+    GroupCoverage,
+    RequirementResult,
+    RequirementStatus,
+    aggregate_group_tree,
+    coverage_and_completeness,
+    status_counts,
+)
 from app.domain.evidence import conditions_are_subset
-from app.domain.profiles import ConditionValue, EvaluationProfile
+from app.domain.models import MetricValue
+from app.domain.profiles import ConditionValue, EvaluationProfile, Requirement
 
 
 @dataclass
@@ -162,3 +170,157 @@ def filter_requirement_results(
     - the shape Phase 44/45 will actually call most often."""
     requirement_ids = filter_requirement_ids(profile, criteria)
     return filter_results(results, requirement_ids, criteria.status)
+
+
+# --- aggregation + grouping (v0.5, Phase 44) --------------------------------
+#
+# Pure functions over an arbitrary (already filtered, if the caller
+# wants) list[RequirementResult]. Never re-decides PASS/FAIL/N/A - only
+# tallies and buckets what Phase 34 already decided.
+
+@dataclass
+class AggregateCoverage:
+    """A flat (non-hierarchical) P/F/N tally plus the same two coverage
+    formulas GroupCoverage uses - the shape a filtered summary, a
+    group_by_condition bucket, or a cross_tabulate cell all reduce to.
+    Both percentages always travel together, same as GroupCoverage -
+    never one without the other."""
+    pass_count: int
+    fail_count: int
+    na_count: int
+    requirement_coverage: MetricValue
+    evidence_completeness: MetricValue
+
+    @property
+    def total(self) -> int:
+        return self.pass_count + self.fail_count + self.na_count
+
+
+def aggregate_requirement_results(results: list[RequirementResult]) -> AggregateCoverage:
+    """The one place v0.5 computes P/F/N + both coverage numbers - reuses
+    coverage.py's exact status_counts/coverage_and_completeness rather
+    than a second formula, so a filtered summary can never silently
+    disagree with v0.4's own arithmetic."""
+    pass_count, fail_count, na_count = status_counts(results)
+    coverage, completeness = coverage_and_completeness(pass_count, fail_count, na_count)
+    return AggregateCoverage(pass_count, fail_count, na_count, coverage, completeness)
+
+
+def group_by_condition(
+    results: list[RequirementResult],
+    requirement_by_id: dict[str, Requirement],
+    key: str,
+) -> dict[ConditionValue, AggregateCoverage]:
+    """Buckets results by the observed value of one condition dimension.
+    A result whose requirement lacks `key` entirely is excluded from the
+    breakdown - never lumped into an "unknown"/"other" bucket, which
+    would misrepresent "this condition was never declared" as if it were
+    an observed value in its own right."""
+    _missing = object()
+    buckets: dict[ConditionValue, list[RequirementResult]] = {}
+    for result in results:
+        requirement = requirement_by_id.get(result.requirement_id)
+        if requirement is None:
+            continue
+        value = requirement.conditions.get(key, _missing)
+        if value is _missing:
+            continue
+        buckets.setdefault(value, []).append(result)
+    return {value: aggregate_requirement_results(rs) for value, rs in buckets.items()}
+
+
+def cross_tabulate(
+    results: list[RequirementResult],
+    requirement_by_id: dict[str, Requirement],
+    row_key: str,
+    col_key: str,
+) -> dict[tuple[ConditionValue, ConditionValue], AggregateCoverage]:
+    """Two-dimensional version of group_by_condition - a result needs
+    BOTH condition keys present to land in any cell; missing either
+    excludes it from the whole cross-tab, not just one axis. The
+    configuration x condition "heatmap" case (Phase 47) is not a special
+    case of this function - it's group_by_condition called once per
+    configuration's own result set, reusing the 1D primitive rather than
+    inventing a second axis type here."""
+    _missing = object()
+    buckets: dict[tuple[ConditionValue, ConditionValue], list[RequirementResult]] = {}
+    for result in results:
+        requirement = requirement_by_id.get(result.requirement_id)
+        if requirement is None:
+            continue
+        row_value = requirement.conditions.get(row_key, _missing)
+        col_value = requirement.conditions.get(col_key, _missing)
+        if row_value is _missing or col_value is _missing:
+            continue
+        buckets.setdefault((row_value, col_value), []).append(result)
+    return {cell: aggregate_requirement_results(rs) for cell, rs in buckets.items()}
+
+
+def failure_breakdown(profile: EvaluationProfile, results: list[RequirementResult]) -> GroupCoverage:
+    """The same group-tree aggregation coverage.py already uses for full
+    coverage (Phase 35's aggregate_group_tree), over whatever result
+    subset the caller already filtered. Deliberately does NOT pre-filter
+    to fail-only results - each group's pass/na counts stay visible
+    alongside fail_count, since "8 failures" means little without
+    knowing whether that's 8 of 10 or 8 of 400 (see
+    top_failing_groups for the actual failure-sorted view)."""
+    return aggregate_group_tree(profile, results)
+
+
+def top_failing_groups(root: GroupCoverage) -> list[GroupCoverage]:
+    """Flattens the group tree and sorts by fail_count descending - the
+    "top failing groups" list from the failure-explorer mockup. Includes
+    every group, even ones with zero failures; the caller slices for
+    display."""
+    flattened: list[GroupCoverage] = []
+
+    def walk(node: GroupCoverage) -> None:
+        flattened.append(node)
+        for child in node.children:
+            walk(child)
+
+    walk(root)
+    return sorted(flattened, key=lambda g: g.fail_count, reverse=True)
+
+
+# N/A reason categories, matched against the *exact* free-text reason
+# strings evidence.py/coverage.py already produce (v0.4, unchanged) -
+# not a new structured field on RequirementResult. Deliberate coupling,
+# stated explicitly rather than hidden: if either module's wording ever
+# changes, this table must be updated in lockstep - guarded by a
+# dedicated cross-layer test that constructs each real reason-producing
+# scenario end to end (via the actual select_evidence/evaluate_requirement
+# functions, not hand-typed strings) and asserts it still classifies
+# correctly. That test caught a real gap while this table was being
+# written: the multi-prediction-source case's message ("has multiple
+# prediction sources: ... specify which one explicitly via a binding")
+# never actually contains the word "ambiguous", unlike the multi-session
+# case - both needles are required below, not one.
+_NA_REASON_RULES: list[tuple[str, tuple[str, ...]]] = [
+    ('no_matching_evidence', ('no session matches conditions',)),
+    ('ambiguous_evidence', ('ambiguous', 'multiple prediction sources')),
+    ('missing_metric', ('is unavailable for this evidence',)),
+]
+
+
+def classify_na_reason(reason: str) -> str:
+    for category, needles in _NA_REASON_RULES:
+        if any(needle in reason for needle in needles):
+            return category
+    return 'other'
+
+
+def na_breakdown(results: list[RequirementResult]) -> dict[str, int]:
+    """Groups N/A results by classify_na_reason. Every na-status
+    RequirementResult in practice carries reasons from exactly one
+    source (either evidence-selection's single reason, or one-per-
+    unresolvable-criterion reasons that all classify identically) - see
+    evidence.py/coverage.py - so classifying by the first reason is
+    representative, and counts sum to the na total, never more."""
+    counts: dict[str, int] = {}
+    for result in results:
+        if result.status != 'na':
+            continue
+        category = classify_na_reason(result.reasons[0]) if result.reasons else 'other'
+        counts[category] = counts.get(category, 0) + 1
+    return counts
