@@ -50,6 +50,7 @@ def test_summary_matches_hand_computed_mean_median_p95_min_max():
     assert summary.max == pytest.approx(50.0)
     assert summary.sample_count == 5
     assert summary.unit == '%'
+    assert summary.quality == 'measured'
 
 
 def test_summary_single_sample_all_statistics_equal_that_value():
@@ -57,6 +58,36 @@ def test_summary_single_sample_all_statistics_equal_that_value():
     summary = compute_resource_metric_summary(observations)
     assert summary.mean == summary.median == summary.p95 == summary.min == summary.max == 42.0
     assert summary.sample_count == 1
+
+
+def test_summary_quality_reports_the_single_shared_tier():
+    observations = [_observation(value=10.0, quality='declared'), _observation(value=20.0, quality='declared')]
+    summary = compute_resource_metric_summary(observations)
+    assert summary.quality == 'declared'
+
+
+def test_summary_quality_is_mixed_never_silently_collapsed_to_one_tier():
+    # A badge reading "MEASURED" over a value that's actually part-
+    # declared would misrepresent its provenance - 'mixed' is reported
+    # explicitly instead of guessing a majority or picking the first.
+    observations = [
+        _observation(value=10.0, quality='measured'),
+        _observation(value=20.0, quality='declared'),
+        _observation(value=30.0, quality='estimated'),
+    ]
+    summary = compute_resource_metric_summary(observations)
+    assert summary.quality == 'mixed'
+
+
+def test_summary_quality_ignores_unavailable_rows_when_judging_mixed():
+    # An unavailable row contributes no value, so it must not itself
+    # cause an otherwise-single-tier population to be reported 'mixed'.
+    observations = [
+        _observation(value=10.0, quality='measured'),
+        _observation(value=None, quality='unavailable'),
+    ]
+    summary = compute_resource_metric_summary(observations)
+    assert summary.quality == 'measured'
 
 
 def test_summary_empty_observation_list_returns_none():

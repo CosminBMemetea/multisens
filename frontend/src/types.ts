@@ -457,3 +457,131 @@ export interface DecisionAnalysisResponse {
   pareto_front_configuration_ids: string[];
   gap_analysis: GapAnalysisResult | null;
 }
+
+// Mirrors backend/app/domain/resources.py and the /resource-observations
+// + /tradeoffs API shapes (v0.7). Joins v0.6's already-computed decision
+// evidence with resource evidence - never re-decides policy_status or
+// coverage, and never a universal efficiency/deployment score.
+
+export type ResourceQuality = "measured" | "declared" | "estimated" | "unavailable";
+
+// The v0.7 supported metric vocabulary - deliberately small (see
+// docs/decision-support.md-style reasoning in resources.py). Kept as a
+// literal list here, not just a type, so the Resources tab can request
+// every supported metric without hardcoding it a second way.
+export const SUPPORTED_RESOURCE_METRICS = [
+  "cpu_percent",
+  "memory_mb",
+  "network_receive_mbps",
+  "network_transmit_mbps",
+  "fps",
+  "pipeline_latency_ms",
+] as const;
+export type ResourceMetric = (typeof SUPPORTED_RESOURCE_METRICS)[number];
+
+export const RESOURCE_METRIC_LABELS: Record<ResourceMetric, string> = {
+  cpu_percent: "CPU",
+  memory_mb: "RAM",
+  network_receive_mbps: "Network (recv)",
+  network_transmit_mbps: "Network (send)",
+  fps: "FPS",
+  pipeline_latency_ms: "Latency",
+};
+
+export interface ResourceObservation {
+  id: string;
+  session_id: string;
+  // null means a genuinely unattributed/system-wide reading - never
+  // guessed at.
+  configuration_id: string | null;
+  metric: string;
+  // null iff quality === "unavailable" - never coerced to 0, which
+  // would claim a measurement that never happened.
+  value: number | null;
+  unit: string;
+  quality: ResourceQuality;
+  source: string;
+  platform_id: string;
+  started_at: string;
+  ended_at: string;
+  sample_count: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface ResourceMetricSummary {
+  mean: number;
+  median: number;
+  p95: number;
+  min: number;
+  max: number;
+  sample_count: number;
+  unit: string;
+  // "mixed" when the contributing rows span more than one quality tier
+  // - never silently collapsed to whichever is most common.
+  quality: ResourceQuality | "mixed";
+}
+
+export interface ConfigurationResourceProfile {
+  configuration_id: string;
+  session_id: string;
+  platform_id: string;
+  metrics: Record<string, ResourceMetricSummary>;
+  // null only when no requested metric has any real-valued evidence at
+  // all. Spans the full range across contributing rows, gaps included.
+  measurement_window: [string, string] | null;
+  validity: "complete" | "partial" | "unavailable";
+  warnings: string[];
+}
+
+export interface ResourceConstraintResult {
+  metric: string;
+  operator: AcceptanceOperator;
+  threshold: number;
+  observed: number | null;
+  status: "pass" | "fail" | "na";
+}
+
+export type QualificationStatus = "qualifies" | "does_not_qualify" | "undetermined";
+
+export interface ConfigurationTradeoff {
+  configuration_id: string;
+  sensor_count: number;
+  requirement_coverage: number | null;
+  evidence_completeness: number | null;
+  // Both null together only for a named-but-never-evaluated
+  // configuration_id (NO EVIDENCE) - same convention ConfigurationDecision
+  // already established.
+  policy_status: PolicyStatus | null;
+  resource_profile: ConfigurationResourceProfile | null;
+  resource_validity: "complete" | "partial" | "unavailable" | null;
+  constraint_results: ResourceConstraintResult[];
+  qualification: QualificationStatus;
+}
+
+export interface ResourceMetricDelta {
+  metric: string;
+  unit: string;
+  baseline: number | null;
+  candidate: number | null;
+  delta: number | null;
+}
+
+export interface ComparabilityResult {
+  comparable: boolean;
+  warnings: string[];
+}
+
+export interface ResourceComparisonResult {
+  baseline_configuration_id: string;
+  candidate_configuration_id: string;
+  comparability: ComparabilityResult;
+  metric_deltas: ResourceMetricDelta[];
+}
+
+export interface TradeoffResponse {
+  policy: DecisionPolicy;
+  session_id: string;
+  configurations: ConfigurationTradeoff[];
+  pareto_front_configuration_ids: string[];
+  resource_comparison: ResourceComparisonResult | null;
+}

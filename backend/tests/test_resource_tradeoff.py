@@ -33,7 +33,8 @@ def _decision(configuration_id='cfg-a', sensor_ids=('a',), status='sufficient', 
 
 
 def _summary(mean=30.0, unit='%'):
-    return ResourceMetricSummary(mean=mean, median=mean, p95=mean, min=mean, max=mean, sample_count=1, unit=unit)
+    return ResourceMetricSummary(mean=mean, median=mean, p95=mean, min=mean, max=mean, sample_count=1, unit=unit,
+                                  quality='measured')
 
 
 def _profile(configuration_id='cfg-a', platform_id=PLATFORM_A, metrics=None, window=None, validity='complete'):

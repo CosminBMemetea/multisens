@@ -7,6 +7,7 @@ import {
   formatMetric,
   formatMs,
   formatRelativeDelta,
+  formatResourceValue,
 } from "./format";
 
 describe("formatMs", () => {
@@ -144,5 +145,31 @@ describe("formatFractionPercent", () => {
 
   it("renders full coverage", () => {
     expect(formatFractionPercent(1)).toBe("100%");
+  });
+});
+
+describe("formatResourceValue", () => {
+  it("renders null as an em dash, never a fabricated 0", () => {
+    expect(formatResourceValue(null, "%")).toBe("—");
+  });
+
+  it("renders a real zero distinctly from null", () => {
+    expect(formatResourceValue(0, "fps")).toBe("0 fps");
+  });
+
+  it("formats a percent with no decimals", () => {
+    expect(formatResourceValue(31.2, "%")).toBe("31 %");
+  });
+
+  it("formats a megabyte value with one decimal", () => {
+    expect(formatResourceValue(840.456, "MB")).toBe("840.5 MB");
+  });
+
+  it("formats a millisecond latency with no decimals", () => {
+    expect(formatResourceValue(42.4, "ms")).toBe("42 ms");
+  });
+
+  it("formats a Mbps value with one decimal", () => {
+    expect(formatResourceValue(9.75, "Mbps")).toBe("9.8 Mbps");
   });
 });

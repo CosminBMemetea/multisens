@@ -16,6 +16,11 @@ directly, not a new grammar) and a resource-aware Pareto/dominance
 generalization of decision.py's own already-tested 3-dimension version.
 No overall_efficiency_score/deployment_score/any combined number exists
 anywhere in this module - every phase's own tests grep-verify it.
+ResourceMetricSummary.quality (added while building Phase 71's UI,
+which needs to badge each summary's real provenance, not just each raw
+row's) reports 'mixed' when a summary's contributing rows span more
+than one quality tier - a genuine gap in Phase 67's original shape,
+fixed here rather than left for the UI to paper over with a guess.
 
 Transport-agnostic like every other domain module - no fastapi, sqlite3,
 rclpy, or psutil import. `ResourceObservation` is a pydantic `BaseModel`
@@ -255,7 +260,12 @@ class ResourceMetricSummary:
     (measured/declared/estimated) to include - the caller passes exactly
     the rows it wants summarized; mixing qualities within one call is
     the caller's choice, not something this type resolves (Phase 68
-    owns that policy, e.g. "prefer measured, fall back to declared")."""
+    owns that policy, e.g. "prefer measured, fall back to declared").
+    It DOES always honestly report which quality tier(s) actually
+    contributed via `quality` - 'mixed' when the population spans more
+    than one, never silently collapsed to whichever tier happens to be
+    most common. A UI badge showing "MEASURED" over a value that's
+    actually part-declared would misrepresent its provenance."""
     mean: float
     median: float
     p95: float
@@ -263,6 +273,7 @@ class ResourceMetricSummary:
     max: float
     sample_count: int
     unit: str
+    quality: ResourceQuality | Literal['mixed']
 
 
 def _percentile(sorted_values: list[float], fraction: float) -> float:
@@ -287,13 +298,17 @@ def compute_resource_metric_summary(observations: list[ResourceObservation]) -> 
     requirements. Every observation passed in must share one unit -
     averaging Mbps with % would be silently meaningless, so a mismatch
     raises rather than picking one arbitrarily."""
-    values = [o.value for o in observations if o.value is not None]
-    if not values:
+    real_valued = [o for o in observations if o.value is not None]
+    if not real_valued:
         return None
-    units = {o.unit for o in observations if o.value is not None}
+    units = {o.unit for o in real_valued}
     if len(units) > 1:
         raise ValueError(f'cannot summarize observations with mixed units: {sorted(units)}')
 
+    qualities = {o.quality for o in real_valued}
+    quality: ResourceQuality | Literal['mixed'] = qualities.pop() if len(qualities) == 1 else 'mixed'
+
+    values = [o.value for o in real_valued]
     sorted_values = sorted(values)
     return ResourceMetricSummary(
         mean=statistics.fmean(values),
@@ -303,6 +318,7 @@ def compute_resource_metric_summary(observations: list[ResourceObservation]) -> 
         max=sorted_values[-1],
         sample_count=len(values),
         unit=units.pop(),
+        quality=quality,
     )
 
 

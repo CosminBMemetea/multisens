@@ -13,10 +13,12 @@ import type {
   PredictionEvent,
   ProfileSummary,
   ProfileUsageEntry,
+  ResourceObservation,
   Scenario,
   SensorConfig,
   Session,
   TimelineEvent,
+  TradeoffResponse,
 } from "./types";
 
 // Calls happen from the browser, not from inside this container - the
@@ -207,4 +209,32 @@ export function runDecisionAnalysis(
   },
 ): Promise<DecisionAnalysisResponse> {
   return postJson(`/api/profiles/${profileId}/decision-analysis`, input);
+}
+
+export function fetchSessionResourceObservations(
+  sessionId: string,
+  params: { configuration_id?: string; metric?: string } = {},
+): Promise<ResourceObservation[]> {
+  const query = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined)) as Record<string, string>,
+  );
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return getJson(`/api/sessions/${sessionId}/resource-observations${suffix}`);
+}
+
+export function runTradeoffs(
+  profileId: string,
+  input: {
+    policy: DecisionPolicy;
+    session_id: string;
+    configuration_ids?: string[];
+    requirement_bindings?: Record<string, { session_id: string; source_id?: string }>;
+    filters?: AnalysisFilter;
+    resource_metrics?: string[];
+    resource_constraints?: { metric: string; operator: string; value: number }[];
+    pareto_dimensions?: Record<string, "minimize" | "maximize">;
+    resource_comparison?: { baseline_configuration_id: string; candidate_configuration_id: string };
+  },
+): Promise<TradeoffResponse> {
+  return postJson(`/api/profiles/${profileId}/tradeoffs`, input);
 }

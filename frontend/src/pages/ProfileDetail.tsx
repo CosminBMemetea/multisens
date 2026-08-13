@@ -6,12 +6,13 @@ import { DecisionPanel } from "../components/DecisionPanel";
 import { ExplorerPanel } from "../components/ExplorerPanel";
 import { FailuresPanel } from "../components/FailuresPanel";
 import { NABreakdownPanel } from "../components/NABreakdownPanel";
+import { ResourcesPanel } from "../components/ResourcesPanel";
 import { ApiError, computeProfileCoverage, fetchProfile } from "../api";
 import { buildGroupTree } from "../groupTree";
 import type { GroupNode } from "../groupTree";
 import type { ConfigurationCoverage, EvaluationProfile, RequirementStatus, Requirement } from "../types";
 
-type TabId = "coverage" | "explorer" | "failures" | "evidence" | "decision";
+type TabId = "coverage" | "explorer" | "failures" | "evidence" | "decision" | "resources";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "coverage", label: "Coverage" },
@@ -19,6 +20,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "failures", label: "Failures" },
   { id: "evidence", label: "Evidence" },
   { id: "decision", label: "Decision" },
+  { id: "resources", label: "Resources" },
 ];
 
 // Filter/tab state is URL-addressable (same pattern Comparison.tsx
@@ -384,6 +386,10 @@ export function ProfileDetail() {
                 conditionParams={conditionParams}
                 onConditionChange={handleConditionChange}
               />
+            )}
+
+            {activeTab === "resources" && profileId && (
+              <ResourcesPanel profileId={profileId} synthetic={profile.metadata.synthetic === true} />
             )}
           </>
         )}

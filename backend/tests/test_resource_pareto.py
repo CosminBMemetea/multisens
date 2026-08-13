@@ -29,7 +29,8 @@ PLATFORM_ID = 'macbook-m2-dockerdesktop'
 
 
 def _summary(mean, unit='%'):
-    return ResourceMetricSummary(mean=mean, median=mean, p95=mean, min=mean, max=mean, sample_count=1, unit=unit)
+    return ResourceMetricSummary(mean=mean, median=mean, p95=mean, min=mean, max=mean, sample_count=1, unit=unit,
+                                  quality='measured')
 
 
 def _profile(metrics):

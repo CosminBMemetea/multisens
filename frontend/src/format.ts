@@ -63,3 +63,16 @@ export function formatFractionPercent(value: number | null): string {
   if (value === null) return "N/A";
   return `${Math.round(value * 100)}%`;
 }
+
+// ResourceMetricSummary values (v0.7): null means no real evidence for
+// this metric in this window - renders as an em dash, never "0", which
+// would claim a genuine zero-valued measurement that never happened
+// (see app/domain/resources.py's own "unavailable is not zero" rule).
+// A real 0.0 (e.g. 0 fps while disconnected) still renders as "0" - the
+// two must stay visually distinct at a glance, same discipline as
+// formatMetric/formatDelta above.
+export function formatResourceValue(value: number | null, unit: string): string {
+  if (value === null) return "—";
+  const decimals = unit === "%" || unit === "ms" || unit === "fps" ? 0 : 1;
+  return `${value.toFixed(decimals)} ${unit}`;
+}

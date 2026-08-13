@@ -783,6 +783,7 @@ class ResourceMetricSummaryResponse(BaseModel):
     max: float
     sample_count: int
     unit: str
+    quality: Literal['measured', 'declared', 'estimated', 'mixed']
 
 
 class ConfigurationResourceProfileResponse(BaseModel):
@@ -852,7 +853,7 @@ def _to_resource_profile_response(profile: ConfigurationResourceProfile) -> Conf
         metrics={
             metric: ResourceMetricSummaryResponse(
                 mean=s.mean, median=s.median, p95=s.p95, min=s.min, max=s.max,
-                sample_count=s.sample_count, unit=s.unit,
+                sample_count=s.sample_count, unit=s.unit, quality=s.quality,
             )
             for metric, s in profile.metrics.items()
         },
