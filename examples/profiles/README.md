@@ -129,3 +129,105 @@ python3 scripts/load_profile_demo_data.py
 ```
 
 Then open the Profiles page and select "Generic Cabin Safety Demo".
+
+## `exterior-decision-demo.json` + `exterior-decision-demo-data.json`
+
+A deterministic, **entirely synthetic** reference profile and dataset for
+exercising the v0.6 decision-support workflow (minimum sufficient sensor
+sets, Pareto/dominance analysis, requirement gap closure, redundancy/
+policy-critical sweeps) end to end. This is a genuinely different scenario
+from `cabin-safety-demo.json`, not a variant squeezed into it (v0.6
+architecture review, issue #54, Q23): the cabin-safety demo asks "does
+this evidence satisfy a requirement," this demo asks "which sensor
+combination is minimally sufficient." Deliberately no condition
+dimensions - every requirement's `conditions` is empty, since this demo is
+about the sensor-combination space v0.6 reasons over, not a second
+condition-exploration showcase.
+
+**`exterior-decision-demo.json`** is the profile document ("Generic
+Exterior Sensing Decision Demo", version `1.0`): two groups (`Baseline
+Detection`, `Advanced Detection`), four `object_presence` requirements at
+accuracy thresholds 50% / 70% / 85% / 97%.
+
+**`exterior-decision-demo-data.json`** is the underlying evidence: one
+scenario, one session, 100 `object_presence` ground-truth samples, and
+predictions from **eight** configurations spanning four reference sensor
+ids - `front_rgb` and `rear_rgb` (two separate physical RGB camera
+positions, never merged just because they share modality `rgb`) plus
+simulated `sim_thermal`/`sim_depth`:
+
+| Configuration | Sensors | Accuracy |
+|---|---|---|
+| `cfg-front_rgb` | front_rgb | 60% |
+| `cfg-rear_rgb` | rear_rgb | 55% |
+| `cfg-front_rgb-rear_rgb` | front_rgb, rear_rgb | 72% |
+| `cfg-front_rgb-sim_thermal` | front_rgb, sim_thermal | 88% |
+| `cfg-front_rgb-sim_depth` | front_rgb, sim_depth | 70% |
+| `cfg-front_rgb-rear_rgb-sim_thermal` | front_rgb, rear_rgb, sim_thermal | 98% |
+| `cfg-front_rgb-rear_rgb-sim_depth` | front_rgb, rear_rgb, sim_depth | 85% |
+| `cfg-front_rgb-rear_rgb-sim_depth-sim_thermal` | all four | 98% |
+
+Every value is **generated, not measured** - see
+[`scripts/generate_decision_demo_data.py`](../../scripts/generate_decision_demo_data.py)
+(same fixed-mislabel-index technique as the cabin-safety demo's
+generator). The story: `front_rgb` and `rear_rgb` alone are both weak
+baselines (ordinary cameras); combining them helps modestly (redundant
+viewpoints, same modality); adding `sim_thermal` helps much more (a
+genuinely different sensing modality); `sim_depth` on its own alongside
+`front_rgb` helps about as much as `rear_rgb` does (also a modest,
+non-modality-changing addition); the three-sensor
+`front_rgb+rear_rgb+sim_thermal` combination reaches every requirement in
+this profile; adding `sim_depth` on top changes nothing further - the
+"some sensors add no additional requirement coverage" case the whole
+decision-support layer exists to catch.
+
+Against the profile's four requirements this produces:
+
+| Configuration | Requirements passed | Coverage |
+|---|---|---|
+| `cfg-front_rgb` | 1 / 4 | 25% |
+| `cfg-rear_rgb` | 1 / 4 | 25% |
+| `cfg-front_rgb-rear_rgb` | 2 / 4 | 50% |
+| `cfg-front_rgb-sim_thermal` | 3 / 4 | 75% |
+| `cfg-front_rgb-sim_depth` | 2 / 4 | 50% |
+| `cfg-front_rgb-rear_rgb-sim_thermal` | 4 / 4 | 100% |
+| `cfg-front_rgb-rear_rgb-sim_depth` | 3 / 4 | 75% |
+| `cfg-front_rgb-rear_rgb-sim_depth-sim_thermal` | 4 / 4 | 100% |
+
+Under the demo policy shown in the Decision tab (100% coverage, 95%
+completeness, mandatory-pass off), exactly **one** configuration is
+minimally sufficient - `cfg-front_rgb-rear_rgb-sim_thermal` - and the
+Pareto front (trading sensor count against coverage/completeness) is the
+four-point curve `cfg-front_rgb`, `cfg-rear_rgb`,
+`cfg-front_rgb-sim_thermal`, `cfg-front_rgb-rear_rgb-sim_thermal`; every
+other configuration is dominated. All of the above is independently
+re-derived by hand and cross-checked against the live API in
+`backend/tests/test_decision_demo.py`, using no imports from
+`app.domain.decision` itself.
+
+**`config/sensors.yaml` was deliberately NOT extended** with
+`front_rgb`/`rear_rgb`/`sim_thermal`/`sim_depth` entries. Every entry in
+that file spawns a real `rtsp_ingestion_node`, and the ROS launch layer
+rejects two sensors sharing a `modality` at startup (`front_rgb` and
+`rear_rgb` would both be `modality: rgb`); `sim_thermal`/`sim_depth`
+would likewise collide with the already-configured live `thermal`/`depth`
+entries powering the cabin-safety-demo dashboard. Adding them purely for
+display would require either bypassing that guard or fabricating a live
+source that doesn't exist - so these four ids are evaluation-only for
+this demo, and the Sensors tab's `SourceTypeBadge` correctly renders no
+badge at all for an unmapped sensor id (already-built graceful
+degradation, not an error) rather than a fabricated source type. The
+Decision tab additionally shows a standing "SYNTHETIC DECISION DEMO"
+banner (driven by this profile's `metadata.synthetic: true`) making clear
+these outcomes demonstrate functionality only and are not a claim about
+real or simulated sensor performance.
+
+### Loading it
+
+```bash
+docker compose up -d
+python3 scripts/load_decision_demo_data.py
+```
+
+Then open the Profiles page, select "Generic Exterior Sensing Decision
+Demo", and open its Decision tab.

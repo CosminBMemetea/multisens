@@ -380,6 +380,7 @@ export function ProfileDetail() {
                 profileVersion={profile.version}
                 requirements={profile.requirements}
                 groups={profile.groups}
+                synthetic={profile.metadata.synthetic === true}
                 conditionParams={conditionParams}
                 onConditionChange={handleConditionChange}
               />

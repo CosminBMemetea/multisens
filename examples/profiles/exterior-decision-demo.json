@@ -1,0 +1,53 @@
+{
+  "id": "exterior-decision-demo-v1.0",
+  "name": "Generic Exterior Sensing Decision Demo",
+  "version": "1.0",
+  "description": "Deterministic synthetic reference profile for the MultiSens v0.6 decision-support workflow. Reference sensor ids (front_rgb, rear_rgb, sim_thermal, sim_depth) represent an exterior front/rear camera plus simulated thermal/depth sensing space - front_rgb and rear_rgb are separate physical RGB camera positions, never merged just because they share a modality. SYNTHETIC DATA - demonstrates functionality only, not a claim about real camera performance, physical or simulated. See examples/profiles/README.md.",
+  "metadata": { "synthetic": true },
+  "groups": [
+    { "id": "baseline-detection", "name": "Baseline Detection" },
+    { "id": "advanced-detection", "name": "Advanced Detection" }
+  ],
+  "requirements": [
+    {
+      "id": "req-basic",
+      "group_id": "baseline-detection",
+      "name": "Basic presence detection",
+      "description": "A loose accuracy bar - the easiest requirement in this demo, satisfied by a single camera alone.",
+      "task": "object_presence",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.50 }
+      ]
+    },
+    {
+      "id": "req-standard",
+      "group_id": "baseline-detection",
+      "name": "Standard presence detection",
+      "description": "A moderate accuracy bar - needs more than a single weak camera to satisfy.",
+      "task": "object_presence",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.70 }
+      ]
+    },
+    {
+      "id": "req-advanced",
+      "group_id": "advanced-detection",
+      "name": "Advanced presence detection",
+      "description": "A stricter accuracy bar - the point where a genuinely different sensing modality (thermal) starts to matter more than a second ordinary camera.",
+      "task": "object_presence",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.85 }
+      ]
+    },
+    {
+      "id": "req-strict",
+      "group_id": "advanced-detection",
+      "name": "Strict presence detection",
+      "description": "The strictest accuracy bar in this demo - only the fullest well-chosen sensor combination reaches it.",
+      "task": "object_presence",
+      "acceptance": [
+        { "metric": "accuracy", "operator": ">=", "value": 0.97 }
+      ]
+    }
+  ]
+}

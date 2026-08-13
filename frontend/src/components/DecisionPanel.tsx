@@ -26,6 +26,7 @@ interface DecisionPanelProps {
   profileVersion: string;
   requirements: Requirement[];
   groups: RequirementGroup[];
+  synthetic: boolean;
   conditionParams: Record<string, string>;
   onConditionChange: (key: string, rawValue: string | null) => void;
 }
@@ -565,7 +566,7 @@ function GapAnalysisSection({
 }
 
 export function DecisionPanel({
-  profileId, profileName, profileVersion, requirements, groups, conditionParams, onConditionChange,
+  profileId, profileName, profileVersion, requirements, groups, synthetic, conditionParams, onConditionChange,
 }: DecisionPanelProps) {
   const [facets, setFacets] = useState<Facet[] | null>(null);
   const [facetsError, setFacetsError] = useState<string | null>(null);
@@ -611,6 +612,13 @@ export function DecisionPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {synthetic && (
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-300">
+          ⚠ SYNTHETIC DECISION DEMO — The requirement outcomes are generated solely to demonstrate MultiSens
+          functionality and do not represent measured performance of the physical or simulated sensors.
+        </div>
+      )}
+
       {facetsError && (
         <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{facetsError}</div>
       )}
