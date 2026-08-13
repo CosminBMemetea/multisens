@@ -25,7 +25,7 @@ from app.domain.models import EvaluationResult, Session
 from app.domain.profiles import ConditionValue, Requirement
 
 
-def _values_match(evidence_value: object, condition_value: ConditionValue) -> bool:
+def values_match(evidence_value: object, condition_value: ConditionValue) -> bool:
     """Exact, type-sensitive equality - no coercion, no fuzzy matching.
     Python's `1 == True` and `1.0 == True` are both True (bool is an int
     subclass), which would silently let a numeric condition match a
@@ -38,21 +38,32 @@ def _values_match(evidence_value: object, condition_value: ConditionValue) -> bo
     return evidence_value == condition_value
 
 
+def conditions_are_subset(subset: dict[str, ConditionValue], superset: dict[str, object]) -> bool:
+    """Generic form of the matching rule matches_conditions applies to a
+    specific Session below: every key in `subset` must be present in
+    `superset` with an equal, type-sensitive value (see values_match).
+    Extra keys in `superset` are ignored - that's what lets one superset
+    satisfy multiple requirement/filter condition maps that only care
+    about part of it. A missing key is not a partial match; it's simply
+    not a match. An empty `subset` always matches (the vacuous case).
+
+    Reused by matches_conditions (subset=requirement.conditions,
+    superset=session.metadata, v0.4's evidence selection) and by v0.5's
+    filter_requirement_ids (subset=filter.conditions,
+    superset=requirement.conditions, app/domain/analysis.py) - the exact
+    same rule applied one layer up, not reimplemented a second time."""
+    _missing = object()
+    return all(
+        values_match(superset.get(key, _missing), value)
+        for key, value in subset.items()
+    )
+
+
 def matches_conditions(session: Session, conditions: dict[str, ConditionValue]) -> bool:
     """A requirement's condition map matches a session iff every key in
     `conditions` is present in `session.metadata` with an equal value.
-    Extra keys in session.metadata are ignored - that's what lets one
-    session satisfy multiple requirements that only care about a subset
-    of its documented conditions. A missing key is not a partial match;
-    it's simply not a match. An empty `conditions` map matches every
-    session (the vacuous subset case) - a requirement with no declared
-    conditions is not restricted by condition, only by task/evidence
-    availability elsewhere in selection."""
-    _missing = object()
-    return all(
-        _values_match(session.metadata.get(key, _missing), value)
-        for key, value in conditions.items()
-    )
+    See conditions_are_subset for the full rule."""
+    return conditions_are_subset(conditions, session.metadata)
 
 
 @dataclass
@@ -182,7 +193,7 @@ def discover_condition_values(sessions: list[Session]) -> dict[str, set[Conditio
     itself; flagged as a missing capability in the v0.4 architecture
     review (issue #31, Q3) so profile authors aren't left guessing what
     values sessions actually carry. Not exhaustively type-safe against
-    the bool/int collision _values_match guards against (a Python set
+    the bool/int collision values_match guards against (a Python set
     conflates True and 1) - acceptable for a debugging aid, unlike
     select_evidence's actual matching decisions."""
     values: dict[str, set[ConditionValue]] = {}

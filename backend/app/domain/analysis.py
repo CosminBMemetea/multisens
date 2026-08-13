@@ -19,8 +19,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from app.domain.coverage import RequirementStatus
-from app.domain.profiles import ConditionValue
+from app.domain.coverage import RequirementResult, RequirementStatus
+from app.domain.evidence import conditions_are_subset
+from app.domain.profiles import ConditionValue, EvaluationProfile
 
 
 @dataclass
@@ -58,3 +59,106 @@ class Facet:
     works with zero code changes here."""
     key: str
     values: list[FacetValue]
+
+
+# --- facet discovery + filtering engine (v0.5, Phase 43) -------------------
+#
+# Pure functions - no sqlite3/fastapi import. Consume an already-fetched
+# EvaluationProfile and (for filter_results) an already-computed
+# list[RequirementResult] - v0.5 analyzes results, it never re-decides
+# PASS/FAIL/N/A itself (that stays Phase 34's job).
+
+def discover_facets(profile: EvaluationProfile) -> list[Facet]:
+    """One pass over profile.requirements[*].conditions - no evidence or
+    RequirementResult needed at all, so this is always cheap and never
+    depends on anything having been evaluated yet."""
+    counts: dict[str, dict[ConditionValue, int]] = {}
+    for requirement in profile.requirements:
+        for key, value in requirement.conditions.items():
+            per_value = counts.setdefault(key, {})
+            # dict keys use Python equality/hash, so True and 1 would
+            # collide as dict keys the same way they collide in a set
+            # (see evidence.py's discover_condition_values) - acceptable
+            # here since this is a discovery/display aid, not a matching
+            # decision (those go through conditions_are_subset, which
+            # does guard against exactly this collision).
+            per_value[value] = per_value.get(value, 0) + 1
+
+    return [
+        Facet(
+            key=key,
+            values=[
+                FacetValue(value=value, requirement_count=count)
+                for value, count in sorted(per_value.items(), key=lambda item: str(item[0]))
+            ],
+        )
+        for key, per_value in sorted(counts.items())
+    ]
+
+
+def _descendant_group_ids(profile: EvaluationProfile, group_id: str) -> set[str]:
+    """`group_id` plus every descendant, walked via the same parent_id
+    adjacency list compute_configuration_coverage (Phase 35) already
+    builds for its own tree - not re-derived from a different structure."""
+    children_by_parent: dict[str | None, list[str]] = {}
+    for group in profile.groups:
+        children_by_parent.setdefault(group.parent_id, []).append(group.id)
+
+    collected = {group_id}
+    frontier = [group_id]
+    while frontier:
+        current = frontier.pop()
+        for child_id in children_by_parent.get(current, []):
+            if child_id not in collected:
+                collected.add(child_id)
+                frontier.append(child_id)
+    return collected
+
+
+def filter_requirement_ids(profile: EvaluationProfile, criteria: AnalysisFilter) -> set[str]:
+    """Requirement-level predicates only (conditions/group/task) - never
+    status, which requires a RequirementResult (see filter_results).
+    A requirement missing a filtered condition key is excluded, never
+    treated as a wildcard or a false match - conditions_are_subset
+    already enforces this (the same rule v0.4's evidence selection uses,
+    reused here rather than reimplemented)."""
+    eligible_group_ids = (
+        _descendant_group_ids(profile, criteria.group_id) if criteria.group_id is not None else None
+    )
+
+    matching: set[str] = set()
+    for requirement in profile.requirements:
+        if not conditions_are_subset(criteria.conditions, requirement.conditions):
+            continue
+        if eligible_group_ids is not None and requirement.group_id not in eligible_group_ids:
+            continue
+        if criteria.task is not None and requirement.task != criteria.task:
+            continue
+        matching.add(requirement.id)
+    return matching
+
+
+def filter_results(
+    results: list[RequirementResult],
+    requirement_ids: set[str],
+    status: RequirementStatus | None = None,
+) -> list[RequirementResult]:
+    """Intersects an already-computed RequirementResult list against a
+    requirement-id set (from filter_requirement_ids) plus an optional
+    status filter - the one predicate that genuinely needs a computed
+    result, not just the profile document."""
+    return [
+        result for result in results
+        if result.requirement_id in requirement_ids and (status is None or result.status == status)
+    ]
+
+
+def filter_requirement_results(
+    profile: EvaluationProfile,
+    results: list[RequirementResult],
+    criteria: AnalysisFilter,
+) -> list[RequirementResult]:
+    """Convenience composition of filter_requirement_ids + filter_results
+    - the shape Phase 44/45 will actually call most often."""
+    requirement_ids = filter_requirement_ids(profile, criteria)
+    return filter_results(results, requirement_ids, criteria.status)
