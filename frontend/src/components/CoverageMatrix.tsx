@@ -6,6 +6,8 @@ import type { GroupNode } from "../groupTree";
 import type { ConfigurationCoverage, GroupCoverage, Requirement, RequirementResult } from "../types";
 
 interface CoverageMatrixProps {
+  profileName: string;
+  profileVersion: string;
   groupTree: GroupNode[];
   configurationCoverages: ConfigurationCoverage[];
   search: string;
@@ -43,11 +45,11 @@ function GroupCoverageCell({ coverage }: { coverage: GroupCoverage | undefined }
 const ROW_INDENT_REM = 1.25;
 const ROW_BASE_PADDING_REM = 0.75;
 
-export function CoverageMatrix({ groupTree, configurationCoverages, search }: CoverageMatrixProps) {
+export function CoverageMatrix({ profileName, profileVersion, groupTree, configurationCoverages, search }: CoverageMatrixProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [selectedCell, setSelectedCell] = useState<{ requirement: Requirement; result: RequirementResult } | null>(
-    null,
-  );
+  const [selectedCell, setSelectedCell] = useState<
+    { requirement: Requirement; result: RequirementResult; groupName: string } | null
+  >(null);
 
   const configIds = useMemo(
     () => configurationCoverages.map((c) => c.configuration_id),
@@ -143,7 +145,7 @@ export function CoverageMatrix({ groupTree, configurationCoverages, search }: Co
               <td key={cid} className="px-3 py-1.5 text-center">
                 {result ? (
                   <button
-                    onClick={() => setSelectedCell({ requirement, result })}
+                    onClick={() => setSelectedCell({ requirement, result, groupName: node.group.name })}
                     className="cursor-pointer"
                     aria-label={`${requirement.name} - ${cid} - view evidence`}
                   >
@@ -186,6 +188,9 @@ export function CoverageMatrix({ groupTree, configurationCoverages, search }: Co
 
       {selectedCell && (
         <RequirementDrillDown
+          profileName={profileName}
+          profileVersion={profileVersion}
+          groupName={selectedCell.groupName}
           requirement={selectedCell.requirement}
           result={selectedCell.result}
           onClose={() => setSelectedCell(null)}

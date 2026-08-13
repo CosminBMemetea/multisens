@@ -319,7 +319,13 @@ export function ProfileDetail() {
                       {visibleCoverages.length === 0 ? (
                         <p className="text-sm text-slate-500">No configurations selected.</p>
                       ) : (
-                        <CoverageMatrix groupTree={tree} configurationCoverages={visibleCoverages} search={search} />
+                        <CoverageMatrix
+                          profileName={profile.name}
+                          profileVersion={profile.version}
+                          groupTree={tree}
+                          configurationCoverages={visibleCoverages}
+                          search={search}
+                        />
                       )}
                     </>
                   )}
@@ -330,7 +336,10 @@ export function ProfileDetail() {
             {activeTab === "explorer" && profileId && (
               <ExplorerPanel
                 profileId={profileId}
+                profileName={profile.name}
+                profileVersion={profile.version}
                 requirements={profile.requirements}
+                groups={profile.groups}
                 conditionParams={conditionParams}
                 status={status}
                 onConditionChange={handleConditionChange}
@@ -341,7 +350,10 @@ export function ProfileDetail() {
             {activeTab === "failures" && profileId && (
               <FailuresPanel
                 profileId={profileId}
+                profileName={profile.name}
+                profileVersion={profile.version}
                 requirements={profile.requirements}
+                groups={profile.groups}
                 conditionParams={conditionParams}
                 onConditionChange={handleConditionChange}
               />
@@ -350,7 +362,10 @@ export function ProfileDetail() {
             {activeTab === "evidence" && profileId && (
               <NABreakdownPanel
                 profileId={profileId}
+                profileName={profile.name}
+                profileVersion={profile.version}
                 requirements={profile.requirements}
+                groups={profile.groups}
                 conditionParams={conditionParams}
                 onConditionChange={handleConditionChange}
               />

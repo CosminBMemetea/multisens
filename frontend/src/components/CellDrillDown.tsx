@@ -6,9 +6,12 @@ import type { Requirement, RequirementResult } from "../types";
 interface CellMatch {
   requirement: Requirement;
   result: RequirementResult;
+  groupName: string | undefined;
 }
 
 interface CellDrillDownProps {
+  profileName: string;
+  profileVersion: string;
   label: string;
   matches: CellMatch[];
   onClose: () => void;
@@ -19,12 +22,15 @@ interface CellDrillDownProps {
 // RequirementDrillDown exactly as CoverageMatrix does; more than one gets
 // a plain selectable list that opens the same RequirementDrillDown per
 // pick, rather than a second bespoke detail view.
-export function CellDrillDown({ label, matches, onClose }: CellDrillDownProps) {
+export function CellDrillDown({ profileName, profileVersion, label, matches, onClose }: CellDrillDownProps) {
   const [selected, setSelected] = useState<CellMatch | null>(matches.length === 1 ? matches[0] : null);
 
   if (selected) {
     return (
       <RequirementDrillDown
+        profileName={profileName}
+        profileVersion={profileVersion}
+        groupName={selected.groupName}
         requirement={selected.requirement}
         result={selected.result}
         onClose={matches.length === 1 ? onClose : () => setSelected(null)}

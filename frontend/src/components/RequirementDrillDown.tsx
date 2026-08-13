@@ -1,20 +1,41 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { StatusBadge } from "./StatusBadge";
+import { fetchScenarios, fetchSession } from "../api";
 import { formatFractionPercent, formatMetric } from "../format";
-import type { Requirement, RequirementResult } from "../types";
+import type { Requirement, RequirementResult, Session } from "../types";
 
 interface RequirementDrillDownProps {
+  profileName: string;
+  profileVersion: string;
+  groupName: string | undefined;
   requirement: Requirement;
   result: RequirementResult;
   onClose: () => void;
 }
 
-// Sourced entirely from fields already present on RequirementResult - no
-// new backend endpoint. Every PASS/FAIL/N/A cell in the matrix must be
-// traceable to its underlying evidence (or, for N/A, to a concrete
-// reason it has none) - this is the one place that traceability is
-// surfaced, so it must never show a status without also showing why.
-export function RequirementDrillDown({ requirement, result, onClose }: RequirementDrillDownProps) {
+// Sourced entirely from fields already present on RequirementResult/
+// EvidenceReference - no new backend endpoint (v0.5 architecture review,
+// Q13). Every PASS/FAIL/N/A cell in the matrix must be traceable to its
+// underlying evidence (or, for N/A, to a concrete reason it has none) -
+// this is the one place the full Profile -> Group -> Requirement ->
+// Conditions -> Evidence -> Session -> Scenario -> Configuration ->
+// Prediction source -> Sample counts -> Acceptance criteria -> Result
+// chain is surfaced end to end (Phase 49), so it must never show a status
+// without also showing why. Scenario/session *names* (not just ids) are
+// resolved with the same GET /api/scenarios + GET /api/sessions/{id}
+// calls SessionDetail.tsx already makes - not a new lookup mechanism.
+export function RequirementDrillDown({
+  profileName,
+  profileVersion,
+  groupName,
+  requirement,
+  result,
+  onClose,
+}: RequirementDrillDownProps) {
+  const [scenarioName, setScenarioName] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -22,6 +43,26 @@ export function RequirementDrillDown({ requirement, result, onClose }: Requireme
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  const evidence = result.evidence;
+  useEffect(() => {
+    if (!evidence) return;
+    let cancelled = false;
+    Promise.all([fetchScenarios(), fetchSession(evidence.session_id)])
+      .then(([scenarios, sessionResult]) => {
+        if (cancelled) return;
+        setScenarioName(scenarios.find((s) => s.id === evidence.scenario_id)?.name ?? null);
+        setSession(sessionResult);
+      })
+      .catch(() => {
+        // Name resolution is a display nicety - the raw ids below still
+        // render either way, so a lookup failure here isn't surfaced as
+        // a blocking error.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [evidence]);
 
   const conditionEntries = Object.entries(requirement.conditions);
 
@@ -40,6 +81,9 @@ export function RequirementDrillDown({ requirement, result, onClose }: Requireme
       >
         <div className="flex items-start justify-between gap-3">
           <div>
+            <p className="font-mono-data text-[11px] text-slate-600">
+              {profileName} v{profileVersion} › {groupName ?? "—"}
+            </p>
             <h2 className="text-base font-semibold text-slate-100">{requirement.name}</h2>
             <p className="font-mono-data text-xs text-slate-500">
               {requirement.task} · {result.configuration_id}
@@ -95,11 +139,17 @@ export function RequirementDrillDown({ requirement, result, onClose }: Requireme
           {result.evidence ? (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono-data text-xs text-slate-300">
               <dt className="text-slate-600">Session</dt>
-              <dd>{result.evidence.session_id}</dd>
+              <dd>
+                <Link to={`/sessions/${result.evidence.session_id}`} className="text-cyan-400 hover:underline">
+                  {session?.name ?? result.evidence.session_id}
+                </Link>
+              </dd>
               <dt className="text-slate-600">Scenario</dt>
-              <dd>{result.evidence.scenario_id}</dd>
+              <dd>{scenarioName ?? result.evidence.scenario_id}</dd>
               <dt className="text-slate-600">Prediction source</dt>
               <dd>{result.evidence.source_id}</dd>
+              <dt className="text-slate-600">Evaluation result</dt>
+              <dd>{result.evidence.evaluation_result_id}</dd>
               <dt className="text-slate-600">Matched samples</dt>
               <dd>
                 {result.evidence.matched_samples} / {result.evidence.sample_count}

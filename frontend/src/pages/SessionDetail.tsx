@@ -5,13 +5,23 @@ import { SessionStatusBadge, SourceTypeBadge } from "../components/Badge";
 import { EvaluationPanel } from "../components/EvaluationPanel";
 import {
   ApiError,
+  fetchProfile,
   fetchScenarios,
   fetchSensors,
   fetchSession,
   fetchSessionGroundTruth,
   fetchSessionPredictions,
+  fetchSessionProfileUsage,
 } from "../api";
-import type { GroundTruthEvent, PredictionEvent, Scenario, SensorConfig, Session } from "../types";
+import type {
+  EvaluationProfile,
+  GroundTruthEvent,
+  PredictionEvent,
+  ProfileUsageEntry,
+  Scenario,
+  SensorConfig,
+  Session,
+} from "../types";
 
 interface ConfigurationSummary {
   configurationId: string;
@@ -43,6 +53,8 @@ export function SessionDetail() {
   const [groundTruth, setGroundTruth] = useState<GroundTruthEvent[]>([]);
   const [configurations, setConfigurations] = useState<ConfigurationSummary[]>([]);
   const [sensorsById, setSensorsById] = useState<Record<string, SensorConfig>>({});
+  const [profileUsage, setProfileUsage] = useState<ProfileUsageEntry[] | null>(null);
+  const [profilesById, setProfilesById] = useState<Record<string, EvaluationProfile>>({});
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +94,29 @@ export function SessionDetail() {
     }
 
     load(sessionId);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  // Independent of the load() above - a reverse-lookup failure shouldn't
+  // blank out the rest of the page, and "used by zero profiles" is a
+  // legitimate, common answer, not an error state.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    fetchSessionProfileUsage(sessionId)
+      .then(async (usage) => {
+        if (cancelled) return;
+        setProfileUsage(usage);
+        const profiles = await Promise.all(usage.map((u) => fetchProfile(u.profile_id)));
+        if (cancelled) return;
+        setProfilesById(Object.fromEntries(profiles.map((p) => [p.id, p])));
+      })
+      .catch(() => {
+        // Requirement names fall back to raw ids below if this fails -
+        // see profileUsage's own render guard.
+      });
     return () => {
       cancelled = true;
     };
@@ -177,6 +212,44 @@ export function SessionDetail() {
                   </div>
                 ))}
               </dl>
+            </section>
+
+            <section className="rounded border border-slate-800 bg-slate-900/40 p-4">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Used by profiles</h2>
+              {profileUsage === null ? (
+                <span className="text-slate-500">Loading…</span>
+              ) : profileUsage.length === 0 ? (
+                <span className="text-slate-500">
+                  No profile's requirement conditions currently match this session's metadata.
+                </span>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {profileUsage.map((usage) => {
+                    const profile = profilesById[usage.profile_id];
+                    return (
+                      <li key={usage.profile_id} className="flex flex-col gap-1">
+                        <Link
+                          to={`/profiles/${usage.profile_id}`}
+                          className="text-sm text-cyan-400 hover:underline"
+                        >
+                          {usage.profile_name}{" "}
+                          <span className="font-mono-data text-xs text-slate-500">v{usage.profile_version}</span>
+                        </Link>
+                        <div className="flex flex-wrap gap-1">
+                          {usage.requirement_ids.map((requirementId) => (
+                            <span
+                              key={requirementId}
+                              className="rounded border border-slate-700 bg-slate-950 px-1.5 py-0.5 font-mono-data text-[11px] text-slate-400"
+                            >
+                              {profile?.requirements.find((r) => r.id === requirementId)?.name ?? requirementId}
+                            </span>
+                          ))}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </section>
 
             <EvaluationPanel sessionId={session.id} tasks={tasks} />

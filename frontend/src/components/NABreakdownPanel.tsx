@@ -4,11 +4,14 @@ import { RequirementDrillDown } from "./RequirementDrillDown";
 import { StatusBadge } from "./StatusBadge";
 import { fetchProfileFacets } from "../api";
 import { useAnalysis } from "../hooks/useAnalysis";
-import type { ConditionValue, Facet, Requirement, RequirementResult } from "../types";
+import type { ConditionValue, Facet, Requirement, RequirementGroup, RequirementResult } from "../types";
 
 interface NABreakdownPanelProps {
   profileId: string;
+  profileName: string;
+  profileVersion: string;
   requirements: Requirement[];
+  groups: RequirementGroup[];
   conditionParams: Record<string, string>;
   onConditionChange: (key: string, rawValue: string | null) => void;
 }
@@ -30,13 +33,24 @@ const NA_CATEGORY_LABELS: Record<string, string> = {
 };
 const NO_EXPERIMENT_CATEGORIES = new Set(["no_matching_evidence"]);
 
-export function NABreakdownPanel({ profileId, requirements, conditionParams, onConditionChange }: NABreakdownPanelProps) {
+export function NABreakdownPanel({
+  profileId,
+  profileName,
+  profileVersion,
+  requirements,
+  groups,
+  conditionParams,
+  onConditionChange,
+}: NABreakdownPanelProps) {
   const [facets, setFacets] = useState<Facet[] | null>(null);
   const [facetsError, setFacetsError] = useState<string | null>(null);
   const [configId, setConfigId] = useState("");
-  const [drillDown, setDrillDown] = useState<{ requirement: Requirement; result: RequirementResult } | null>(null);
+  const [drillDown, setDrillDown] = useState<
+    { requirement: Requirement; result: RequirementResult; groupName: string | undefined } | null
+  >(null);
 
   const requirementsById = useMemo(() => new Map(requirements.map((r) => [r.id, r])), [requirements]);
+  const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
 
   useEffect(() => {
     let cancelled = false;
@@ -168,7 +182,9 @@ export function NABreakdownPanel({ profileId, requirements, conditionParams, onC
                     return (
                       <li key={result.requirement_id}>
                         <button
-                          onClick={() => setDrillDown({ requirement, result })}
+                          onClick={() =>
+                            setDrillDown({ requirement, result, groupName: groupsById.get(requirement.group_id)?.name })
+                          }
                           className="flex w-full items-center justify-between gap-3 rounded border border-slate-800 bg-slate-950/40 px-3 py-2 text-left text-sm hover:border-cyan-500/40"
                         >
                           <span className="flex flex-col gap-0.5">
@@ -194,6 +210,9 @@ export function NABreakdownPanel({ profileId, requirements, conditionParams, onC
 
       {drillDown && (
         <RequirementDrillDown
+          profileName={profileName}
+          profileVersion={profileVersion}
+          groupName={drillDown.groupName}
           requirement={drillDown.requirement}
           result={drillDown.result}
           onClose={() => setDrillDown(null)}

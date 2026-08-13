@@ -10,6 +10,7 @@ import type {
   ConfigurationAnalysis,
   Facet,
   Requirement,
+  RequirementGroup,
   RequirementResult,
   RequirementStatus,
 } from "../types";
@@ -22,7 +23,10 @@ const STATUS_OPTIONS: { value: RequirementStatus; label: string }[] = [
 
 interface ExplorerPanelProps {
   profileId: string;
+  profileName: string;
+  profileVersion: string;
   requirements: Requirement[];
+  groups: RequirementGroup[];
   // Raw string values straight from useSearchParams, keyed by facet key -
   // resolved back to their originally-typed ConditionValue below once the
   // real facets are known (a boolean true and the string "true" are
@@ -36,6 +40,7 @@ interface ExplorerPanelProps {
 interface CellMatch {
   requirement: Requirement;
   result: RequirementResult;
+  groupName: string | undefined;
 }
 
 function resolveFacetValue(facet: Facet | undefined, label: string): ConditionValue | undefined {
@@ -45,19 +50,25 @@ function resolveFacetValue(facet: Facet | undefined, label: string): ConditionVa
 function matchesForConfiguration(
   configuration: ConfigurationAnalysis,
   requirementsById: Map<string, Requirement>,
+  groupsById: Map<string, RequirementGroup>,
   predicate: (requirement: Requirement) => boolean,
 ): CellMatch[] {
   const matches: CellMatch[] = [];
   for (const result of configuration.requirement_results) {
     const requirement = requirementsById.get(result.requirement_id);
-    if (requirement && predicate(requirement)) matches.push({ requirement, result });
+    if (requirement && predicate(requirement)) {
+      matches.push({ requirement, result, groupName: groupsById.get(requirement.group_id)?.name });
+    }
   }
   return matches;
 }
 
 export function ExplorerPanel({
   profileId,
+  profileName,
+  profileVersion,
   requirements,
+  groups,
   conditionParams,
   status,
   onConditionChange,
@@ -68,6 +79,7 @@ export function ExplorerPanel({
   const [drillDown, setDrillDown] = useState<{ label: string; matches: CellMatch[] } | null>(null);
 
   const requirementsById = useMemo(() => new Map(requirements.map((r) => [r.id, r])), [requirements]);
+  const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +129,12 @@ export function ExplorerPanel({
     const configuration = breakdownConfigurations?.find((c) => c.configuration_id === row);
     const value = resolveFacetValue(breakdownFacet, col);
     if (!configuration || value === undefined) return;
-    const matches = matchesForConfiguration(configuration, requirementsById, (r) => r.conditions[breakdownDim] === value);
+    const matches = matchesForConfiguration(
+      configuration,
+      requirementsById,
+      groupsById,
+      (r) => r.conditions[breakdownDim] === value,
+    );
     setDrillDown({ label: `${row} · ${breakdownDim}=${col}`, matches });
   }
 
@@ -160,6 +177,7 @@ export function ExplorerPanel({
     const matches = matchesForConfiguration(
       crossTabConfiguration,
       requirementsById,
+      groupsById,
       (r) => r.conditions[rowDim] === rowValue && r.conditions[colDim] === colValue,
     );
     setDrillDown({ label: `${crossTabConfigId} · ${rowDim}=${row} · ${colDim}=${col}`, matches });
@@ -362,7 +380,13 @@ export function ExplorerPanel({
       )}
 
       {drillDown && (
-        <CellDrillDown label={drillDown.label} matches={drillDown.matches} onClose={() => setDrillDown(null)} />
+        <CellDrillDown
+          profileName={profileName}
+          profileVersion={profileVersion}
+          label={drillDown.label}
+          matches={drillDown.matches}
+          onClose={() => setDrillDown(null)}
+        />
       )}
     </div>
   );
