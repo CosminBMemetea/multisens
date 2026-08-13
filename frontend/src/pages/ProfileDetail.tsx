@@ -328,6 +328,7 @@ export function ProfileDetail() {
             {activeTab === "explorer" && profileId && (
               <ExplorerPanel
                 profileId={profileId}
+                requirements={profile.requirements}
                 conditionParams={conditionParams}
                 status={status}
                 onConditionChange={handleConditionChange}

@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { CellDrillDown } from "./CellDrillDown";
+import { ConditionCrossTab } from "./ConditionCrossTab";
 import { fetchProfileFacets, runProfileAnalysis } from "../api";
 import { formatFractionPercent } from "../format";
-import type { AnalysisFilter, ConditionValue, ConfigurationAnalysis, Facet, RequirementStatus } from "../types";
+import type {
+  AnalysisFilter,
+  ConditionValue,
+  ConfigurationAnalysis,
+  Facet,
+  Requirement,
+  RequirementResult,
+  RequirementStatus,
+} from "../types";
 
 const STATUS_OPTIONS: { value: RequirementStatus; label: string }[] = [
   { value: "pass", label: "PASS" },
@@ -11,6 +21,7 @@ const STATUS_OPTIONS: { value: RequirementStatus; label: string }[] = [
 
 interface ExplorerPanelProps {
   profileId: string;
+  requirements: Requirement[];
   // Raw string values straight from useSearchParams, keyed by facet key -
   // resolved back to their originally-typed ConditionValue below once the
   // real facets are known (a boolean true and the string "true" are
@@ -21,8 +32,64 @@ interface ExplorerPanelProps {
   onStatusChange: (status: RequirementStatus | null) => void;
 }
 
+interface CellMatch {
+  requirement: Requirement;
+  result: RequirementResult;
+}
+
+// Fetches one /analysis response for a given (conditions, status, group_by)
+// combination - shared by the flat summary, the per-dimension breakdown,
+// and the 2D cross-tab, which differ only in group_by.
+function useAnalysis(
+  profileId: string,
+  conditions: Record<string, ConditionValue>,
+  status: RequirementStatus | null,
+  groupBy: string[],
+) {
+  const [configurations, setConfigurations] = useState<ConfigurationAnalysis[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const key = JSON.stringify({ conditions, status, groupBy });
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+    const filters: AnalysisFilter = { conditions, status: status ?? undefined };
+    runProfileAnalysis(profileId, { filters, group_by: groupBy })
+      .then((result) => {
+        if (!cancelled) setConfigurations(result.configurations);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId, key]);
+
+  return { configurations, error };
+}
+
+function resolveFacetValue(facet: Facet | undefined, label: string): ConditionValue | undefined {
+  return facet?.values.find((v) => String(v.value) === label)?.value;
+}
+
+function matchesForConfiguration(
+  configuration: ConfigurationAnalysis,
+  requirementsById: Map<string, Requirement>,
+  predicate: (requirement: Requirement) => boolean,
+): CellMatch[] {
+  const matches: CellMatch[] = [];
+  for (const result of configuration.requirement_results) {
+    const requirement = requirementsById.get(result.requirement_id);
+    if (requirement && predicate(requirement)) matches.push({ requirement, result });
+  }
+  return matches;
+}
+
 export function ExplorerPanel({
   profileId,
+  requirements,
   conditionParams,
   status,
   onConditionChange,
@@ -30,8 +97,9 @@ export function ExplorerPanel({
 }: ExplorerPanelProps) {
   const [facets, setFacets] = useState<Facet[] | null>(null);
   const [facetsError, setFacetsError] = useState<string | null>(null);
-  const [configurations, setConfigurations] = useState<ConfigurationAnalysis[] | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [drillDown, setDrillDown] = useState<{ label: string; matches: CellMatch[] } | null>(null);
+
+  const requirementsById = useMemo(() => new Map(requirements.map((r) => [r.id, r])), [requirements]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,30 +127,78 @@ export function ExplorerPanel({
     return resolved;
   }, [facets, conditionParams]);
 
-  // A stable string key for the effect below - fetch once per distinct
-  // filter combination, not once per render (conditionParams is a fresh
-  // object every render since it's carved out of useSearchParams).
-  const filterKey = JSON.stringify({ conditions, status });
+  const { configurations, error: analysisError } = useAnalysis(profileId, conditions, status, []);
 
+  // --- Per-condition breakdown: configuration x dimension-value grid ------
+
+  const [breakdownDim, setBreakdownDim] = useState("");
   useEffect(() => {
-    let cancelled = false;
-    setAnalysisError(null);
-    const filters: AnalysisFilter = { conditions, status: status ?? undefined };
-    runProfileAnalysis(profileId, { filters, group_by: [] })
-      .then((result) => {
-        if (!cancelled) setConfigurations(result.configurations);
-      })
-      .catch((err) => {
-        if (!cancelled) setAnalysisError(String(err));
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, filterKey]);
+    if (facets && facets.length > 0 && breakdownDim === "") setBreakdownDim(facets[0].key);
+  }, [facets, breakdownDim]);
+
+  const { configurations: breakdownConfigurations, error: breakdownError } = useAnalysis(
+    profileId,
+    conditions,
+    status,
+    breakdownDim ? [breakdownDim] : [],
+  );
+
+  const breakdownFacet = facets?.find((f) => f.key === breakdownDim);
+
+  function handleBreakdownCellClick(row: string, col: string) {
+    const configuration = breakdownConfigurations?.find((c) => c.configuration_id === row);
+    const value = resolveFacetValue(breakdownFacet, col);
+    if (!configuration || value === undefined) return;
+    const matches = matchesForConfiguration(configuration, requirementsById, (r) => r.conditions[breakdownDim] === value);
+    setDrillDown({ label: `${row} · ${breakdownDim}=${col}`, matches });
+  }
+
+  // --- 2D cross-tab: dimension x dimension grid, within one configuration -
+
+  const [rowDim, setRowDim] = useState("");
+  const [colDim, setColDim] = useState("");
+  useEffect(() => {
+    if (facets && facets.length > 0 && rowDim === "") setRowDim(facets[0].key);
+    if (facets && facets.length > 1 && colDim === "") setColDim(facets[1].key);
+  }, [facets, rowDim, colDim]);
+
+  const columnDimOptions = useMemo(() => (facets ?? []).filter((f) => f.key !== rowDim), [facets, rowDim]);
+  useEffect(() => {
+    if (colDim === rowDim) setColDim(columnDimOptions[0]?.key ?? "");
+  }, [rowDim, colDim, columnDimOptions]);
+
+  const [crossTabConfigId, setCrossTabConfigId] = useState("");
+  useEffect(() => {
+    if (configurations && configurations.length > 0 && crossTabConfigId === "") {
+      setCrossTabConfigId(configurations[0].configuration_id);
+    }
+  }, [configurations, crossTabConfigId]);
+
+  const { configurations: crossTabConfigurations, error: crossTabError } = useAnalysis(
+    profileId,
+    conditions,
+    status,
+    rowDim && colDim ? [rowDim, colDim] : [],
+  );
+
+  const rowFacet = facets?.find((f) => f.key === rowDim);
+  const colFacet = facets?.find((f) => f.key === colDim);
+  const crossTabConfiguration = crossTabConfigurations?.find((c) => c.configuration_id === crossTabConfigId);
+
+  function handleCrossTabCellClick(row: string, col: string) {
+    const rowValue = resolveFacetValue(rowFacet, row);
+    const colValue = resolveFacetValue(colFacet, col);
+    if (!crossTabConfiguration || rowValue === undefined || colValue === undefined) return;
+    const matches = matchesForConfiguration(
+      crossTabConfiguration,
+      requirementsById,
+      (r) => r.conditions[rowDim] === rowValue && r.conditions[colDim] === colValue,
+    );
+    setDrillDown({ label: `${crossTabConfigId} · ${rowDim}=${row} · ${colDim}=${col}`, matches });
+  }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {facetsError && (
         <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">{facetsError}</div>
       )}
@@ -171,6 +287,133 @@ export function ExplorerPanel({
             </tbody>
           </table>
         </div>
+      )}
+
+      {facets && facets.length > 0 && configurations && configurations.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Condition breakdown</h2>
+            <label className="flex items-center gap-2 text-sm text-slate-400">
+              Dimension
+              <select
+                value={breakdownDim}
+                onChange={(e) => setBreakdownDim(e.target.value)}
+                className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+              >
+                {facets.map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.key}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="text-xs text-slate-600">
+            Observed coverage under each {breakdownDim || "condition"} value - not a causal claim about what caused
+            it.
+          </p>
+          {breakdownError && (
+            <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+              {breakdownError}
+            </div>
+          )}
+          {breakdownFacet && breakdownConfigurations && (
+            <ConditionCrossTab
+              cornerLabel="Configuration"
+              rowHeaderLabel="Configuration"
+              columnHeaderLabel={breakdownDim}
+              rowLabels={breakdownConfigurations.map((c) => c.configuration_id)}
+              columnLabels={breakdownFacet.values.map((v) => String(v.value))}
+              getCell={(row, col) => {
+                const configuration = breakdownConfigurations.find((c) => c.configuration_id === row);
+                const cell = configuration?.groups.find((g) => String(g.key[0]) === col);
+                return cell?.aggregate;
+              }}
+              onCellClick={handleBreakdownCellClick}
+            />
+          )}
+        </section>
+      )}
+
+      {facets && facets.length > 1 && configurations && configurations.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Condition cross-tab</h2>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex items-center gap-2 text-sm text-slate-400">
+                Configuration
+                <select
+                  value={crossTabConfigId}
+                  onChange={(e) => setCrossTabConfigId(e.target.value)}
+                  className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+                >
+                  {configurations.map((c) => (
+                    <option key={c.configuration_id} value={c.configuration_id}>
+                      {c.configuration_id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-400">
+                Row
+                <select
+                  value={rowDim}
+                  onChange={(e) => setRowDim(e.target.value)}
+                  className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+                >
+                  {facets.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.key}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-400">
+                Column
+                <select
+                  value={colDim}
+                  onChange={(e) => setColDim(e.target.value)}
+                  className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 focus:border-cyan-500/50 focus:outline-none"
+                >
+                  {columnDimOptions.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.key}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600">
+            Observed coverage for {crossTabConfigId || "the selected configuration"} under each {rowDim}/{colDim}
+            {" "}combination - not a causal claim.
+          </p>
+          {crossTabError && (
+            <div className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+              {crossTabError}
+            </div>
+          )}
+          {rowFacet && colFacet && crossTabConfiguration && (
+            <ConditionCrossTab
+              cornerLabel={rowDim}
+              rowHeaderLabel={rowDim}
+              columnHeaderLabel={colDim}
+              rowLabels={rowFacet.values.map((v) => String(v.value))}
+              columnLabels={colFacet.values.map((v) => String(v.value))}
+              getCell={(row, col) => {
+                const cell = crossTabConfiguration.groups.find(
+                  (g) => String(g.key[0]) === row && String(g.key[1]) === col,
+                );
+                return cell?.aggregate;
+              }}
+              onCellClick={handleCrossTabCellClick}
+            />
+          )}
+        </section>
+      )}
+
+      {drillDown && (
+        <CellDrillDown label={drillDown.label} matches={drillDown.matches} onClose={() => setDrillDown(null)} />
       )}
     </div>
   );
