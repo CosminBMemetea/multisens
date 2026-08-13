@@ -1,10 +1,12 @@
-"""Resource-observation domain model (v0.7, Phase 64).
+"""Resource-observation domain model (v0.7, Phase 64-65).
 
-Shape only - Phase 64's own acceptance criteria are explicit that no
-algorithm code belongs here yet (validation: Phase 65; collection: Phase
-66; summaries: Phase 67; comparability/trade-off joining: Phase 68;
-constraints/Pareto: Phase 69). This module exists so every later phase
-builds against one already-reviewed shape, not an implicit one.
+Phase 64 fixed the shape; Phase 65 adds this module's own field/
+cross-field validation (value-vs-quality consistency, non-empty
+identity/unit/source fields, an ordered time window) plus persistence
+(see app/persistence/migrations/0004_resource_observations.sql and
+repository.py's resource_observations functions). Collection (Phase 66),
+summaries (Phase 67), comparability/trade-off joining (Phase 68), and
+constraints/Pareto (Phase 69) still don't live here yet.
 
 Transport-agnostic like every other domain module - no fastapi, sqlite3,
 rclpy, or psutil import. `ResourceObservation` is a pydantic `BaseModel`
@@ -71,7 +73,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Every value has an explicit provenance - never just a number.
 #
@@ -140,9 +142,9 @@ class ResourceObservation(BaseModel):
     # value actually means (and does not mean).
     configuration_id: str | None = None
     metric: str
-    # None iff quality == 'unavailable' - enforced starting Phase 65,
-    # not here. 0.0 is a valid, distinct measured value, never confused
-    # with "no value."
+    # None iff quality == 'unavailable' - enforced below by
+    # _value_matches_quality. 0.0 is a valid, distinct measured value,
+    # never confused with "no value."
     value: float | None
     unit: str
     quality: ResourceQuality
@@ -161,6 +163,40 @@ class ResourceObservation(BaseModel):
     # row (the collector still attempted at least one sample).
     sample_count: int = 1
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator('unit', 'source', 'platform_id')
+    @classmethod
+    def _non_empty(cls, v: str, info) -> str:
+        if not v.strip():
+            raise ValueError(f'{info.field_name} must not be empty')
+        return v
+
+    @field_validator('sample_count')
+    @classmethod
+    def _sample_count_positive(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError(f'sample_count must be >= 1, got {v}')
+        return v
+
+    @model_validator(mode='after')
+    def _value_matches_quality(self) -> ResourceObservation:
+        # Never a fabricated zero standing in for "no value," and never a
+        # real value silently reported as unavailable - the two failure
+        # directions are equally wrong, so both are checked.
+        if self.quality == 'unavailable' and self.value is not None:
+            raise ValueError("value must be None when quality is 'unavailable'")
+        if self.quality != 'unavailable' and self.value is None:
+            raise ValueError(f"value must not be None when quality is '{self.quality}'")
+        return self
+
+    @model_validator(mode='after')
+    def _window_is_ordered(self) -> ResourceObservation:
+        if self.started_at > self.ended_at:
+            raise ValueError(
+                f'started_at ({self.started_at.isoformat()}) must not be after '
+                f'ended_at ({self.ended_at.isoformat()})'
+            )
+        return self
 
 
 class ExecutionPlatform(BaseModel):

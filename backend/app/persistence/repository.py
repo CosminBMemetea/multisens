@@ -10,6 +10,7 @@ from datetime import datetime
 
 from app.domain.models import EvaluationResult, GroundTruth, Prediction, Scenario, Session, SessionStatus
 from app.domain.profiles import EvaluationProfile
+from app.domain.resources import ResourceObservation
 
 
 # --- scenarios ---------------------------------------------------------
@@ -278,3 +279,45 @@ def get_profile(conn: sqlite3.Connection, profile_id: str) -> EvaluationProfile 
 def list_profiles(conn: sqlite3.Connection) -> list[EvaluationProfile]:
     rows = conn.execute('SELECT document FROM evaluation_profiles ORDER BY id').fetchall()
     return [EvaluationProfile.model_validate_json(row['document']) for row in rows]
+
+
+# --- resource observations (v0.7, Phase 65) ---------------------------------
+
+def insert_resource_observations_batch(conn: sqlite3.Connection, items: list[ResourceObservation]) -> None:
+    conn.executemany(
+        'INSERT INTO resource_observations '
+        '(id, session_id, configuration_id, metric, value, unit, quality, source, '
+        'platform_id, started_at, ended_at, sample_count, metadata) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [(o.id, o.session_id, o.configuration_id, o.metric, o.value, o.unit, o.quality, o.source,
+          o.platform_id, o.started_at.isoformat(), o.ended_at.isoformat(), o.sample_count,
+          json.dumps(o.metadata)) for o in items],
+    )
+    conn.commit()
+
+
+def list_resource_observations(
+    conn: sqlite3.Connection, session_id: str,
+    configuration_id: str | None = None, metric: str | None = None,
+) -> list[ResourceObservation]:
+    query = 'SELECT * FROM resource_observations WHERE session_id = ?'
+    params: list[str] = [session_id]
+    if configuration_id is not None:
+        query += ' AND configuration_id = ?'
+        params.append(configuration_id)
+    if metric is not None:
+        query += ' AND metric = ?'
+        params.append(metric)
+    query += ' ORDER BY metric, started_at'
+    rows = conn.execute(query, params).fetchall()
+    return [_row_to_resource_observation(row) for row in rows]
+
+
+def _row_to_resource_observation(row: sqlite3.Row) -> ResourceObservation:
+    return ResourceObservation(
+        id=row['id'], session_id=row['session_id'], configuration_id=row['configuration_id'],
+        metric=row['metric'], value=row['value'], unit=row['unit'], quality=row['quality'],
+        source=row['source'], platform_id=row['platform_id'],
+        started_at=datetime.fromisoformat(row['started_at']), ended_at=datetime.fromisoformat(row['ended_at']),
+        sample_count=row['sample_count'], metadata=json.loads(row['metadata']),
+    )

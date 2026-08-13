@@ -1,14 +1,14 @@
-"""Phase 64: resource-observation domain shapes. Locks in the reviewed
-design (issue #65) so later phases (65-70) build against an
-already-agreed shape - no algorithm/validation logic exists yet, only
-field presence, types, and the documented constants.
+"""Phase 64-65: resource-observation domain shapes, validation, and
+persistence. Phase 64 locked in the reviewed shape (issue #65); Phase 65
+(issue #66) adds validation and persistence.
 """
 import typing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
 
+from app.domain.models import Scenario, Session
 from app.domain.resources import (
     SUPPORTED_RESOURCE_METRICS,
     UNKNOWN_PLATFORM_ID,
@@ -16,6 +16,8 @@ from app.domain.resources import (
     ResourceObservation,
     ResourceQuality,
 )
+from app.persistence import db as db_module
+from app.persistence import repository as repo
 
 
 def _observation(**overrides) -> ResourceObservation:
@@ -140,3 +142,97 @@ def test_execution_platform_metadata_defaults_to_empty_dict():
 
 def test_unknown_platform_id_is_a_stable_named_constant():
     assert UNKNOWN_PLATFORM_ID == 'unknown'
+
+
+# --- Phase 65: cross-field validation ---------------------------------------
+
+def test_unavailable_quality_rejects_a_real_value():
+    with pytest.raises(ValidationError, match='must be None'):
+        _observation(quality='unavailable', value=1.0)
+
+
+def test_measured_quality_rejects_a_missing_value():
+    with pytest.raises(ValidationError, match='must not be None'):
+        _observation(quality='measured', value=None)
+
+
+@pytest.mark.parametrize('field', ['unit', 'source', 'platform_id'])
+def test_empty_identity_fields_are_rejected(field):
+    with pytest.raises(ValidationError, match='must not be empty'):
+        _observation(**{field: '   '})
+
+
+def test_sample_count_below_one_is_rejected():
+    with pytest.raises(ValidationError, match='sample_count'):
+        _observation(sample_count=0)
+
+
+def test_started_at_after_ended_at_is_rejected():
+    now = datetime.now(timezone.utc)
+    with pytest.raises(ValidationError, match='started_at'):
+        _observation(started_at=now, ended_at=now - timedelta(seconds=1))
+
+
+def test_started_at_equal_ended_at_is_allowed():
+    # An instantaneous/point sample is a valid window, not an error.
+    now = datetime.now(timezone.utc)
+    obs = _observation(started_at=now, ended_at=now)
+    assert obs.started_at == obs.ended_at
+
+
+# --- Phase 65: persistence ---------------------------------------------------
+
+def _seed_scenario_and_session(conn, session_id='s1') -> None:
+    repo.create_scenario(conn, Scenario(id='sc1', name='demo scenario'))
+    repo.create_session(conn, Session(
+        id=session_id, name='demo session', scenario_id='sc1', started_at=datetime.now(timezone.utc),
+    ))
+
+
+def test_resource_observations_round_trip_byte_identical(tmp_path):
+    conn = db_module.connect(str(tmp_path / 'test.db'))
+    _seed_scenario_and_session(conn)
+
+    written = [
+        _observation(id='obs-1', session_id='s1', metric='cpu_percent', value=31.2, quality='measured'),
+        _observation(
+            id='obs-2', session_id='s1', metric='network_receive_mbps', value=None,
+            quality='unavailable', configuration_id=None,
+        ),
+    ]
+    repo.insert_resource_observations_batch(conn, written)
+
+    read_back = repo.list_resource_observations(conn, session_id='s1')
+    assert len(read_back) == 2
+    by_id = {o.id: o for o in read_back}
+    for original in written:
+        assert by_id[original.id] == original
+
+
+def test_list_resource_observations_filters_by_configuration_and_metric(tmp_path):
+    conn = db_module.connect(str(tmp_path / 'test.db'))
+    _seed_scenario_and_session(conn)
+    repo.insert_resource_observations_batch(conn, [
+        _observation(id='obs-front', session_id='s1', configuration_id='cfg-front', metric='cpu_percent'),
+        _observation(id='obs-rear', session_id='s1', configuration_id='cfg-rear', metric='cpu_percent'),
+        _observation(id='obs-front-net', session_id='s1', configuration_id='cfg-front', metric='memory_mb'),
+    ])
+
+    front_only = repo.list_resource_observations(conn, session_id='s1', configuration_id='cfg-front')
+    assert {o.id for o in front_only} == {'obs-front', 'obs-front-net'}
+
+    cpu_only = repo.list_resource_observations(conn, session_id='s1', metric='cpu_percent')
+    assert {o.id for o in cpu_only} == {'obs-front', 'obs-rear'}
+
+    both = repo.list_resource_observations(conn, session_id='s1', configuration_id='cfg-front', metric='cpu_percent')
+    assert {o.id for o in both} == {'obs-front'}
+
+
+def test_resource_observation_with_null_configuration_id_round_trips(tmp_path):
+    conn = db_module.connect(str(tmp_path / 'test.db'))
+    _seed_scenario_and_session(conn)
+    repo.insert_resource_observations_batch(conn, [
+        _observation(id='obs-unattributed', session_id='s1', configuration_id=None),
+    ])
+    read_back = repo.list_resource_observations(conn, session_id='s1')
+    assert read_back[0].configuration_id is None
