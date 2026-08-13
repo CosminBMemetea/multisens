@@ -1,12 +1,20 @@
-"""Generic evaluator abstraction (v0.8, Phase 78-79).
+"""Generic evaluator abstraction / registry (v0.8, Phase 78-82).
 
-`ClassificationEvaluator` (Phase 79) is the first real entry in
-`EVALUATOR_REGISTRY` - a thin wrapper around the existing, completely
-unchanged `evaluate_classification` (metrics.py). Phase 80-83 add
-detection/regression the same way: a small `Evaluator`-shaped wrapper
-living here, delegating to its own algorithm module, registered at the
-bottom of this file. See the v0.8 architecture review (issue #79) for
-the full reasoning.
+`Evaluator`/`EvaluatorOutput` themselves live in `evaluator_output.py`
+(split out in Phase 82, see that module's own docstring for the import-
+cycle reasoning: this module has to import every evaluator-specific
+algorithm module to populate `EVALUATOR_REGISTRY`, and those modules need
+`EvaluatorOutput` to build their own results - both living here would be
+circular). Both names are re-exported below, so every existing
+`from app.domain.evaluators import EvaluatorOutput`-style import is
+unaffected.
+
+`ClassificationEvaluator` (Phase 79) wraps the completely unchanged
+`evaluate_classification` (metrics.py) directly here, since it has no
+algorithm module of its own beyond that one function.
+`DetectionEvaluator` (Phase 80-82) has a real algorithm module
+(`detection.py`) and is imported from there. See the v0.8 architecture
+review (issue #79) for the full reasoning behind this whole layer.
 
 ## Why `Evaluator.evaluate` takes a `MatchResult`, not raw ground truth/predictions
 
@@ -34,54 +42,14 @@ a v0.7 `ResourceMeasurementRun` entity out of this codebase.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
+from app.domain.detection import DetectionEvaluator
+from app.domain.evaluator_output import Evaluator, EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import evaluate_classification
-from app.domain.models import MetricValue
 
-
-@dataclass
-class EvaluatorOutput:
-    """What any `Evaluator.evaluate()` call returns - the same shape
-    `EvaluationResult` persists (Phase 78 migration), regardless of which
-    evaluator produced it. `metrics` stays flat (`dict[str, MetricValue]`,
-    same open-vocabulary posture `AcceptanceCriterion.metric` already
-    has) - a value that could be `None` is `None`, never a fabricated
-    zero, same `MetricValue` rule as everywhere else in this codebase.
-    `details` is the one generic escape hatch for whatever structured
-    evidence doesn't fit a flat float dict (a per-class breakdown, a
-    confusion matrix, ...) - `None` whenever an evaluator has nothing
-    beyond its flat metrics to report."""
-    sample_count: int
-    matched_samples: int
-    unmatched_predictions: int
-    unmatched_ground_truth: int
-    metrics: dict[str, MetricValue]
-    details: dict[str, Any] | None = None
-
-
-class Evaluator(Protocol):
-    """The contract every evaluator type implements. `evaluator_type` is
-    the exact string a caller passes to `/evaluate`'s own `evaluator_type`
-    field and the exact string recorded on the resulting
-    `EvaluationResult.evaluator_type` - never a display name, never
-    inferred. `format_version` is this evaluator's own result-shape
-    version (independent per evaluator type - a detection evaluator's
-    '1.0' is unrelated to classification's), recorded on
-    `EvaluationResult.format_version`.
-
-    `evaluate` takes an already-computed `MatchResult` (see this module's
-    own docstring for why) plus whatever evaluator-specific configuration
-    the caller supplied (e.g. a detection evaluator's
-    `confidence_threshold`/`iou_threshold`) - never a raw ground-truth/
-    prediction list, and never persistence/FastAPI/ROS access, matching
-    every other domain module's transport-agnostic discipline."""
-    evaluator_type: str
-    format_version: str
-
-    def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput: ...
+__all__ = ['Evaluator', 'EvaluatorOutput', 'ClassificationEvaluator', 'EVALUATOR_REGISTRY']
 
 
 class ClassificationEvaluator:
@@ -120,10 +88,11 @@ class ClassificationEvaluator:
 
 # Static, not a dynamic plugin-loading mechanism (master prompt §6) -
 # realistically 3-4 evaluator types will ever exist for this project.
-# Phase 80-83 add 'object_detection'/'regression' here the same way. An
-# `evaluator_type` absent from this dict is always a clear validation
-# error at the API layer (see api/evaluation.py) - never a silent
-# fallback to classification.
+# Phase 83 adds 'regression' here the same way. An `evaluator_type`
+# absent from this dict is always a clear validation error at the API
+# layer (see api/evaluation.py) - never a silent fallback to
+# classification.
 EVALUATOR_REGISTRY: dict[str, Evaluator] = {
     'classification': ClassificationEvaluator(),
+    'object_detection': DetectionEvaluator(),
 }

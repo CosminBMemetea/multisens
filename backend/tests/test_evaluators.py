@@ -63,12 +63,12 @@ def test_evaluator_output_metric_none_is_distinct_from_zero():
     assert output.metrics['coverage'] is not None
 
 
-# --- registry (Phase 79) ------------------------------------------------
+# --- registry (Phase 79-82) ----------------------------------------------
 
-def test_registry_has_exactly_classification_this_phase():
-    # Locks in this phase's own scope boundary - object_detection/
-    # regression don't exist until Phase 80-83.
-    assert set(EVALUATOR_REGISTRY) == {'classification'}
+def test_registry_has_exactly_classification_and_detection_this_phase():
+    # Locks in this phase's own scope boundary - regression doesn't exist
+    # until Phase 83.
+    assert set(EVALUATOR_REGISTRY) == {'classification', 'object_detection'}
     assert isinstance(EVALUATOR_REGISTRY['classification'], ClassificationEvaluator)
 
 

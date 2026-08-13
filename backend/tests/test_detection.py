@@ -214,9 +214,6 @@ def test_detection_evaluator_declares_its_identity():
     assert DetectionEvaluator.format_version == '1.0'
 
 
-def test_detection_evaluator_not_yet_registered():
+def test_detection_evaluator_registered_as_of_phase_82():
     from app.domain.evaluators import EVALUATOR_REGISTRY
-    # Locks in this phase's own scope boundary - see detection.py's own
-    # module docstring for why. Phase 81 is the first phase allowed to
-    # register it.
-    assert 'object_detection' not in EVALUATOR_REGISTRY
+    assert isinstance(EVALUATOR_REGISTRY['object_detection'], DetectionEvaluator)

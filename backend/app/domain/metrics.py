@@ -80,7 +80,7 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
 
         precision = (tp / (tp + fp)) if (tp + fp) > 0 else None
         recall = (tp / (tp + fn)) if (tp + fn) > 0 else None
-        f1 = _f1(precision, recall)
+        f1 = compute_f1(precision, recall)
 
         # Macro average is a mean over classes where the metric is
         # actually defined - a class excluded here (never predicted, or
@@ -99,7 +99,7 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
 
     precision_micro = (tp_total / (tp_total + fp_total)) if (tp_total + fp_total) > 0 else None
     recall_micro = (tp_total / (tp_total + fn_total)) if (tp_total + fn_total) > 0 else None
-    f1_micro = _f1(precision_micro, recall_micro)
+    f1_micro = compute_f1(precision_micro, recall_micro)
 
     return ClassificationMetrics(
         label_set=label_set,
@@ -124,7 +124,13 @@ def extract_label(value: dict, label_key: str) -> str:
     return str(value[label_key])
 
 
-def _f1(precision: MetricValue, recall: MetricValue) -> MetricValue:
+# Public (promoted from a private _f1, v0.8 Phase 82) - so the detection
+# evaluator's own precision/recall -> F1 computation can reuse the exact
+# same formula rather than a second, possibly-drifting implementation.
+# Same "promote so a later layer can never silently disagree" reasoning
+# as v0.5's status_counts/coverage_and_completeness and v0.7's
+# ACCEPTANCE_OPERATORS promotions. Zero behavior change.
+def compute_f1(precision: MetricValue, recall: MetricValue) -> MetricValue:
     if precision is None or recall is None:
         return None
     if precision + recall == 0:

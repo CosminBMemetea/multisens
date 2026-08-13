@@ -1,9 +1,33 @@
-"""Object-detection domain model (v0.8, Phase 80-81). Phase 80 shipped
-the schema/validation; Phase 81 adds object-level IoU matching within an
-already-timestamp-matched frame. Metrics aggregation (precision/recall/
-F1/mean_iou_matched) and wiring into `DetectionEvaluator.evaluate()` are
-Phase 82's job. Pure functions/dataclasses - no persistence, no FastAPI,
-no ROS, same discipline as matching.py/metrics.py.
+"""Object-detection domain model (v0.8, Phase 80-82). Phase 80 shipped
+the schema/validation; Phase 81 added object-level IoU matching within an
+already-timestamp-matched frame; Phase 82 aggregates that per-frame
+evidence into session-level metrics and completes `DetectionEvaluator.
+evaluate()`, finally registering it in `EVALUATOR_REGISTRY`. Pure
+functions/dataclasses - no persistence, no FastAPI, no ROS, same
+discipline as matching.py/metrics.py.
+
+## `EvaluatorOutput`'s frame-count fields stay frame-level, not object-level
+
+`sample_count`/`matched_samples`/`unmatched_predictions`/
+`unmatched_ground_truth` describe the same thing for every evaluator
+type - how much of the underlying timestamp-based frame matching
+(matching.py) succeeded - never overloaded to mean something
+evaluator-specific. For classification these already are frame counts
+(one row = one sample); `DetectionEvaluator.evaluate()` reports the
+identical frame-level counts read straight off its own `MatchResult`,
+not object counts. Object-level TP/FP/FN/precision/recall/F1/
+mean_iou_matched - a genuinely different, detection-specific concern -
+lives in `metrics`/`details` instead, never overloading the shared
+frame-count fields.
+
+## No AP/mAP, anywhere
+
+v0.8 architecture review Q16, confirmed: a simplified/incorrect mAP
+would be worse than omitting it. `aggregate_detection_metrics`'s own
+output has no `ap`/`map` field, grep-verified by a dedicated test
+(`test_no_ap_or_map_field_exists_anywhere_in_detection_output`) the same
+way this project already grep-verifies "no magic score" after every
+phase that could plausibly introduce one.
 
 ## Object matching is a second pass, strictly within an already-frame-matched pair
 
@@ -84,26 +108,24 @@ zero-area box can never represent a real detected/annotated object, and
 rejecting it now avoids deferring a zero-area IoU edge case to Phase 81
 for no real benefit.
 
-## `DetectionEvaluator` is still deliberately not registered
+## `DetectionEvaluator` is now registered
 
-A class with `evaluator_type`/`format_version` exists below so Phase 82
-has a concrete home to add `evaluate()` to, but it is **not** added to
-`EVALUATOR_REGISTRY` yet - same "the registry only ever contains
-fully-working entries" discipline Phase 78 established (it started
-empty rather than holding a stub). Phase 81 adds matching, not a
-complete evaluator - `evaluate()` still doesn't exist. An
-`evaluator_type` listed as "supported" in `/evaluate`'s own error
-message that immediately crashed on use would be exactly the kind of
-dishonesty this project's culture
-rejects. Phase 81 adds the registration line once `evaluate()` is real
-and tested.
+Phase 78's "the registry only ever contains fully-working entries"
+discipline (it started empty rather than holding a classification stub)
+is why Phase 80/81 deliberately held off - `evaluate()` didn't exist
+yet. It does now, tested, and `EVALUATOR_REGISTRY['object_detection']`
+is populated at the bottom of this file, the same way Phase 79 populated
+`'classification'`.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
 
+from app.domain.evaluator_output import EvaluatorOutput
 from app.domain.matching import MatchResult
+from app.domain.metrics import compute_f1
+from app.domain.models import MetricValue
 
 _COORDINATE_RANGE = (0.0, 1.0)
 
@@ -289,6 +311,12 @@ class FrameDetectionEvidence:
     false_negative_count: int
     mean_iou: float | None
     matches: list[ObjectMatch]
+    # The actual leftover objects, not just counts - Phase 82 needs their
+    # labels to compute a per-class breakdown; also the raw material for
+    # a future UI drill-down (master prompt §45). Still bounded by one
+    # frame's own object/detection count, never unbounded.
+    unmatched_detections: list[Detection]
+    unmatched_ground_truth_objects: list[DetectedObject]
 
 
 def match_objects_in_frame(
@@ -331,6 +359,8 @@ def match_objects_in_frame(
         false_negative_count=len(ground_truth_objects) - matched_count,
         mean_iou=(sum(m.iou for m in matches) / matched_count) if matched_count > 0 else None,
         matches=matches,
+        unmatched_detections=[d for di, d in enumerate(detections) if di not in matched_det],
+        unmatched_ground_truth_objects=[gt for gi, gt in enumerate(ground_truth_objects) if gi not in matched_gt],
     )
 
 
@@ -358,6 +388,7 @@ def compute_detection_evidence(
             predicted_count=0, ground_truth_count=len(ground_truth_objects), matched_count=0,
             false_positive_count=0, false_negative_count=len(ground_truth_objects),
             mean_iou=None, matches=[],
+            unmatched_detections=[], unmatched_ground_truth_objects=ground_truth_objects,
         ))
 
     for pred in match_result.unmatched_predictions:
@@ -366,9 +397,104 @@ def compute_detection_evidence(
             predicted_count=len(detections), ground_truth_count=0, matched_count=0,
             false_positive_count=len(detections), false_negative_count=0,
             mean_iou=None, matches=[],
+            unmatched_detections=detections, unmatched_ground_truth_objects=[],
         ))
 
     return evidence
+
+
+# --- session-level metrics (v0.8, Phase 82) ---------------------------------
+
+def _precision_recall(true_positives: int, false_positives: int, false_negatives: int) -> tuple[MetricValue, MetricValue]:
+    precision = (true_positives / (true_positives + false_positives)) if (true_positives + false_positives) > 0 else None
+    recall = (true_positives / (true_positives + false_negatives)) if (true_positives + false_negatives) > 0 else None
+    return precision, recall
+
+
+@dataclass(frozen=True)
+class ClassDetectionMetrics:
+    """One label's own precision/recall/F1 - `None` (never a fabricated
+    zero) wherever the underlying TP/FP or TP/FN denominator is zero,
+    same `MetricValue` rule as everywhere else in this codebase."""
+    true_positives: int
+    false_positives: int
+    false_negatives: int
+    precision: MetricValue
+    recall: MetricValue
+    f1: MetricValue
+
+
+@dataclass(frozen=True)
+class DetectionMetrics:
+    """Session-level aggregate over every `FrameDetectionEvidence` in one
+    `MatchResult`. `per_class` is keyed by label, covering every label
+    that appeared anywhere as a true/false positive/negative - a label
+    that never appeared in any frame's evidence has no entry at all
+    (there's nothing to report, not even an N/A row)."""
+    predicted_count: int
+    ground_truth_count: int
+    matched_count: int
+    false_positive_count: int
+    false_negative_count: int
+    precision: MetricValue
+    recall: MetricValue
+    f1: MetricValue
+    mean_iou_matched: MetricValue
+    per_class: dict[str, ClassDetectionMetrics]
+
+
+def _aggregate_per_class(evidence: list[FrameDetectionEvidence]) -> dict[str, ClassDetectionMetrics]:
+    true_positives_by_label: dict[str, int] = {}
+    false_positives_by_label: dict[str, int] = {}
+    false_negatives_by_label: dict[str, int] = {}
+
+    for frame in evidence:
+        for match in frame.matches:
+            label = match.ground_truth_object.label  # == match.detection.label, only same-label pairs ever match
+            true_positives_by_label[label] = true_positives_by_label.get(label, 0) + 1
+        for detection in frame.unmatched_detections:
+            false_positives_by_label[detection.label] = false_positives_by_label.get(detection.label, 0) + 1
+        for ground_truth_object in frame.unmatched_ground_truth_objects:
+            false_negatives_by_label[ground_truth_object.label] = false_negatives_by_label.get(ground_truth_object.label, 0) + 1
+
+    labels = sorted(set(true_positives_by_label) | set(false_positives_by_label) | set(false_negatives_by_label))
+    per_class: dict[str, ClassDetectionMetrics] = {}
+    for label in labels:
+        true_positives = true_positives_by_label.get(label, 0)
+        false_positives = false_positives_by_label.get(label, 0)
+        false_negatives = false_negatives_by_label.get(label, 0)
+        precision, recall = _precision_recall(true_positives, false_positives, false_negatives)
+        per_class[label] = ClassDetectionMetrics(
+            true_positives=true_positives, false_positives=false_positives, false_negatives=false_negatives,
+            precision=precision, recall=recall, f1=compute_f1(precision, recall),
+        )
+    return per_class
+
+
+def aggregate_detection_metrics(evidence: list[FrameDetectionEvidence]) -> DetectionMetrics:
+    """Pure aggregation over already-computed per-frame evidence - never a
+    second stored source of truth, same pattern
+    `aggregate_requirement_results`/`compute_resource_metric_summary`
+    already use for their own layers. No AP/mAP anywhere - see this
+    module's own docstring."""
+    predicted_count = sum(frame.predicted_count for frame in evidence)
+    ground_truth_count = sum(frame.ground_truth_count for frame in evidence)
+    matched_count = sum(frame.matched_count for frame in evidence)
+    false_positive_count = sum(frame.false_positive_count for frame in evidence)
+    false_negative_count = sum(frame.false_negative_count for frame in evidence)
+
+    precision, recall = _precision_recall(matched_count, false_positive_count, false_negative_count)
+    f1 = compute_f1(precision, recall)
+
+    matched_ious = [match.iou for frame in evidence for match in frame.matches]
+    mean_iou_matched = (sum(matched_ious) / len(matched_ious)) if matched_ious else None
+
+    return DetectionMetrics(
+        predicted_count=predicted_count, ground_truth_count=ground_truth_count, matched_count=matched_count,
+        false_positive_count=false_positive_count, false_negative_count=false_negative_count,
+        precision=precision, recall=recall, f1=f1, mean_iou_matched=mean_iou_matched,
+        per_class=_aggregate_per_class(evidence),
+    )
 
 
 @dataclass(frozen=True)
@@ -398,8 +524,52 @@ def parse_detection_parameters(parameters: dict[str, Any]) -> DetectionParameter
 
 
 class DetectionEvaluator:
-    """Not yet registered in `EVALUATOR_REGISTRY` - see this module's own
-    docstring for why. `evaluate()` (matching + metrics) is Phase 81/82's
-    job."""
+    """Registered in `EVALUATOR_REGISTRY['object_detection']`
+    (evaluators.py). `sample_count`/`matched_samples`/
+    `unmatched_predictions`/`unmatched_ground_truth` on the returned
+    `EvaluatorOutput` are frame-level counts read straight off
+    `match_result` itself - the same meaning these fields have for every
+    evaluator (see evaluators.py's own module docstring) - never object
+    counts. Object-level precision/recall/F1/TP/FP/FN/mean_iou_matched
+    live in `metrics`; the per-class breakdown and an echo of the
+    parameters actually used (master prompt §35 - "do not hide it") live
+    in `details`."""
     evaluator_type = 'object_detection'
     format_version = '1.0'
+
+    def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
+        params = parse_detection_parameters(parameters)
+        evidence = compute_detection_evidence(match_result, params.confidence_threshold, params.iou_threshold)
+        detection_metrics = aggregate_detection_metrics(evidence)
+
+        return EvaluatorOutput(
+            sample_count=len(match_result.matched) + len(match_result.unmatched_ground_truth),
+            matched_samples=len(match_result.matched),
+            unmatched_predictions=len(match_result.unmatched_predictions),
+            unmatched_ground_truth=len(match_result.unmatched_ground_truth),
+            metrics={
+                'precision': detection_metrics.precision,
+                'recall': detection_metrics.recall,
+                'f1': detection_metrics.f1,
+                'true_positives': float(detection_metrics.matched_count),
+                'false_positives': float(detection_metrics.false_positive_count),
+                'false_negatives': float(detection_metrics.false_negative_count),
+                'mean_iou_matched': detection_metrics.mean_iou_matched,
+            },
+            details={
+                'parameters': {
+                    'confidence_threshold': params.confidence_threshold, 'iou_threshold': params.iou_threshold,
+                },
+                'per_class': {
+                    label: {
+                        'true_positives': cm.true_positives,
+                        'false_positives': cm.false_positives,
+                        'false_negatives': cm.false_negatives,
+                        'precision': cm.precision,
+                        'recall': cm.recall,
+                        'f1': cm.f1,
+                    }
+                    for label, cm in detection_metrics.per_class.items()
+                },
+            },
+        )
