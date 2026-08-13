@@ -172,6 +172,23 @@ def list_distinct_source_ids(
     return [row['source_id'] for row in rows]
 
 
+def get_sensor_ids_for_configuration(conn: sqlite3.Connection, configuration_id: str) -> list[str] | None:
+    """One representative prediction row's sensor_ids for this
+    configuration_id, across any session - guaranteed identical across
+    every row sharing the same configuration_id (Prediction's own
+    validator enforces configuration_id == derive_configuration_id
+    (sensor_ids), see models.py), so any one row is authoritative. None
+    if no prediction anywhere has ever used this configuration_id - the
+    decision API's (v0.6, Phase 56) signal that a configuration was
+    named but never evaluated, reported explicitly rather than guessed
+    at by reverse-parsing the id string (not safe - see
+    comparison.py's classify_relationship docstring)."""
+    row = conn.execute(
+        'SELECT sensor_ids FROM predictions WHERE configuration_id = ? LIMIT 1', (configuration_id,),
+    ).fetchone()
+    return json.loads(row['sensor_ids']) if row is not None else None
+
+
 def _row_to_prediction(row: sqlite3.Row) -> Prediction:
     return Prediction(
         id=row['id'], session_id=row['session_id'], timestamp_ms=row['timestamp_ms'],

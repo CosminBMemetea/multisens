@@ -27,6 +27,18 @@ gathering helpers /coverage uses (_resolve_sessions/_resolve_configuration_ids/
 _compute_requirement_results_by_configuration, extracted this phase so
 neither route duplicates the other's logic) - v0.5 never re-decides
 PASS/FAIL/N/A, it only filters/groups what Phase 34 already decided.
+
+POST .../decision-analysis (v0.6, Phase 56) exposes Phase 53-55's policy/
+minimality/dominance/gap engine - one consolidated route, not a second
+`/gap-analysis` endpoint (the v0.6 architecture review's own §39 challenge):
+`gap_analysis` is an optional nested request/response section on the same
+call, not a separate route, since it always needs the same evidence this
+route already gathered for its `baseline_configuration_id`/
+`candidate_configuration_id`. Reuses the exact same
+_resolve_sessions/_resolve_configuration_ids/
+_compute_requirement_results_by_configuration helpers /coverage and
+/analysis already use - no new discovery logic. Never re-decides
+PASS/FAIL/N/A and never re-implements v0.5's condition grouping.
 """
 from __future__ import annotations
 
@@ -56,6 +68,20 @@ from app.domain.coverage import (
     RequirementStatus,
     compute_configuration_coverage,
     compute_requirement_results,
+)
+from app.domain.decision import (
+    ConfigurationEvidence,
+    DecisionObjective,
+    DecisionPolicy,
+    PolicyStatus,
+    analyze_sensor_addition,
+    compute_condition_gap_summary,
+    evaluate_configurations,
+    find_direct_removals,
+    find_dominated_configurations,
+    find_minimal_sufficient_sets,
+    find_pareto_front,
+    find_sufficient_configurations,
 )
 from app.domain.evidence import EvidenceBinding, SessionCandidate
 from app.domain.models import Session
@@ -384,3 +410,257 @@ def analyze_profile(
         ))
 
     return AnalysisResponse(configurations=configurations)
+
+
+# --- decision support (v0.6, Phase 56) --------------------------------------
+
+class DecisionPolicyRequest(BaseModel):
+    # No default on any field - an omitted policy is a 422, never a
+    # silently-applied threshold (v0.6 architecture review, §29).
+    minimum_requirement_coverage: float
+    minimum_evidence_completeness: float
+    mandatory_requirements_must_pass: bool
+    objective: DecisionObjective
+
+
+class GapAnalysisRequest(BaseModel):
+    baseline_configuration_id: str
+    # None -> no sensor-addition/removal comparison computed, just the
+    # removal sweep below (if requested).
+    candidate_configuration_id: str | None = None
+    include_removal_sweep: bool = False
+    # Condition dimensions to break the addition/removal delta down by -
+    # independent 1D summaries, not a cross-tab, so no 2-dimension cap.
+    group_by: list[str] = Field(default_factory=list)
+
+
+class DecisionAnalysisRequest(BaseModel):
+    policy: DecisionPolicyRequest
+    filters: AnalysisFilterRequest = Field(default_factory=AnalysisFilterRequest)
+    configuration_ids: list[str] | None = None
+    session_ids: list[str] | None = None
+    requirement_bindings: dict[str, RequirementBindingRequest] = Field(default_factory=dict)
+    gap_analysis: GapAnalysisRequest | None = None
+
+
+class ConfigurationDecisionResponse(BaseModel):
+    configuration_id: str
+    sensor_ids: list[str]
+    sensor_count: int
+    summary: AggregateResponse
+    # None means NO EVIDENCE - this configuration_id was named but no
+    # prediction anywhere has ever used it, so sensor_ids/sensor_count
+    # are also empty/zero. Reported explicitly, never silently dropped
+    # (v0.6 master prompt §24).
+    policy_status: PolicyStatus | None
+    dominated: bool
+    requirement_results: list[RequirementResult]
+
+
+class RequirementTransitionsResponse(BaseModel):
+    fail_to_pass: list[str]
+    na_to_pass: list[str]
+    pass_to_fail: list[str]
+    pass_to_na: list[str]
+
+
+class ConditionGapEntryResponse(BaseModel):
+    value: ConditionValue
+    baseline: AggregateResponse
+    candidate: AggregateResponse
+    coverage_delta_pp: float | None
+
+
+class SensorAdditionAnalysisResponse(BaseModel):
+    baseline_configuration_id: str
+    candidate_configuration_id: str
+    added_sensor_ids: list[str]
+    removed_sensor_ids: list[str]
+    coverage_delta_pp: float | None
+    completeness_delta_pp: float | None
+    transitions: RequirementTransitionsResponse
+    baseline_policy_status: PolicyStatus
+    candidate_policy_status: PolicyStatus
+    # Keyed by condition dimension name (from the request's group_by) -
+    # empty dict if none were requested.
+    condition_gap_summaries: dict[str, list[ConditionGapEntryResponse]] = Field(default_factory=dict)
+
+
+class DirectRemovalResponse(BaseModel):
+    removed_sensor_id: str
+    # Both None together when this exact removal was never evaluated -
+    # NO EVIDENCE, never estimated (v0.6 master prompt §24).
+    configuration_id: str | None
+    policy_status: PolicyStatus | None
+
+
+class GapAnalysisResponse(BaseModel):
+    addition: SensorAdditionAnalysisResponse | None = None
+    removal_sweep: list[DirectRemovalResponse] | None = None
+
+
+class DecisionAnalysisResponse(BaseModel):
+    policy: DecisionPolicyRequest
+    configurations: list[ConfigurationDecisionResponse]
+    sufficient_configuration_ids: list[str]
+    # Deliberately a flat list, not a list of sensor-id groups - each
+    # entry names one *evaluated configuration* whose own sensor_ids are
+    # already in `configurations` above; several may be returned, tied,
+    # never arbitrarily narrowed to one (v0.6 master prompt §9).
+    minimal_sufficient_configuration_ids: list[str]
+    pareto_front_configuration_ids: list[str]
+    gap_analysis: GapAnalysisResponse | None = None
+
+
+@router.post('/{profile_id}/decision-analysis')
+def analyze_decision(
+    profile_id: str, body: DecisionAnalysisRequest, conn: sqlite3.Connection = Depends(get_db),
+) -> DecisionAnalysisResponse:
+    profile = _require_profile(conn, profile_id)
+
+    sessions = _resolve_sessions(conn, body.session_ids)
+    tasks = sorted({r.task for r in profile.requirements})
+    configuration_ids = _resolve_configuration_ids(conn, sessions, tasks, body.configuration_ids)
+    bindings = {
+        requirement_id: EvidenceBinding(session_id=b.session_id, source_id=b.source_id)
+        for requirement_id, b in body.requirement_bindings.items()
+    }
+    results_by_configuration = _compute_requirement_results_by_configuration(
+        conn, profile, sessions, tasks, configuration_ids, bindings,
+    )
+
+    criteria = AnalysisFilter(
+        conditions=body.filters.conditions, group_id=body.filters.group_id,
+        task=body.filters.task, status=body.filters.status,
+    )
+    requirement_by_id = {r.id: r for r in profile.requirements}
+    policy = DecisionPolicy(
+        minimum_requirement_coverage=body.policy.minimum_requirement_coverage,
+        minimum_evidence_completeness=body.policy.minimum_evidence_completeness,
+        mandatory_requirements_must_pass=body.policy.mandatory_requirements_must_pass,
+        objective=body.policy.objective,
+    )
+
+    # Configurations with no resolvable sensor_ids (named but never
+    # evaluated by any real prediction) can't join policy evaluation/
+    # minimality/dominance at all - reported directly as NO EVIDENCE
+    # rows, never silently dropped.
+    no_evidence_responses: list[ConfigurationDecisionResponse] = []
+    evidence_list: list[ConfigurationEvidence] = []
+    for configuration_id, results in results_by_configuration.items():
+        filtered = filter_requirement_results(profile, results, criteria)
+        summary = aggregate_requirement_results(filtered)
+        sensor_ids = repo.get_sensor_ids_for_configuration(conn, configuration_id)
+        if sensor_ids is None:
+            no_evidence_responses.append(ConfigurationDecisionResponse(
+                configuration_id=configuration_id, sensor_ids=[], sensor_count=0,
+                summary=_to_aggregate_response(summary), policy_status=None, dominated=False,
+                requirement_results=filtered,
+            ))
+            continue
+        evidence_list.append(ConfigurationEvidence(
+            configuration_id=configuration_id, sensor_ids=frozenset(sensor_ids),
+            aggregate=summary, requirement_results=filtered,
+        ))
+
+    decisions = evaluate_configurations(evidence_list, policy)
+    decisions_by_id = {d.configuration_id: d for d in decisions}
+    dominated_ids = {d.configuration_id for d in find_dominated_configurations(decisions)}
+    minimal_ids = [d.configuration_id for d in find_minimal_sufficient_sets(find_sufficient_configurations(decisions))]
+    pareto_ids = [d.configuration_id for d in find_pareto_front(decisions)]
+
+    configurations_response = no_evidence_responses + [
+        ConfigurationDecisionResponse(
+            configuration_id=d.configuration_id,
+            sensor_ids=sorted(d.sensor_ids),
+            sensor_count=len(d.sensor_ids),
+            summary=_to_aggregate_response(d.aggregate),
+            policy_status=d.policy_status,
+            dominated=d.configuration_id in dominated_ids,
+            requirement_results=d.requirement_results,
+        )
+        for d in decisions
+    ]
+
+    gap_analysis_response = None
+    if body.gap_analysis is not None:
+        baseline = decisions_by_id.get(body.gap_analysis.baseline_configuration_id)
+        if baseline is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"gap_analysis.baseline_configuration_id "
+                    f"'{body.gap_analysis.baseline_configuration_id}' has no evidence in this analysis - "
+                    'include it via configuration_ids (or leave configuration_ids unset to discover it)'
+                ),
+            )
+
+        addition_response = None
+        if body.gap_analysis.candidate_configuration_id is not None:
+            candidate = decisions_by_id.get(body.gap_analysis.candidate_configuration_id)
+            if candidate is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"gap_analysis.candidate_configuration_id "
+                        f"'{body.gap_analysis.candidate_configuration_id}' has no evidence in this analysis"
+                    ),
+                )
+            addition = analyze_sensor_addition(baseline, candidate)
+            condition_gap_summaries = {
+                key: [
+                    ConditionGapEntryResponse(
+                        value=entry.value,
+                        baseline=_to_aggregate_response(entry.baseline),
+                        candidate=_to_aggregate_response(entry.candidate),
+                        coverage_delta_pp=entry.coverage_delta_pp,
+                    )
+                    for entry in compute_condition_gap_summary(
+                        baseline.requirement_results, candidate.requirement_results, requirement_by_id, key,
+                    )
+                ]
+                for key in body.gap_analysis.group_by
+            }
+            addition_response = SensorAdditionAnalysisResponse(
+                baseline_configuration_id=addition.baseline_configuration_id,
+                candidate_configuration_id=addition.candidate_configuration_id,
+                added_sensor_ids=addition.added_sensor_ids,
+                removed_sensor_ids=addition.removed_sensor_ids,
+                coverage_delta_pp=addition.coverage_delta_pp,
+                completeness_delta_pp=addition.completeness_delta_pp,
+                transitions=RequirementTransitionsResponse(
+                    fail_to_pass=addition.transitions.fail_to_pass,
+                    na_to_pass=addition.transitions.na_to_pass,
+                    pass_to_fail=addition.transitions.pass_to_fail,
+                    pass_to_na=addition.transitions.pass_to_na,
+                ),
+                baseline_policy_status=addition.baseline_policy_status,
+                candidate_policy_status=addition.candidate_policy_status,
+                condition_gap_summaries=condition_gap_summaries,
+            )
+
+        removal_sweep_response = None
+        if body.gap_analysis.include_removal_sweep:
+            configurations_by_sensor_set = {d.sensor_ids: d for d in decisions}
+            removal_sweep_response = [
+                DirectRemovalResponse(
+                    removed_sensor_id=r.removed_sensor_id,
+                    configuration_id=r.configuration_id,
+                    policy_status=r.policy_status,
+                )
+                for r in find_direct_removals(baseline, configurations_by_sensor_set)
+            ]
+
+        if addition_response is not None or removal_sweep_response is not None:
+            gap_analysis_response = GapAnalysisResponse(
+                addition=addition_response, removal_sweep=removal_sweep_response,
+            )
+
+    return DecisionAnalysisResponse(
+        policy=body.policy,
+        configurations=configurations_response,
+        sufficient_configuration_ids=sorted(d.configuration_id for d in find_sufficient_configurations(decisions)),
+        minimal_sufficient_configuration_ids=minimal_ids,
+        pareto_front_configuration_ids=pareto_ids,
+        gap_analysis=gap_analysis_response,
+    )
