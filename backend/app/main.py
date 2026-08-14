@@ -44,7 +44,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     db_module.connect(db_module.get_db_path()).close()
 
     global plugin_registry
-    plugin_registry = discover_plugins(disabled_plugin_ids=load_disabled_plugin_ids())
+    plugin_registry = discover_plugins(disabled_plugin_ids=load_disabled_plugin_ids(), ros_bridge=bridge)
     by_status = {status: 0 for status in PluginStatus}
     for record in plugin_registry.records.values():
         by_status[record.status] += 1

@@ -1,15 +1,47 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-95 - the SDK package, discovery/registry, and the SensorConnector
-runtime wrapper - shipped; Phases 96-106 not yet built).** This document
-is the single authoritative decision record the v0.9 phases build
-against - each phase updates its own section from *planned* to *shipped*
-as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s eventual `[0.9.0]`
-entry is the record of what actually got built. Anywhere this document
-still says a component "will" do something, that is a decision already
-made but not yet implemented - the built-in RTSP adapter and real
-config-driven `sensor_id -> ConnectorInstance` wiring start at Phase 96.
+93-96 - the SDK package, discovery/registry, the SensorConnector runtime
+wrapper, and the built-in RTSP adapter - shipped; Phases 97-106 not yet
+built).** This document is the single authoritative decision record the
+v0.9 phases build against - each phase updates its own section from
+*planned* to *shipped* as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s
+eventual `[0.9.0]` entry is the record of what actually got built.
+Anywhere this document still says a component "will" do something, that
+is a decision already made but not yet implemented - config-driven
+`sensor_id -> ConnectorInstance` wiring at container boot (so a real
+`config/sensors.yaml` `connector:` block actually produces a running,
+polled connector) is not yet built; Phase 96 registers the built-in RTSP
+plugin itself and proves its health-mapping logic, Phase 103 exercises
+it against RideSafe/PropertyWatch's real sensor ids.
+
+## Built-in RTSP adapter (Phase 96 - shipped)
+
+`backend/app/plugins/builtin_rtsp.py`'s `RtspSensorConnector` is
+**descriptor-only** over the existing, completely unchanged v0.1
+pipeline - `rtsp_ingestion_node.py`/`sensor_config.py`/
+`ingestion.launch.py` were not touched at all. `start()`/`stop()` are
+bookkeeping only (the real stream starts/stops via ROS launch at
+container boot, independent of this object); `health()` is a pure
+mapping function from `RosBridge.snapshot()['sensors'][sensor_id]`
+(already keyed by `hardware_id`, which is exactly the sensor `id` from
+`config/sensors.yaml` - no id/modality translation needed) into
+`ConnectorHealth` - `connection_state == 'connected'` maps to `RUNNING`,
+anything else (including "no diagnostics yet") maps to `DEGRADED`, never
+a hard `FAILED` this connector itself didn't cause. `sample()` always
+returns `None` - video stays data-plane
+([architecture.md](architecture.md#the-two-planes-controltelemetry-vs-video)),
+never routed through this object; `video_relay.py` and the ROS image
+topic remain the only ways to see actual pixels, unchanged. Registered
+in `discover_plugins()` only when a real `RosBridge` is supplied (`app/
+main.py` does; most tests don't need one). Proven by 12 dedicated tests,
+including `ridesafe_front_rgb`/`ridesafe_rear_rgb` sharing one connector
+*implementation* while staying fully independent connector *instances* -
+this project's own flagship "plugin type != sensor instance"
+demonstration (validated further in Phase 103). Live-verified: a fresh
+`docker compose build`/`up` shows `plugin discovery: 4 available` (three
+built-in evaluators + this connector) with `/api/sensors` and every
+other v0.1 endpoint completely unaffected.
 
 ## SensorConnector runtime wrapper (Phase 95 - shipped)
 

@@ -212,25 +212,34 @@ def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_id
 
 def discover_plugins(
     *, disabled_plugin_ids: Iterable[str] = (), entry_points: Iterable[Any] | None = None,
+    ros_bridge: Any = None,
 ) -> PluginRegistry:
-    """Builds a fresh `PluginRegistry`. Built-in evaluators register
-    first (directly, not via entry points); external plugins are
-    discovered from `multisens.plugins` entry points second, so a
-    built-in and an external plugin colliding on the same `plugin_id`
-    goes through the identical duplicate-rejection path either way.
+    """Builds a fresh `PluginRegistry`. Built-in evaluators (and, if
+    `ros_bridge` is supplied, the built-in RTSP `SensorConnector` - Phase
+    96) register first (directly, not via entry points); external
+    plugins are discovered from `multisens.plugins` entry points second,
+    so a built-in and an external plugin colliding on the same
+    `plugin_id` goes through the identical duplicate-rejection path
+    either way.
 
     `entry_points` is injectable purely for testing (a list of
     entry-point-like objects with `.name`/`.load()`/optionally `.dist`) -
     `None` (the default) calls the real
     `importlib.metadata.entry_points(group=ENTRY_POINT_GROUP)`.
+    `ros_bridge` is `None` by default (most tests have no real
+    `RosBridge` and don't need the RTSP connector registered at all);
+    `app/main.py` passes its own real bridge instance.
     """
     from app.domain.evaluators import EVALUATOR_REGISTRY
+    from app.plugins.builtin_rtsp import RtspSensorConnector
 
     registry = PluginRegistry()
     disabled = set(disabled_plugin_ids)
 
     for evaluator in EVALUATOR_REGISTRY.values():
         register_built_in(registry, evaluator, source='multisens')
+    if ros_bridge is not None:
+        register_built_in(registry, RtspSensorConnector(ros_bridge), source='multisens')
 
     resolved_entry_points = (
         entry_points if entry_points is not None
