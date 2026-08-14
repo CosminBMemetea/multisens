@@ -21,7 +21,12 @@ BUILT_IN_EVALUATOR_IDS = {
 class _FakePlugin:
     """Minimal - only `descriptor()` matters for these registry-level
     tests; runtime methods (`start`/`evaluate`/...) belong to Phase 95+'s
-    own connector-specific tests."""
+    own connector-specific tests. `available_metrics()` is here purely so
+    a PluginType.RESOURCE_COLLECTOR-typed instance satisfies Phase 99's
+    own registration hook (app/plugins/registry.py calls it
+    unconditionally for that plugin type) - empty by default, meaning
+    "declares no new metrics," never exercised further by these
+    registry-level tests."""
     def __init__(self, plugin_id: str, api_version: str = MULTISENS_PLUGIN_API_VERSION,
                  plugin_type: PluginType = PluginType.SENSOR_CONNECTOR):
         self._descriptor = PluginDescriptor(
@@ -31,6 +36,9 @@ class _FakePlugin:
 
     def descriptor(self) -> PluginDescriptor:
         return self._descriptor
+
+    def available_metrics(self) -> list:
+        return []
 
 
 class _RaisingDescriptorPlugin:

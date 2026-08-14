@@ -95,6 +95,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.domain.coverage import ACCEPTANCE_OPERATORS
 from app.domain.decision import ConfigurationDecision, PolicyStatus
 from app.domain.profiles import AcceptanceCriterion
+from multisens_sdk.connectors import ResourceMetricDescriptor
 from multisens_sdk.models import ResourceObservation, ResourceQuality
 
 # v0.9 (Phase 93) note: ResourceQuality/ResourceObservation are no longer
@@ -135,6 +136,34 @@ SUPPORTED_RESOURCE_METRICS: dict[str, str] = {
     'fps': 'fps',
     'pipeline_latency_ms': 'ms',
 }
+
+
+class DuplicateResourceMetricError(Exception):
+    """Raised by `register_resource_metrics` when a plugin declares a
+    metric name that's already registered under a *different* unit - the
+    same metric name re-declared with the *same* unit (two independent
+    collectors both legitimately reporting `cpu_percent` in `%`) is
+    fine, only a unit mismatch is a real hazard (silently changing what
+    an existing, already-relied-upon metric name means)."""
+
+
+def register_resource_metrics(descriptors: list[ResourceMetricDescriptor]) -> None:
+    """Unions a `ResourceCollector` plugin's own `available_metrics()`
+    into `SUPPORTED_RESOURCE_METRICS` (v0.9, Phase 99) - a new metric
+    like `gpu_percent` becomes valid only once a plugin that actually
+    declares it is registered, never a permanently open vocabulary. All
+    descriptors are validated before any are applied - either every
+    metric registers, or (on a unit conflict) none does, never a
+    half-registered plugin."""
+    for d in descriptors:
+        existing_unit = SUPPORTED_RESOURCE_METRICS.get(d.metric)
+        if existing_unit is not None and existing_unit != d.unit:
+            raise DuplicateResourceMetricError(
+                f"metric '{d.metric}' is already registered with unit '{existing_unit}' - "
+                f"cannot re-register it with a different unit '{d.unit}'"
+            )
+    for d in descriptors:
+        SUPPORTED_RESOURCE_METRICS[d.metric] = d.unit
 
 
 class ExecutionPlatform(BaseModel):

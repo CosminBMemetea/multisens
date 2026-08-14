@@ -1,10 +1,43 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-98 - the SDK package, discovery/registry, the SensorConnector runtime
+93-99 - the SDK package, discovery/registry, the SensorConnector runtime
 wrapper, the built-in RTSP adapter, the Prediction/GroundTruth connector
-wrappers, and external evaluator plugins - shipped; Phases 99-106 not
-yet built).**
+wrappers, external evaluator plugins, and external resource-collector
+plugins - shipped; Phases 100-106 not yet built).**
+
+## External resource-collector plugins (Phase 99 - shipped)
+
+`SUPPORTED_RESOURCE_METRICS` (`app/domain/resources.py`) is genuinely
+extensible now, the same pattern `EVALUATOR_REGISTRY` got in Phase 98: a
+`RESOURCE_COLLECTOR`-type plugin's own `available_metrics()` are unioned
+in via `register_resource_metrics()` as part of the same
+`discover_plugins()` pass - a new metric name (`gpu_percent`, say)
+becomes valid only once a registered plugin actually declares it, never
+a permanently open vocabulary. Re-declaring an *existing* metric under
+its *same* unit is fine (two independent collectors both legitimately
+reporting `cpu_percent` in `%`); a *different* unit for an existing name
+is rejected - and validated all-or-nothing across every metric a plugin
+declares, never a half-registered plugin from one conflicting entry
+among several clean ones.
+
+`backend/app/plugins/resource_collector_instance.py`'s
+`ResourceCollectorInstance` wraps a `ResourceCollector` plugin with the
+same lifecycle discipline as every other connector wrapper in this
+package; `sample()` filters out anything that isn't actually a
+`ResourceObservation`. Emitted observations flow through the *existing*,
+completely unchanged v0.7 ingestion/summary/trade-off pipeline - no core
+edits to `resources.py`'s own summary/comparability/qualification logic
+at all.
+
+Proven by 16 dedicated tests, including the full acceptance bar: a
+test-only external `synthetic_metric` collector, discovered through the
+real entry-point mechanism, has its metric rejected by `/tradeoffs`
+*before* registration and accepted *after*, with a genuine zero value
+and an explicit `unavailable` quality both flowing through exactly as
+honestly as any built-in metric always has (zero is a real measurement,
+never confused with "no value"; `unavailable` means genuinely no value,
+never a fabricated number).
 
 ## External evaluator plugins (Phase 98 - shipped)
 

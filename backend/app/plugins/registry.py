@@ -221,6 +221,23 @@ def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_id
             ))
             return
 
+    # A RESOURCE_COLLECTOR-type plugin's own available_metrics() are
+    # unioned into SUPPORTED_RESOURCE_METRICS (v0.9, Phase 99) - a new
+    # metric name is valid only once a registered plugin actually
+    # declares it, never a permanently open vocabulary. All-or-nothing:
+    # a unit conflict on any one declared metric fails the whole
+    # plugin's registration, never a half-applied metric set.
+    if descriptor.plugin_type == PluginType.RESOURCE_COLLECTOR:
+        from app.domain.resources import DuplicateResourceMetricError, register_resource_metrics
+        try:
+            register_resource_metrics(instance.available_metrics())
+        except DuplicateResourceMetricError as e:
+            _register(registry, PluginRecord(
+                plugin_id=plugin_id, status=PluginStatus.LOAD_FAILED, descriptor=descriptor, instance=None,
+                error=str(e), distribution_name=distribution_name, distribution_version=distribution_version,
+            ))
+            return
+
     _register(registry, PluginRecord(
         plugin_id=plugin_id, status=PluginStatus.AVAILABLE, descriptor=descriptor, instance=instance,
         error=None, distribution_name=distribution_name, distribution_version=distribution_version,
