@@ -1,11 +1,41 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-100 - the SDK package, discovery/registry, the SensorConnector
+93-101 - the SDK package, discovery/registry, the SensorConnector
 runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
 connector wrappers, external evaluator plugins, external
-resource-collector plugins, and the contract test kit - shipped; Phases
-101-106 not yet built).**
+resource-collector plugins, the contract test kit, and the reference
+external plugin - shipped; Phases 102-106 not yet built).**
+
+## Reference plugin (Phase 101 - shipped) - the actual clean-room test
+
+[`examples/plugins/environment-sensor/`](../examples/plugins/environment-sensor/)
+is a real, independently installable package
+(`multisens-example-environment-sensor`) shipping two plugins:
+`multisens.example.sensor.environment-sensor` (a deterministic synthetic
+temperature/humidity `SensorConnector` - proof MultiSens plugin
+extensibility is not camera-specific) and
+`multisens.example.resource.synthetic-metric` (a deterministic
+`ResourceCollector` metric). Every value either produces is generated
+from a fixed pattern, labeled `SYNTHETIC SAMPLE SOURCE` - never a real
+measurement.
+
+**This is the actual test of the SDK boundary, not just an assertion of
+one**: installed into a genuinely clean Python 3.11 virtualenv (no
+Docker, no ROS, no MultiSens checkout beyond these two directories) via
+plain `pip install ./sdk && pip install ./examples/plugins/environment-sensor`,
+its own 14-test suite (`tests/test_boundary.py`'s AST-based import check
+plus `tests/test_environment_sensor.py`'s full descriptor/configure/
+start/sample/health/stop/failure walkthrough, using only
+`multisens_sdk.testing`'s contract helpers) passed with zero
+`backend.app`/`frontend`/`ros2_ws` imports anywhere. `importlib.metadata.entry_points(group="multisens.plugins")`
+found both plugins correctly in that same clean environment. Rebuilding
+a real MultiSens backend image with this plugin `pip install`ed on top
+(the exact `RUN pip install my-plugin` pattern this document's own
+[Packaging](#packaging) section documents) produced a real startup log
+`plugin discovery: 5 available` - the three built-ins plus both example
+plugins, discovered through `discover_plugins()`'s real, unmodified code
+path, zero core changes needed for either plugin to work.
 
 ## Contract test kit (Phase 100 - shipped)
 

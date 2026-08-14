@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-example-environment-sensor"
+version = "0.1.0"
+description = "Reference MultiSens plugin - a deterministic synthetic temperature/humidity SensorConnector plus a synthetic ResourceCollector metric. Demonstrates the multisens-sdk plugin boundary using only public SDK contracts - imports nothing from MultiSens internals."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MultiSens Project" }]
+requires-python = ">=3.10"
+dependencies = ["multisens-sdk"]
+
+[project.optional-dependencies]
+testing = ["multisens-sdk[testing]", "pytest>=8.0"]
+
+[project.entry-points."multisens.plugins"]
+"multisens.example.sensor.environment-sensor" = "multisens_environment_sensor.sensor:create"
+"multisens.example.resource.synthetic-metric" = "multisens_environment_sensor.resource:create"
+
+[tool.setuptools.packages.find]
+include = ["multisens_environment_sensor*"]
