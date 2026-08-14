@@ -5,6 +5,175 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [0.9.0] — Plugin SDK & external integration framework
+
+Built phase by phase (Phase 92 through Phase 106), same discipline as
+v0.1-v0.8: a full architecture review before any code (a 40-question
+review plus a mandatory paper-design test - hypothetical `robot_lidar`/
+`robot_imu` connectors using only the SDK, proving zero core imports
+needed - reviewed and approved before Phase 92 implementation began),
+explicit self-review checkpoints per phase, nothing merged without
+running against a real container. Introduces a small, closed **plugin
+SDK** (`sdk/` - the independently installable `multisens_sdk` package)
+so a new sensor, prediction/ground-truth source, evaluator, or
+resource-telemetry integration can be added by installing a Python
+package and restarting - the same "add a capability without editing
+core" shift v0.8 already made for evaluators, generalized to every
+extensibility surface. Full domain model, trust model, and API
+reference: [docs/plugin-sdk.md](docs/plugin-sdk.md) /
+[docs/connector-api.md](docs/connector-api.md).
+
+**Plugins are trusted local software, not sandboxed** - stated
+explicitly and repeatedly (README, docs/plugin-sdk.md, a startup log
+line whenever any non-built-in plugin loads), verified concretely in
+Phase 105 rather than only documented.
+
+### Added (v0.9 plugin SDK)
+
+- **`multisens_sdk` package** (Phase 93): the canonical wire-shape
+  models (`GroundTruth`/`Prediction`/`EvaluationResult`/
+  `ResourceObservation`/`MetricValue`/etc.) relocated from `backend/`,
+  moved not rewritten - `backend/app/domain/{models,matching,
+  evaluator_output,resources}.py` became thin re-export shims, proven
+  identical via `X is SdkX` checks and the full pre-existing 730-test
+  suite passing unchanged. Five typed `Protocol` contracts
+  (`SensorConnector`/`PredictionConnector`/`GroundTruthConnector`/
+  `EvaluatorPlugin`/`ResourceCollector`), `PluginDescriptor`/
+  `PluginType`/`MULTISENS_PLUGIN_API_VERSION`, `ConnectorState`/
+  `ConnectorHealth`/`SensorSample`. A real packaging bug found and fixed
+  before shipping: the base image's system pip silently mis-resolved
+  the SDK's PEP 621 metadata; fixed by upgrading pip as the Dockerfile's
+  first step.
+- **Discovery & registry** (Phase 94): `discover_plugins()` via
+  `importlib.metadata.entry_points(group="multisens.plugins")` - never
+  directory scanning, never a blind import. Entry-point name must equal
+  `descriptor().plugin_id` (lets `plugins.disabled` suppress a plugin
+  *before* its code is ever imported). `PluginStatus`
+  (`AVAILABLE`/`INCOMPATIBLE`/`LOAD_FAILED`/`DISABLED`) tracked
+  separately from runtime `ConnectorState`. Duplicate `plugin_id`s
+  reject both sides deterministically; every call into plugin code is
+  individually guarded so one broken plugin never stops discovery of
+  the next.
+- **`SensorConnector` runtime wrapper** (Phase 95): `ConnectorInstance` -
+  mutating calls (`configure`/`start`/`stop`) raise a clean exception
+  and move state to `FAILED` first; observational calls (`health`/
+  `sample`) never raise. Idempotent `start()`/`stop()`, a 65,536-byte
+  small-payload cap on `sample()`, and the `*_env` secret-reference
+  convention (`password_env: CAMERA_PASSWORD`, resolved from
+  `os.environ` at connect time only, never persisted or echoed).
+- **Built-in RTSP adapter** (Phase 96): `multisens.builtin.sensor.rtsp` -
+  descriptor-only over the existing, completely unchanged v0.1
+  ingestion pipeline; `health()` maps from `RosBridge.snapshot()`,
+  `sample()` always `None` (video stays data-plane). The flagship "one
+  connector implementation, many independent sensor instances"
+  demonstration: `ridesafe_front_rgb`/`ridesafe_rear_rgb` sharing one
+  plugin while staying fully independent.
+- **Prediction + GroundTruth connectors** (Phase 97): pull-based
+  `PredictionConnectorInstance`/`GroundTruthConnectorInstance` plus
+  `PollRunner`, a background thread forwarding through the same
+  `repository.insert_batch_with_partial_failure` the REST batch
+  endpoints already use - a connector is a code-driven way to call an
+  endpoint that already exists, never a second ingestion mechanism.
+- **External evaluator plugins** (Phase 98): `register_evaluator()` -
+  `EVALUATOR_REGISTRY` becomes genuinely extensible at runtime.
+  `evaluator_type` is a namespace separate from `plugin_id`, checked
+  independently; a collision rejects only the later registrant, a
+  built-in never silently overridden. Full acceptance bar proven: a
+  test-only external evaluator flows through `/evaluate` ->
+  `EvaluationResult` -> `/coverage` -> `/compare`, zero core edits
+  beyond registry wiring.
+- **External resource-collector plugins** (Phase 99):
+  `register_resource_metrics()` - `SUPPORTED_RESOURCE_METRICS` becomes
+  extensible, all-or-nothing per plugin. `ResourceCollectorInstance`
+  follows the same lifecycle discipline as every other connector
+  wrapper.
+- **Contract test kit** (Phase 100): `multisens_sdk.testing` (opt-in
+  `[testing]` extra) - framework-agnostic `assert_valid_plugin_descriptor`/
+  `assert_connector_lifecycle`/`assert_health_contract`/
+  `assert_evaluator_output_shape`/`assert_evaluator_deterministic`/
+  `assert_resource_observation_shape`, each proven against both a
+  passing fake and a deliberately-broken one.
+- **Reference external plugin** (Phase 101):
+  `examples/plugins/environment-sensor/` - a real, independently
+  installable package proving two plugin categories (a synthetic
+  temperature/humidity `SensorConnector`, a synthetic
+  `ResourceCollector` metric) with one small package. The actual
+  clean-room test: installed into a genuinely clean Python virtualenv
+  with zero MultiSens tooling, its own 14-test suite passed with zero
+  `backend.app`/`frontend`/`ros2_ws` imports anywhere.
+- **Integrations API + UI** (Phase 102): five read-only routes
+  (`GET /api/plugins`, `/api/plugins/{id}`, `/api/plugins/{id}/capabilities`,
+  `/api/connectors`, `/api/connectors/{sensor_id}`) - no
+  install/uninstall/start/stop endpoint anywhere. `app/plugins/manager.py`'s
+  `build_connector_instances()` finally executes the `config/sensors.yaml`
+  `connector:` block Phase 95 only documented, one fresh connector
+  object per sensor id via a new `PluginRecord.factory` field.
+  `redact_secrets()` scrubs any `password`/`token`/`secret`/`key`-shaped
+  dict key from every response. New `/integrations` frontend page.
+- **RideSafe/PropertyWatch validation** (Phase 103): a dedicated test
+  proves all five existing public demo sensor identities
+  (`ridesafe_front_rgb`/`ridesafe_rear_rgb`,
+  `property_entrance_rgb`/`property_storage_rgb`/`property_indoor_rgb`)
+  get independent `ConnectorInstance` objects from one plugin - via a
+  temp config, deliberately never the repo's own live
+  `config/sensors.yaml` (would surface them on the Dashboard and
+  collide with ROS ingestion's one-sensor-per-modality live-ingestion
+  limit). Not a new live-video claim.
+- **Robot/drone extensibility validation** (Phase 104): the
+  architecture review's own `robot_lidar`/`robot_imu` paper design,
+  built for real as two test-only plugins - proves connector
+  registration/routing for a LiDAR/IMU-shaped sensor type, explicitly
+  never point-cloud geometry or IMU signal semantic understanding.
+- **Robustness & security review** (Phase 105): 13 new tests closing a
+  lifecycle-failure coverage gap, a testability refactor
+  (`stop_connector_instances()`), a trust-model exercise (a plugin
+  reading environment variables directly and writing to the filesystem
+  runs completely normally - no more, no less permissive than
+  documented), and a pinned secret-redaction scope boundary. A
+  security-honesty grep pass across every `sandbox`/`isolat`/`secure`
+  mention found and fixed two real documentation-accuracy gaps (see
+  Fixed, below).
+
+### Fixed (v0.9)
+
+- **Trust-model disclosure claimed to be "stated in the README" when it
+  wasn't** (Phase 105) - `README.md` had zero mention of the
+  no-sandboxing disclosure `docs/plugin-sdk.md`'s Trust model section
+  said it carried. Fixed by adding it as a new "What MultiSens is NOT"
+  bullet, making the existing claim true.
+- **Stale cross-reference in docs/plugin-sdk.md** (Phase 105) - the
+  Phase 97 section still said config-driven connector wiring "is not
+  yet built," true when written, false since Phase 102 shipped it.
+  Corrected to point at the real implementation.
+- **A Phase 94 test fixture broke when Phase 99's registry hook started
+  calling `available_metrics()` unconditionally for
+  `RESOURCE_COLLECTOR`-typed plugins** - caught by the full regression
+  run before committing, fixed by adding the method to the shared fake.
+
+### Known limitations (v0.9)
+
+- No true process isolation - in-process exception guarding only (a
+  discovery-time or runtime-method exception never crashes the process
+  or affects another plugin); no seccomp, no separate OS user, no
+  per-plugin container isolation. See
+  [docs/plugin-sdk.md#trust-model](docs/plugin-sdk.md#trust-model).
+- Exact-match-only plugin API-version compatibility, no range matching.
+- No plugin configuration-editing UI and no connector start/stop
+  mutation API - config changes require a restart, same as v0.1's
+  sensor config.
+- No first-class LiDAR/point-cloud/IMU schemas in core - `data_type` is
+  an open string core never semantically interprets.
+- `redact_secrets()` redacts dict keys only; `health.message` is free
+  text from a plugin's own exception and is deliberately never
+  pattern-redacted.
+- `multisens_sdk`'s ARM64/Jetson compatibility is reviewed (pure Python
+  + `pydantic`, no native deps), not tested against real hardware - none
+  was reachable in this development environment.
+- Backend: 200 new tests (730 → 930). Frontend: unchanged (47/47),
+  `tsc`/`oxlint` clean throughout - v0.9 added one new page
+  (`/integrations`) with no new pure-function logic requiring its own
+  unit test.
+
 ## [0.8.0] — multi-task evaluation & robotics/drone readiness
 
 Built phase by phase (Phase 78 through Phase 90), same discipline as

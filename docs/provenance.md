@@ -151,6 +151,36 @@ a consistency win.
   without auto-reconciliation (v0.7) - the same posture `EvidenceBinding`
   established in v0.4 for ambiguous multi-source evaluation evidence.
 
+## Design provenance: the v0.9 Plugin SDK
+
+This document's four dimensions are about *data* provenance - where a
+number came from. One more question is worth answering explicitly for
+v0.9's Plugin SDK specifically, since it's the first layer whose own
+*design* - not any data it produces - is a new extensibility surface:
+**where did this design come from?**
+
+`multisens_sdk`'s shape - a small, closed set of typed `Protocol`
+contracts (`SensorConnector`/`PredictionConnector`/`GroundTruthConnector`/
+`EvaluatorPlugin`/`ResourceCollector`), Python entry-point discovery
+(`importlib.metadata.entry_points`), a `PluginDescriptor`/
+`MULTISENS_PLUGIN_API_VERSION` identity/versioning scheme, and a trusted-
+code (not sandboxed) execution model - is built entirely from two
+sources: **this project's own existing generic architecture**
+(`EVALUATOR_REGISTRY`'s v0.8 extensibility pattern, generalized to four
+more plugin types the same way; the data-plane/control-plane split
+`video_relay.py` already established, reused rather than reinvented -
+see [architecture.md](architecture.md#the-two-planes-controltelemetry-vs-video))
+and **standard Python
+packaging conventions** (`pyproject.toml` entry points - the same
+mechanism `pytest`, `flake8`, and hundreds of other widely-used Python
+tools use for their own plugin discovery, not a MultiSens invention).
+
+No proprietary system, employer codebase, or non-public design was
+consulted or reused in any form - verified explicitly during the Phase
+92 architecture review before any v0.9 code was written, and re-verified
+during Phase 105's robustness/security review. `docs/plugin-sdk.md`
+itself is the full decision record.
+
 ## How to verify any specific claim
 
 If a number in this project looks surprising, the fastest way to check

@@ -228,6 +228,34 @@ release, not silently worked around now.
   a local-only v0.1 tool with no auth or cookies, wrong for anything
   reachable beyond localhost.
 - **No authentication anywhere.**
+- **v0.9's Plugin SDK provides in-process failure isolation only, never
+  true sandboxing.** A plugin executes with the full permissions of the
+  backend process (filesystem, network, environment variables,
+  everything) - no seccomp, no separate OS user, no per-plugin container
+  isolation. What v0.9 does catch: a discovery-time or runtime-method
+  exception in plugin code, converted to `LOAD_FAILED`/`FAILED` and never
+  propagated to crash the process or affect another plugin. What it
+  cannot catch: a plugin that blocks forever synchronously, a
+  native-extension segfault, a thread/file-descriptor leak, or anything
+  done deliberately with the process's own permissions. See
+  [plugin-sdk.md#trust-model](plugin-sdk.md#trust-model) and
+  [plugin-sdk.md#failure-isolation---achievable-and-not](plugin-sdk.md#failure-isolation---achievable-and-not).
+- **Exact-match-only plugin API-version compatibility.** A plugin
+  declaring any `api_version` other than the exact string MultiSens
+  provides is `INCOMPATIBLE` - no range matching, no forward/backward
+  compatibility guessing.
+- **No plugin configuration-editing UI, and no connector start/stop
+  mutation API.** A connector's config (`config/sensors.yaml`'s
+  `connector:` block) only ever changes by editing the file and
+  restarting the container - `/api/plugins`/`/api/connectors`
+  (Phase 102) are read-only observability, matching v0.1's own sensor
+  config precedent.
+- **No first-class LiDAR/point-cloud/IMU schemas in core.** A
+  `SensorSample.data_type` is an open string core never semantically
+  interprets - "can register a connector for LiDAR/IMU-shaped data"
+  (proven, Phase 104) is never conflated with "core understands
+  point-cloud geometry or IMU signal semantics" (not built, not
+  claimed).
 
 ## Environment-specific assumptions
 
@@ -265,6 +293,13 @@ release, not silently worked around now.
   fabricated to fill the gap. The domain model gained zero
   Jetson/NVIDIA-specific fields either way - a GPU metric, if ever
   collected, is just another entry in the open `metric` vocabulary.
+- **v0.9's `multisens_sdk` package is ARM64/Jetson-*reviewed*, not
+  tested.** The design (pure Python + `pydantic`, no native dependencies
+  anywhere in the SDK) was checked for architecture-specific risk and
+  found to have none - but no Jetson or other ARM64 hardware was
+  reachable in this development environment to actually run it on, the
+  same honest deferral as the resource-trade-offs cross-platform gap
+  above.
 
 ## Honestly-reported, not yet resolved
 

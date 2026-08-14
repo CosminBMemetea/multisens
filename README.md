@@ -1,6 +1,6 @@
 # MultiSens
 
-[![v0.8.0](https://img.shields.io/badge/release-v0.8.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.8.0)
+[![v0.9.0](https://img.shields.io/badge/release-v0.9.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v0.9.0)
 
 An open-source, vendor-neutral platform for ingesting, synchronizing,
 diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
@@ -85,6 +85,22 @@ whatever else speaks RTSP.
   [docs/provenance.md](docs/provenance.md).
 - Built to work identically whether a stream comes from the reference
   webcam simulator, a real sensor, or a gateway that happens to speak RTSP.
+- **A plugin SDK for external integration** (v0.9): MultiSens can be
+  extended with a new sensor, prediction/ground-truth source, evaluator,
+  or resource-telemetry integration by installing an ordinary Python
+  package and restarting - no MultiSens core code edited. This is a
+  verified claim, not an aspirational one: a real independently-installable
+  reference plugin (`examples/plugins/environment-sensor/`) was installed
+  into a genuinely clean Python virtualenv with zero MultiSens tooling and
+  discovered correctly; a second, robotics-flavored pair of test plugins
+  (synthetic LiDAR/IMU connectors) proved the same SDK against a
+  non-camera domain; and a real Docker image rebuilt with the reference
+  plugin `pip install`ed on top discovered all 6 plugins (3 built-in
+  evaluators, the built-in RTSP connector, both example plugins)
+  correctly at boot. Plugins are **trusted local software** with the full
+  permissions of the backend process - see
+  [What MultiSens is NOT](#what-multisens-is-not) and
+  [docs/plugin-sdk.md](docs/plugin-sdk.md).
 
 ## What MultiSens is NOT
 
@@ -470,7 +486,17 @@ task profiles over the same two generic evaluators — no new
 evaluator-specific logic per task name. Every other layer (comparison,
 coverage, decision, trade-offs) is evaluator-blind by construction and
 needed zero engine changes to support the new evaluators — see
-[docs/evaluators.md](docs/evaluators.md).
+[docs/evaluators.md](docs/evaluators.md). v0.9 added a plugin SDK for
+external integration: a small, independently-installable
+`multisens_sdk` package (canonical wire-shape models plus five typed
+connector/evaluator/resource-collector `Protocol` contracts), Python
+entry-point discovery, per-sensor connector lifecycle wrapping with
+strict failure isolation, and a read-only `/integrations` page — a new
+sensor, prediction/ground-truth source, evaluator, or resource-telemetry
+integration is now an installable Python package, never a MultiSens core
+edit. Plugins are trusted local software (no sandboxing, stated
+explicitly and repeatedly, never implied otherwise) — see
+[docs/plugin-sdk.md](docs/plugin-sdk.md).
 
 Not yet built, deliberately: perception/ML inference (MultiSens evaluates
 predictions, it does not produce them), sensor fusion, causal/statistical
@@ -531,9 +557,9 @@ cloud deployment. See
 - [docs/regression-evaluation.md](docs/regression-evaluation.md) —
   scalar value/unit schema, MAE/RMSE/bias/median, unit-mismatch rules
   (v0.8)
-- [docs/plugin-sdk.md](docs/plugin-sdk.md) — v0.9 Plugin SDK &
-  External Integration Framework: architecture decisions approved ahead
-  of implementation, updated phase by phase as it ships
+- [docs/plugin-sdk.md](docs/plugin-sdk.md) — v0.9 Plugin SDK & External
+  Integration Framework: the `multisens_sdk` package, discovery/registry,
+  connector lifecycle, trust model, and the read-only integrations API/UI
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

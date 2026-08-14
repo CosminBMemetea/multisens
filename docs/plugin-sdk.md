@@ -1,14 +1,54 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
-**Status: in progress (Phase 92 architecture review approved; Phases
-93-105 - the SDK package, discovery/registry, the SensorConnector
-runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
-connector wrappers, external evaluator plugins, external
-resource-collector plugins, the contract test kit, the reference
-external plugin, the read-only integrations API/UI, the
+**Status: shipped (v0.9.0).** Phase 92's architecture review was approved
+before any code; Phases 93-106 - the SDK package, discovery/registry,
+the SensorConnector runtime wrapper, the built-in RTSP adapter, the
+Prediction/GroundTruth connector wrappers, external evaluator plugins,
+external resource-collector plugins, the contract test kit, the
+reference external plugin, the read-only integrations API/UI, the
 RideSafe/PropertyWatch connector-architecture validation, the
-robot/drone extensibility validation, and the robustness & security
-review - shipped; Phase 106 not yet built).**
+robot/drone extensibility validation, the robustness & security review,
+and release preparation - all shipped. See
+[CHANGELOG.md](../CHANGELOG.md)'s `[0.9.0]` entry for the complete,
+reconstructed-from-commit-history record of what was actually built.
+
+## Release preparation (Phase 106 - shipped)
+
+Full `docker compose down && docker compose build --no-cache && docker
+compose up` regression pass - all three images rebuilt from scratch, all
+three containers healthy, the full 930-test backend suite re-run against
+the fresh containers, the persisted evaluation database's demo data
+(sessions, profiles, RideSafe/PropertyWatch/Robot-Drone/Sensor-Lab
+sessions) reloaded and verified reachable, a fresh throwaway image with
+Phase 101's reference plugin installed via a custom layer discovering
+all 6 plugins correctly, and a live cross-page Playwright pass
+(Dashboard, Sessions, a session detail page, Comparison, Profiles, and
+the new Integrations page) with zero console errors throughout.
+
+Documentation brought current against the actually-shipped
+implementation, not aspirational text: `README.md` (a new, evidence-backed
+"MultiSens can be extended..." statement in "What MultiSens is," a new
+"Not a sandboxed plugin platform" bullet in "What MultiSens is NOT," a
+v0.9 Roadmap paragraph, release badge bumped to v0.9.0),
+`docs/provenance.md` (a new "Design provenance" section - the plugin
+SDK's design basis is this project's own existing generic architecture
+plus standard Python packaging conventions, no proprietary or employer
+basis, verified fresh both at Phase 92 and again here),
+`docs/limitations.md` (new v0.9 scope-boundary and environment-assumption
+entries - in-process failure isolation only, exact-match API versioning,
+no config-editing/mutation UI, no first-class LiDAR/IMU schemas,
+`multisens_sdk` ARM64/Jetson reviewed-not-tested), `docs/architecture.md`
+(its existing Phase-92-era forward pointer re-verified accurate, no
+change needed), and this document's own Status banner updated to
+`shipped`. `CHANGELOG.md`'s `[0.9.0]` entry reconstructed from the real
+Phase 92-105 commit history (Added/Fixed/Known limitations, exact test
+counts).
+
+Security-honesty grep pass repeated fresh against the final shipped
+content (every `sandbox`/`isolat`/`secure` mention across `README.md`,
+every v0.9 doc, the SDK, and the plugin backend code) plus a fresh
+employer/proprietary-language and overclaim scan across the same
+surface - zero new gaps found beyond the two Phase 105 already fixed.
 
 ## Robustness & security review (Phase 105 - shipped)
 
