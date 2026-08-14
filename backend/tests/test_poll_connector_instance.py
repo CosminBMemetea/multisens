@@ -137,6 +137,46 @@ def test_poll_that_raises_moves_to_failed_and_returns_empty_not_a_crash():
     assert instance.state == ConnectorState.FAILED
 
 
+# --- start()/stop()/health() failure (v0.9, Phase 105 robustness review -
+# these three paths already existed in _PollConnectorInstance's own source
+# since Phase 97, but had no dedicated test proving they actually move the
+# connector to FAILED rather than propagating unguarded) --------------------
+
+def test_prediction_connector_start_failure_raises_and_moves_to_failed():
+    plugin = _FakePredictionPlugin()
+    plugin.fail_start = True
+    instance = PredictionConnectorInstance('acme.prediction.mock', plugin)
+    instance.configure({})
+    with pytest.raises(ConnectorRuntimeError):
+        instance.start()
+    assert instance.state == ConnectorState.FAILED
+
+
+def test_prediction_connector_stop_failure_raises_and_moves_to_failed():
+    instance, plugin = _running_prediction_instance()
+
+    def _explode():
+        raise RuntimeError('deliberately broken stop()')
+    plugin.stop = _explode
+
+    with pytest.raises(ConnectorRuntimeError):
+        instance.stop()
+    assert instance.state == ConnectorState.FAILED
+
+
+def test_prediction_connector_health_call_that_raises_moves_to_failed_never_propagates():
+    instance, plugin = _running_prediction_instance()
+
+    def _explode():
+        raise RuntimeError('deliberately broken health()')
+    plugin.health = _explode
+
+    health = instance.health()  # must not raise
+    assert health.state == ConnectorState.FAILED
+    assert 'deliberately broken health()' in health.message
+    assert instance.state == ConnectorState.FAILED
+
+
 def test_ground_truth_poll_filters_non_ground_truth_items():
     plugin = _FakePredictionPlugin()
     instance = GroundTruthConnectorInstance('acme.groundtruth.mock', plugin)

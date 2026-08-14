@@ -68,3 +68,18 @@ def build_connector_instances(sensors: list[dict], registry: PluginRegistry) -> 
             print(f"connector wiring: sensor '{sensor_id}' plugin '{plugin_id}' failed to start: {e}")
 
     return instances
+
+
+def stop_connector_instances(instances: dict[str, ConnectorInstance]) -> None:
+    """The shutdown-time counterpart to `build_connector_instances()`
+    (v0.9, Phase 105 robustness review - extracted out of `main.py`'s
+    lifespan so this has a dedicated test, same reasoning as
+    `build_connector_instances()` itself). One misbehaving plugin's
+    `stop()` failure is printed and skipped, never allowed to block the
+    rest of shutdown - the same failure-isolation discipline every other
+    plugin call site in this package already follows."""
+    for instance in instances.values():
+        try:
+            instance.stop()
+        except ConnectorRuntimeError as e:
+            print(f"connector shutdown: sensor '{instance.sensor_id}' failed to stop cleanly: {e}")

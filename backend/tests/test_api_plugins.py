@@ -218,3 +218,54 @@ def test_connector_health_details_secret_is_redacted(client, plugin_api_state, m
     assert 'do-not-leak' not in str(detail)
     assert detail['health']['details']['firmware_secret_key'] == '***REDACTED***'
     assert detail['health']['details']['fps'] == 30
+
+
+class _FailingStartConnector:
+    """A plugin whose own start() exception message happens to echo back
+    something secret-shaped - the kind of thing a carelessly-written
+    third-party connector might do (e.g. logging the URI/credentials it
+    tried and failed to reach)."""
+    def descriptor(self) -> PluginDescriptor:
+        return PluginDescriptor(
+            plugin_id='acme.sensor.failing-start', name='Failing Start', version='1.0.0',
+            plugin_type=PluginType.SENSOR_CONNECTOR, api_version=MULTISENS_PLUGIN_API_VERSION,
+        )
+
+    def configure(self, sensor_id: str, config: dict) -> None:
+        pass
+
+    def start(self) -> None:
+        raise RuntimeError('connect failed: password=hunter2-in-exception-message')
+
+    def stop(self) -> None:
+        pass
+
+    def health(self) -> ConnectorHealth:
+        raise AssertionError('never called while not RUNNING')
+
+    def sample(self) -> SensorSample | None:
+        return None
+
+
+def test_connector_health_message_is_plain_text_not_dict_redacted_by_design(client, plugin_api_state, monkeypatch):
+    # redact_secrets() operates on dict KEYS (config/capabilities/
+    # health.details) - health.message is free text taken verbatim from
+    # whatever the plugin's own code raised, which cannot be safely
+    # pattern-redacted without corrupting legitimate error messages. This
+    # is a documented, intentional scope boundary (docs/plugin-sdk.md's
+    # trust model: plugins are trusted, not sandboxed, and a plugin
+    # careless enough to embed its own secret in an exception message is
+    # a plugin-author problem this layer was never meant to catch), not
+    # an oversight - pinned here so it stays a deliberate choice.
+    instance = ConnectorInstance('rgb', 'acme.sensor.failing-start', _FailingStartConnector())
+    instance.configure({})
+    try:
+        instance.start()
+    except Exception:
+        pass  # the failure is the point - health() must now report it
+    plugin_state.connector_instances['rgb'] = instance
+    monkeypatch.setattr('app.api.plugins.load_sensors', lambda: [])
+
+    detail = client.get('/api/connectors/rgb').json()
+    assert detail['health']['state'] == 'failed'
+    assert detail['health']['message'] == 'connect failed: password=hunter2-in-exception-message'

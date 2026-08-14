@@ -22,7 +22,7 @@ from app.api.sessions import router as sessions_router
 from app.config import load_disabled_plugin_ids, load_sensors
 from app.persistence import db as db_module
 from app.plugins import state as plugin_state
-from app.plugins.manager import build_connector_instances
+from app.plugins.manager import build_connector_instances, stop_connector_instances
 from app.plugins.registry import PluginStatus, discover_plugins
 from app.ros_bridge import RosBridge
 from app.video_relay import mjpeg_stream
@@ -74,11 +74,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     plugin_state.connector_instances = build_connector_instances(load_sensors(), plugin_state.plugin_registry)
 
     yield
-    for instance in plugin_state.connector_instances.values():
-        try:
-            instance.stop()
-        except Exception as e:  # noqa: BLE001 - untrusted plugin code, must never block shutdown
-            print(f"connector shutdown: sensor '{instance.sensor_id}' failed to stop cleanly: {e}")
+    stop_connector_instances(plugin_state.connector_instances)
     bridge.shutdown()
 
 

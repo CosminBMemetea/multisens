@@ -126,6 +126,14 @@ whatever else speaks RTSP.
 - **Not RViz or Foxglove.** Those remain valid developer tools for
   inspecting the ROS graph directly; MultiSens's dashboard is the product
   UI, and doesn't depend on either.
+- **Not a sandboxed plugin platform (v0.9).** A plugin executes with the
+  full permissions of the backend process — filesystem, network,
+  environment variables, everything. There is no seccomp, no separate OS
+  user, no per-plugin container isolation. Installing a plugin is
+  equivalent to installing any other Python package into this
+  environment: only install plugins you trust as much as you trust
+  MultiSens itself. See
+  [docs/plugin-sdk.md#trust-model](docs/plugin-sdk.md#trust-model).
 
 ## Architecture
 

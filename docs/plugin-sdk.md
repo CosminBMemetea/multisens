@@ -1,14 +1,72 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-104 - the SDK package, discovery/registry, the SensorConnector
+93-105 - the SDK package, discovery/registry, the SensorConnector
 runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
 connector wrappers, external evaluator plugins, external
 resource-collector plugins, the contract test kit, the reference
 external plugin, the read-only integrations API/UI, the
-RideSafe/PropertyWatch connector-architecture validation, and the
-robot/drone extensibility validation - shipped; Phases 105-106 not yet
-built).**
+RideSafe/PropertyWatch connector-architecture validation, the
+robot/drone extensibility validation, and the robustness & security
+review - shipped; Phase 106 not yet built).**
+
+## Robustness & security review (Phase 105 - shipped)
+
+Same discipline as Phases 40/51/62/76/90's own robustness passes, this
+time across the whole v0.9 plugin layer - 13 new tests, zero source
+defects found requiring a behavioral fix (the changes below are a
+test-coverage gap, a testability refactor, and two documentation-accuracy
+gaps, not bugs in the plugin runtime itself):
+
+- **Lifecycle-failure coverage gap, closed**: `_PollConnectorInstance`
+  (`PredictionConnectorInstance`/`GroundTruthConnectorInstance`, Phase
+  97) and `ResourceCollectorInstance` (Phase 99) already correctly
+  caught and converted `start()`/`stop()`/`health()` failures to
+  `FAILED` - proven by `ConnectorInstance`'s own tests since Phase 95 -
+  but had no dedicated test of their own doing the same for these two
+  wrapper classes. Six new tests close the gap; all passed against the
+  existing, unmodified source on the first run.
+- **Shutdown extracted for testability**: `stop_connector_instances()`
+  (`app/plugins/manager.py`) - the loop that used to live inline in
+  `main.py`'s lifespan - stops every connector instance at shutdown, one
+  misbehaving `stop()` never blocking the rest. Verified both by three
+  new unit tests and a live `docker compose restart backend`.
+- **Secret redaction scope, made explicit and tested**: `redact_secrets()`
+  (Phase 102) redacts dict *keys* across `capabilities`/`config`/
+  `health.details`; `health.message` is free text from a plugin's own
+  exception and is deliberately never pattern-redacted (would risk
+  corrupting a legitimate message) - now a documented, tested boundary
+  rather than an implicit one. See
+  [API surface & frontend](#integrations-api--ui-phase-102---shipped)'s
+  own updated wording above.
+- **Trust model, exercised concretely**: a plugin that reads an
+  environment variable directly (bypassing the `*_env` convention
+  entirely) and writes to the filesystem - both explicitly permitted by
+  the documented trust model - registers and runs completely normally,
+  proving MultiSens neither blocks it (would be *more* restrictive than
+  documented) nor gives it any special vetting (would be *less* honest
+  about "only install plugins you trust").
+- **Security-honesty grep pass**: every `sandbox`/`isolat`/`secure`
+  occurrence across `docs/plugin-sdk.md`, `docs/connector-api.md`, the
+  SDK, the plugin backend code, and the Integrations page was read in
+  context. All were already accurately scoped (in-process failure
+  isolation, never OS-level sandboxing) with one real gap found and
+  fixed: the Trust model section claimed the no-sandboxing disclosure is
+  "stated ... in the README," which wasn't true - `README.md` had zero
+  mention of it. Fixed by adding the disclosure as a new "What MultiSens
+  is NOT" bullet, making the existing claim true rather than softening
+  it.
+- **Stale cross-reference, found and fixed**: the Prediction/GroundTruth
+  connectors section (Phase 97) still said config-driven connector
+  wiring "is not yet built" - true when written, false since Phase 102
+  shipped it. Corrected to point at the real implementation.
+- **Fresh Docker rebuild**: `multisense-backend` rebuilt from this
+  phase's own source changes, then extended with Phase 101's reference
+  plugin via a fresh `--no-cache` custom image layer - all 6 plugins (3
+  built-in evaluators, the built-in RTSP connector, both example
+  plugins) discovered correctly, zero regressions.
+
+Full backend suite: 930 passed (917 pre-existing + 13 new).
 
 ## Robot/drone extensibility validation (Phase 104 - shipped)
 
@@ -114,6 +172,16 @@ are all caught the same way as a literal `password`) is replaced with
 `***REDACTED***`, applied to plugin `capabilities`, connector `config`,
 and connector `health.details` alike, recursively through nested dicts
 and lists.
+
+**Deliberate scope boundary (Phase 105 robustness review)**: this is
+dict-*key*-based redaction, applied only to `capabilities`/`config`/
+`health.details`. `health.message` is passed through verbatim - it is
+free text from whatever a plugin's own code raised, and cannot be
+pattern-redacted without risking corruption of a legitimate error
+message. A plugin careless enough to embed a secret value in its own
+exception text is a plugin-author problem this layer was never designed
+to catch - consistent with the trust model above, not an oversight
+(pinned by a dedicated test, `test_connector_health_message_is_plain_text_not_dict_redacted_by_design`).
 
 One new frontend page, `/integrations` - an "Installed Plugins" table
 and a "Connector Instances" table, reusing the existing `LevelBadge`
@@ -291,13 +359,16 @@ is structural, not just "the mock was never called." This document is the single
 v0.9 phases build against - each phase updates its own section from
 *planned* to *shipped* as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s
 eventual `[0.9.0]` entry is the record of what actually got built.
-Anywhere this document still says a component "will" do something, that
-is a decision already made but not yet implemented - config-driven
-`sensor_id -> ConnectorInstance` wiring at container boot (so a real
-`config/sensors.yaml` `connector:` block actually produces a running,
-polled connector) is not yet built; Phase 96 registers the built-in RTSP
-plugin itself and proves its health-mapping logic, Phase 103 exercises
-it against RideSafe/PropertyWatch's real sensor ids.
+Config-driven `sensor_id -> ConnectorInstance` wiring at container boot
+(so a real `config/sensors.yaml` `connector:` block actually produces a
+running, health-reporting connector) shipped in Phase 102
+(`app/plugins/manager.py`'s `build_connector_instances()`, wired into
+`main.py`'s lifespan) - Phase 96 registered the built-in RTSP plugin
+itself and proved its health-mapping logic in isolation; Phase 102 made
+it real end-to-end; Phase 103 exercised the same pipeline against
+RideSafe/PropertyWatch's real sensor identities (via a dedicated test,
+deliberately not the repo's own live `config/sensors.yaml` - see that
+phase's own section above for why).
 
 ## Built-in RTSP adapter (Phase 96 - shipped)
 

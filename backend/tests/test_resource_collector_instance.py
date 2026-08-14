@@ -7,7 +7,7 @@ filtering for `ResourceObservation`.
 from datetime import datetime, timezone
 
 import pytest
-from app.plugins.connector_instance import ConnectorLifecycleError
+from app.plugins.connector_instance import ConnectorLifecycleError, ConnectorRuntimeError
 from app.plugins.resource_collector_instance import ResourceCollectorInstance
 from multisens_sdk import ConnectorConfigError, ConnectorHealth, ConnectorState, ResourceObservation
 
@@ -25,6 +25,7 @@ def _observation(**overrides) -> ResourceObservation:
 class _FakeResourceCollectorPlugin:
     def __init__(self):
         self.fail_configure = False
+        self.fail_start = False
         self.next_sample_result: list = []
         self._running = False
 
@@ -39,6 +40,8 @@ class _FakeResourceCollectorPlugin:
             raise ValueError('deliberately broken configure()')
 
     def start(self) -> None:
+        if self.fail_start:
+            raise RuntimeError('deliberately broken start()')
         self._running = True
 
     def stop(self) -> None:
@@ -110,3 +113,43 @@ def test_stop_then_repeated_stop_is_a_no_op():
     instance.stop()
     instance.stop()
     assert instance.state == ConnectorState.STOPPED
+
+
+# --- start()/stop()/health() failure (v0.9, Phase 105 robustness review -
+# these three paths already existed in ResourceCollectorInstance's own
+# source since Phase 99, but had no dedicated test proving they actually
+# move the connector to FAILED rather than propagating unguarded) ----------
+
+def test_start_failure_raises_and_moves_to_failed():
+    plugin = _FakeResourceCollectorPlugin()
+    plugin.fail_start = True
+    instance = ResourceCollectorInstance('acme.resource.mock', plugin)
+    instance.configure({})
+    with pytest.raises(ConnectorRuntimeError):
+        instance.start()
+    assert instance.state == ConnectorState.FAILED
+
+
+def test_stop_failure_raises_and_moves_to_failed():
+    instance, plugin = _running_instance()
+
+    def _explode():
+        raise RuntimeError('deliberately broken stop()')
+    plugin.stop = _explode
+
+    with pytest.raises(ConnectorRuntimeError):
+        instance.stop()
+    assert instance.state == ConnectorState.FAILED
+
+
+def test_health_call_that_raises_moves_to_failed_never_propagates():
+    instance, plugin = _running_instance()
+
+    def _explode():
+        raise RuntimeError('deliberately broken health()')
+    plugin.health = _explode
+
+    health = instance.health()  # must not raise
+    assert health.state == ConnectorState.FAILED
+    assert 'deliberately broken health()' in health.message
+    assert instance.state == ConnectorState.FAILED

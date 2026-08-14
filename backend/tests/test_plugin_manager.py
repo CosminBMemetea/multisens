@@ -7,7 +7,7 @@ phase (docs/connector-api.md documented the block's shape back in Phase
 from typing import Any
 
 from app.plugins.connector_instance import ConnectorInstance
-from app.plugins.manager import build_connector_instances
+from app.plugins.manager import build_connector_instances, stop_connector_instances
 from app.plugins.registry import PluginRecord, PluginRegistry, PluginStatus
 from multisens_sdk import (
     MULTISENS_PLUGIN_API_VERSION,
@@ -27,6 +27,7 @@ class _FakeSensorConnector:
     def __init__(self):
         self.configured_sensor_id: str | None = None
         self.started = False
+        self.fail_stop = False
 
     def descriptor(self) -> PluginDescriptor:
         return PluginDescriptor(
@@ -43,6 +44,8 @@ class _FakeSensorConnector:
         self.started = True
 
     def stop(self) -> None:
+        if self.fail_stop:
+            raise RuntimeError('deliberately broken stop()')
         self.started = False
 
     def health(self) -> ConnectorHealth:
@@ -121,3 +124,40 @@ def test_two_sensor_ids_naming_the_same_plugin_get_independent_connector_objects
     assert instances['front']._connector is not instances['rear']._connector
     assert instances['front']._connector.configured_sensor_id == 'front'
     assert instances['rear']._connector.configured_sensor_id == 'rear'
+
+
+# --- stop_connector_instances (v0.9, Phase 105 robustness review - the
+# shutdown-time counterpart, extracted out of main.py's lifespan for a
+# dedicated test) -------------------------------------------------------
+
+def test_stop_connector_instances_stops_every_running_connector():
+    sensors = [
+        {'id': 'front', 'connector': {'plugin': 'acme.sensor.fake', 'config': {'uri': 'rtsp://front'}}},
+        {'id': 'rear', 'connector': {'plugin': 'acme.sensor.fake', 'config': {'uri': 'rtsp://rear'}}},
+    ]
+    instances = build_connector_instances(sensors, _registry_with_fake_sensor_plugin())
+    assert instances['front'].state == ConnectorState.RUNNING
+    assert instances['rear'].state == ConnectorState.RUNNING
+
+    stop_connector_instances(instances)
+
+    assert instances['front'].state == ConnectorState.STOPPED
+    assert instances['rear'].state == ConnectorState.STOPPED
+
+
+def test_stop_connector_instances_one_failure_never_blocks_stopping_the_rest():
+    sensors = [
+        {'id': 'front', 'connector': {'plugin': 'acme.sensor.fake', 'config': {'uri': 'rtsp://front'}}},
+        {'id': 'rear', 'connector': {'plugin': 'acme.sensor.fake', 'config': {'uri': 'rtsp://rear'}}},
+    ]
+    instances = build_connector_instances(sensors, _registry_with_fake_sensor_plugin())
+    instances['front']._connector.fail_stop = True
+
+    stop_connector_instances(instances)  # must not raise
+
+    assert instances['front'].state == ConnectorState.FAILED  # its own stop() failed, recorded honestly
+    assert instances['rear'].state == ConnectorState.STOPPED  # never blocked by the sibling's failure
+
+
+def test_stop_connector_instances_handles_an_empty_dict():
+    stop_connector_instances({})  # must not raise
