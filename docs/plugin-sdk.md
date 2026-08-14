@@ -1,9 +1,45 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-96 - the SDK package, discovery/registry, the SensorConnector runtime
-wrapper, and the built-in RTSP adapter - shipped; Phases 97-106 not yet
-built).** This document is the single authoritative decision record the
+93-97 - the SDK package, discovery/registry, the SensorConnector runtime
+wrapper, the built-in RTSP adapter, and the Prediction/GroundTruth
+connector wrappers - shipped; Phases 98-106 not yet built).**
+
+## Prediction + GroundTruth connectors (Phase 97 - shipped)
+
+`backend/app/plugins/poll_connector_instance.py`'s
+`PredictionConnectorInstance`/`GroundTruthConnectorInstance` wrap a
+pull-based plugin with the same lifecycle discipline as
+`ConnectorInstance` (Phase 95). `poll()` never raises: not-`RUNNING` or
+the plugin's own `poll()` failing both return an empty list (the
+connector moves to `FAILED` in the latter case); an item that isn't
+actually the right canonical type (a misbehaving plugin) is dropped with
+a recorded reason, the rest of the same batch still returned.
+
+`backend/app/plugins/poll_runner.py`'s `PollRunner` is the background
+loop - the same "own thread, kept off uvicorn's event loop" pattern
+`ros_bridge.py` established for exactly the same reason (`poll()` is a
+blocking, synchronous plugin call). Each cycle opens its own short-lived
+SQLite connection and forwards through
+`repository.insert_batch_with_partial_failure` - **the identical
+function** `api/sessions.py`'s own `/predictions/batch`/
+`/ground-truth/batch` endpoints use (extracted from the API layer into
+`repository.py` this phase specifically so both call sites share one
+implementation) - so a connector is a code-driven way to call an
+endpoint that already exists, never a second ingestion mechanism. A
+primary-key collision falls back to per-item inserts exactly like a
+retried REST batch would.
+
+Proven by 15 dedicated tests: canonical shape round-tripping exactly
+through a real SQLite database (task/source_id/sensor_ids/timestamps/
+confidence all intact on readback), malformed-item filtering, a
+duplicate id never losing the rest of a batch, a `poll()` that raises
+never crashing the loop, a real background thread actually starting and
+stopping, and - the acceptance criterion that mattered most - a
+connector whose `poll()` always raises writing to a **completely
+separate database** while the ordinary REST API against the real
+session database is exercised in the same test, proving the isolation
+is structural, not just "the mock was never called." This document is the single authoritative decision record the
 v0.9 phases build against - each phase updates its own section from
 *planned* to *shipped* as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s
 eventual `[0.9.0]` entry is the record of what actually got built.

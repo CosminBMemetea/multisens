@@ -80,26 +80,15 @@ def _insert_with_partial_failure(
     indexed_items: list[tuple[int, Any]],
     bulk_insert: Callable[[sqlite3.Connection, list[Any]], None],
 ) -> list[BatchItemError]:
-    """One bulk insert for the common case; a primary-key collision (e.g. a
-    retried batch that reused a client-supplied id) falls back to inserting
-    one at a time so a single duplicate doesn't reject the rest of an
-    otherwise-valid batch."""
-    if not indexed_items:
-        return []
-    items = [item for _, item in indexed_items]
-    try:
-        bulk_insert(conn, items)
-        return []
-    except sqlite3.IntegrityError:
-        conn.rollback()
-        errors = []
-        for index, item in indexed_items:
-            try:
-                bulk_insert(conn, [item])
-            except sqlite3.IntegrityError as e:
-                conn.rollback()
-                errors.append(BatchItemError(index=index, error=f'insert failed (duplicate id?): {e}'))
-        return errors
+    """Thin wrapper over `repository.insert_batch_with_partial_failure`
+    (v0.9, Phase 97 - the core retry-on-duplicate logic moved there so
+    `plugins/poll_runner.py` can reuse it without an api-layer
+    dependency) - just adapts `(index, message)` pairs into this
+    endpoint's own `BatchItemError` response shape."""
+    return [
+        BatchItemError(index=index, error=message)
+        for index, message in repo.insert_batch_with_partial_failure(conn, indexed_items, bulk_insert)
+    ]
 
 
 @router.post('', status_code=201)
