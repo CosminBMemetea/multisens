@@ -23,6 +23,18 @@ sensors:
     transport: rtsp
     url: rtsp://host.docker.internal:8554/rgb
     expected_fps: 30
+    # v0.9, Phase 102: wires this sensor's existing ingestion up to the
+    # built-in RTSP SensorConnector plugin too, purely for /api/connectors
+    # visibility (docs/connector-api.md) - the actual video stream is
+    # still started independently by ROS launch off `url` above,
+    # completely unchanged; `connector.config.uri` intentionally repeats
+    # the same URL rather than deriving it, since the connector plugin
+    # and the ROS ingestion node are two independent consumers of this
+    # file, not one reading the other's config.
+    connector:
+      plugin: multisens.builtin.sensor.rtsp
+      config:
+        uri: rtsp://host.docker.internal:8554/rgb
 
   - id: depth
     modality: depth

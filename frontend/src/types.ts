@@ -651,3 +651,54 @@ export interface TradeoffResponse {
   pareto_front_configuration_ids: string[];
   resource_comparison: ResourceComparisonResult | null;
 }
+
+// --- v0.9 Plugin SDK: /api/plugins, /api/connectors (Phase 102) ------------
+
+export type PluginType =
+  | "sensor_connector"
+  | "prediction_connector"
+  | "ground_truth_connector"
+  | "evaluator"
+  | "resource_collector";
+
+export type PluginStatus = "available" | "incompatible" | "load_failed" | "disabled";
+
+export interface PluginSummary {
+  plugin_id: string;
+  name: string | null;
+  version: string | null;
+  plugin_type: PluginType | null;
+  status: PluginStatus;
+  distribution_name: string | null;
+  distribution_version: string | null;
+  error: string | null;
+}
+
+export interface PluginDetail extends PluginSummary {
+  api_version: string | null;
+  author: string | null;
+  license: string | null;
+  description: string | null;
+  homepage: string | null;
+  capabilities: Record<string, unknown>;
+}
+
+export type ConnectorState = "stopped" | "starting" | "running" | "degraded" | "failed";
+
+export interface ConnectorHealth {
+  state: ConnectorState;
+  last_sample_age_s: number | null;
+  message: string | null;
+  details: Record<string, unknown>;
+}
+
+export interface ConnectorSummary {
+  sensor_id: string;
+  plugin_id: string;
+  state: ConnectorState;
+  config: Record<string, unknown>;
+}
+
+export interface ConnectorDetail extends ConnectorSummary {
+  health: ConnectorHealth;
+}

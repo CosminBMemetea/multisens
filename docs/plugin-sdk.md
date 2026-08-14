@@ -1,11 +1,73 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-101 - the SDK package, discovery/registry, the SensorConnector
+93-102 - the SDK package, discovery/registry, the SensorConnector
 runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
 connector wrappers, external evaluator plugins, external
-resource-collector plugins, the contract test kit, and the reference
-external plugin - shipped; Phases 102-106 not yet built).**
+resource-collector plugins, the contract test kit, the reference
+external plugin, and the read-only integrations API/UI - shipped; Phases
+103-106 not yet built).**
+
+## Integrations API & UI (Phase 102 - shipped)
+
+Config-driven connector wiring finally executes what
+[`config/sensors.yaml` extension](#configsensorsyaml-extension) (Phase
+95) only documented: `app/plugins/manager.py`'s `build_connector_instances()`
+reads every sensor's optional `connector:` block at startup, resolves
+its named `plugin_id` against the registry, and constructs one
+`ConnectorInstance` per sensor id - never a shared object across two
+sensor ids naming the same plugin. That last guarantee needed a new
+`PluginRecord.factory` field (a zero-arg "make me a fresh one"
+callable, alongside the existing singleton `.instance`): built-in
+evaluators default to reusing their singleton (unchanged v0.8
+behavior), the built-in RTSP connector and any externally discovered
+connector-shaped plugin each get a real fresh-object factory. A sensor
+naming an unknown/incompatible/wrong-typed plugin, or whose `configure()`/
+`start()` fails, is never dropped silently - it's still reachable through
+the API below in its honest (`stopped`/`failed`) state, with the reason
+printed at startup.
+
+Five read-only routes (`app/api/plugins.py`), no mutation endpoint
+anywhere in this router - installing/enabling a plugin and wiring a
+connector both stay restart-time file changes, matching the master
+prompt's explicit boundary:
+
+```
+GET  /api/plugins
+GET  /api/plugins/{plugin_id}
+GET  /api/plugins/{plugin_id}/capabilities
+GET  /api/connectors
+GET  /api/connectors/{sensor_id}
+```
+
+Every response passes through `redact_secrets()` (`app/plugins/secrets.py`)
+before it leaves the process - any dict key matching `password`/`token`/
+`secret`/`key` (case-insensitive, so `password_env`/`api_key`/`auth_token`
+are all caught the same way as a literal `password`) is replaced with
+`***REDACTED***`, applied to plugin `capabilities`, connector `config`,
+and connector `health.details` alike, recursively through nested dicts
+and lists.
+
+One new frontend page, `/integrations` - an "Installed Plugins" table
+and a "Connector Instances" table, reusing the existing `LevelBadge`
+component for status/state color-coding. Deliberately not a duplicate of
+the Dashboard's own sensor-health view: this table is the connector
+*plugin's* own lifecycle state (`stopped`/`starting`/`running`/
+`degraded`/`failed`), not the frame-level video diagnostics the
+Dashboard already shows for the same sensor id. No install/browse/
+download affordance anywhere on the page - the empty states say "No
+plugins discovered" / "No connector instances configured," never invite
+a click that doesn't exist.
+
+Verified live, twice: against the real `docker compose` backend (one
+real `connector:` block wired to the built-in RTSP plugin for the `rgb`
+sensor, `state: running`, real `health` reflecting the actual RTSP
+connection status) and against a throwaway image with Phase 101's
+`multisens-example-environment-sensor` `pip install`ed on top (all 6
+plugins - 3 built-in evaluators, the built-in RTSP connector, and both
+example plugins - listed correctly). Both the Vite dev build and the
+production nginx-served build loaded `/integrations` with zero console
+errors.
 
 ## Reference plugin (Phase 101 - shipped) - the actual clean-room test
 
@@ -698,23 +760,11 @@ sources; the earlier one keeps working. Never a silent override -
 matches the "never silently override" discipline `EVALUATOR_REGISTRY`
 has carried since v0.8.
 
-## Planned API surface (Phase 102)
+## API surface & frontend (Phase 102 - shipped)
 
-Read-only; no plugin-installation mutation endpoints:
-
-```
-GET  /api/plugins
-GET  /api/plugins/{plugin_id}
-GET  /api/plugins/{plugin_id}/capabilities
-GET  /api/connectors
-GET  /api/connectors/{sensor_id}
-```
-
-## Planned frontend (Phase 102)
-
-One new `/integrations` page - installed plugins and their connector
-instances' state/health in a simple table, reusing existing badge
-components. Never a marketplace-style browse/install affordance.
+See [Integrations API & UI (Phase 102 - shipped)](#integrations-api--ui-phase-102---shipped)
+above for the full picture (the five routes, the redaction rule, the
+`PluginRecord.factory` addition, and the `/integrations` page).
 
 ## Packaging
 

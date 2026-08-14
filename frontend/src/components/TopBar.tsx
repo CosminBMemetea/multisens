@@ -31,6 +31,9 @@ export function TopBar({ right }: TopBarProps) {
           <NavLink to="/profiles" className={navLinkClass}>
             Profiles
           </NavLink>
+          <NavLink to="/integrations" className={navLinkClass}>
+            Integrations
+          </NavLink>
         </nav>
       </div>
       {right && <div className="flex items-center gap-4 font-mono-data text-sm">{right}</div>}

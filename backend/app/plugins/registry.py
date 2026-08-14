@@ -62,11 +62,22 @@ class PluginRecord:
     attempted). `instance` is set **only** for `AVAILABLE` plugins - an
     `INCOMPATIBLE`/`LOAD_FAILED`/`DISABLED` plugin's runtime methods
     (`start`/`evaluate`/...) are never called, so there is nothing to
-    keep an instance around for."""
+    keep an instance around for.
+
+    `factory` (v0.9, Phase 102) is a zero-arg callable that produces a
+    *fresh* plugin instance - needed because `instance` above is a
+    single, already-constructed object, but a connector-shaped plugin
+    (`SensorConnector`/etc.) needs its own separate object per sensor id
+    (`ridesafe_front_rgb`/`ridesafe_rear_rgb` sharing one connector
+    *implementation* must never share one connector *object* - see
+    `connector_instance.py`'s own module docstring). `None` only for the
+    rare case a plugin's own factory couldn't be captured (never for a
+    normally-discovered plugin)."""
     plugin_id: str
     status: PluginStatus
     descriptor: PluginDescriptor | None
     instance: Any | None
+    factory: Any | None = None
     error: str | None = None
     distribution_name: str | None = None
     distribution_version: str | None = None
@@ -95,13 +106,22 @@ def _register(registry: PluginRegistry, record: PluginRecord) -> None:
         print(f'plugin {record.plugin_id}: {record.status.value}{suffix}')
 
 
-def register_built_in(registry: PluginRegistry, instance: Any, *, source: str = 'multisens') -> None:
+def register_built_in(
+    registry: PluginRegistry, instance: Any, *, source: str = 'multisens', factory: Any = None,
+) -> None:
     """Built-in plugins (the three v0.8 evaluators, `multisens.builtin.
     sensor.rtsp` from Phase 96 onward) are directly imported by backend
     code, never routed through entry-point discovery - there is no
     package to discover, the code already lives in this repository. They
     go through the exact same duplicate/compatibility checks as an
-    external plugin, never a privileged fast path."""
+    external plugin, never a privileged fast path.
+
+    `factory` defaults to reusing the already-constructed `instance`
+    (fine for the stateless v0.8 evaluators, which have always been
+    shared this way). A caller that needs a fresh object per use - the
+    RTSP connector, one object per sensor_id - passes its own zero-arg
+    `factory` explicitly (see `discover_plugins()` below)."""
+    factory = factory if factory is not None else (lambda inst=instance: inst)
     try:
         descriptor = instance.descriptor()
     except Exception as e:  # noqa: BLE001 - a plugin's own code, must never crash the registry
@@ -138,7 +158,7 @@ def register_built_in(registry: PluginRegistry, instance: Any, *, source: str = 
 
     _register(registry, PluginRecord(
         plugin_id=descriptor.plugin_id, status=PluginStatus.AVAILABLE,
-        descriptor=descriptor, instance=instance, error=None, distribution_name=source,
+        descriptor=descriptor, instance=instance, factory=factory, error=None, distribution_name=source,
     ))
 
 
@@ -174,8 +194,16 @@ def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_id
         return
 
     try:
-        factory = entry_point.load()
-        instance = factory() if callable(factory) else factory
+        loaded = entry_point.load()
+        instance = loaded() if callable(loaded) else loaded
+        # A zero-arg callable entry point (the documented convention - see
+        # docs/connector-api.md) doubles as the "make me a fresh one"
+        # factory a connector-shaped plugin needs one-per-sensor-id
+        # (Phase 102). If a plugin instead points its entry point at an
+        # already-constructed object, there is no way to mint a second
+        # independent one, so the same shared instance is reused - no
+        # worse than v0.8's single global instance, never a crash.
+        factory = loaded if callable(loaded) else (lambda inst=instance: inst)
         descriptor = instance.descriptor()
     except Exception as e:  # noqa: BLE001 - untrusted plugin code, must never crash discovery
         _register(registry, PluginRecord(
@@ -240,7 +268,7 @@ def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_id
 
     _register(registry, PluginRecord(
         plugin_id=plugin_id, status=PluginStatus.AVAILABLE, descriptor=descriptor, instance=instance,
-        error=None, distribution_name=distribution_name, distribution_version=distribution_version,
+        factory=factory, error=None, distribution_name=distribution_name, distribution_version=distribution_version,
     ))
 
 
@@ -273,7 +301,10 @@ def discover_plugins(
     for evaluator in EVALUATOR_REGISTRY.values():
         register_built_in(registry, evaluator, source='multisens')
     if ros_bridge is not None:
-        register_built_in(registry, RtspSensorConnector(ros_bridge), source='multisens')
+        register_built_in(
+            registry, RtspSensorConnector(ros_bridge), source='multisens',
+            factory=lambda: RtspSensorConnector(ros_bridge),
+        )
 
     resolved_entry_points = (
         entry_points if entry_points is not None

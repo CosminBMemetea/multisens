@@ -5,6 +5,7 @@ import { SessionDetail } from "./pages/SessionDetail";
 import { Comparison } from "./pages/Comparison";
 import { Profiles } from "./pages/Profiles";
 import { ProfileDetail } from "./pages/ProfileDetail";
+import { Integrations } from "./pages/Integrations";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/comparison" element={<Comparison />} />
           <Route path="/profiles" element={<Profiles />} />
           <Route path="/profiles/:profileId" element={<ProfileDetail />} />
+          <Route path="/integrations" element={<Integrations />} />
         </Routes>
       </div>
     </BrowserRouter>

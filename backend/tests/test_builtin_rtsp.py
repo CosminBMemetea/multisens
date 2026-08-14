@@ -155,3 +155,28 @@ def test_discover_plugins_skips_the_rtsp_connector_when_no_bridge_is_supplied():
     # don't register it - never a crash from a missing bridge.
     registry = discover_plugins(entry_points=[])
     assert registry.get(PLUGIN_ID) is None
+
+
+def test_registry_factory_yields_a_fresh_connector_object_per_call():
+    # v0.9, Phase 102: this is exactly what app/plugins/manager.py relies
+    # on to give ridesafe_front_rgb/ridesafe_rear_rgb their own connector
+    # objects - the registry's singleton `record.instance` must never be
+    # what a second sensor id gets wired to.
+    bridge = _FakeBridge()
+    registry = discover_plugins(entry_points=[], ros_bridge=bridge)
+    record = registry.get(PLUGIN_ID)
+    assert record.factory is not None
+
+    front = record.factory()
+    rear = record.factory()
+    assert front is not rear
+    assert front is not record.instance and rear is not record.instance
+
+    bridge.set_sensor('front', connection_state='connected')
+    bridge.set_sensor('rear', connection_state='disconnected')
+    front.configure('front', {'uri': 'rtsp://example/front'})
+    rear.configure('rear', {'uri': 'rtsp://example/rear'})
+    front.start()
+    rear.start()
+    assert front.health().state == ConnectorState.RUNNING
+    assert rear.health().state == ConnectorState.DEGRADED

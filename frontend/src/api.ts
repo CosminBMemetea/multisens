@@ -3,6 +3,8 @@ import type {
   AnalysisResponse,
   ConfigurationCoverage,
   ConfigurationSummary,
+  ConnectorDetail,
+  ConnectorSummary,
   DecisionAnalysisResponse,
   DecisionPolicy,
   EvaluationProfile,
@@ -11,6 +13,8 @@ import type {
   GroundTruthEvent,
   PairwiseComparison,
   ParetoDirection,
+  PluginDetail,
+  PluginSummary,
   PredictionEvent,
   ProfileSummary,
   ProfileUsageEntry,
@@ -238,4 +242,26 @@ export function runTradeoffs(
   },
 ): Promise<TradeoffResponse> {
   return postJson(`/api/profiles/${profileId}/tradeoffs`, input);
+}
+
+// --- v0.9 Plugin SDK: read-only visibility (Phase 102, issue #103) ---------
+// No corresponding POST/PUT/DELETE anywhere in this file - deliberately:
+// installing/enabling/disabling a plugin and wiring a connector are both
+// restart-time file changes (config/sensors.yaml, `pip install`), never
+// an in-app mutation. See app/api/plugins.py's own module docstring.
+
+export function fetchPlugins(): Promise<PluginSummary[]> {
+  return getJson("/api/plugins");
+}
+
+export function fetchPlugin(pluginId: string): Promise<PluginDetail> {
+  return getJson(`/api/plugins/${encodeURIComponent(pluginId)}`);
+}
+
+export function fetchConnectors(): Promise<ConnectorSummary[]> {
+  return getJson("/api/connectors");
+}
+
+export function fetchConnector(sensorId: string): Promise<ConnectorDetail> {
+  return getJson(`/api/connectors/${encodeURIComponent(sensorId)}`);
 }

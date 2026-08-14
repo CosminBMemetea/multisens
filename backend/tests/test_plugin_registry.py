@@ -219,6 +219,55 @@ def test_one_broken_plugin_never_prevents_others_from_registering():
     assert BUILT_IN_EVALUATOR_IDS <= {r.plugin_id for r in registry.available()}
 
 
+# --- factory field (v0.9, Phase 102) ----------------------------------------
+
+def test_built_in_evaluator_factory_defaults_to_reusing_the_singleton_instance():
+    # Built-in evaluators have always been shared singletons - Phase 102
+    # doesn't change that, it just makes the "how do I get one" access
+    # path explicit and uniform across every plugin type.
+    registry = discover_plugins(entry_points=[])
+    record = registry.get('multisens.builtin.evaluator.classification')
+    assert record.factory is not None
+    assert record.factory() is record.instance
+
+
+def test_external_plugin_registered_via_a_callable_factory_captures_it_and_yields_fresh_objects():
+    build_count = 0
+
+    def _factory():
+        nonlocal build_count
+        build_count += 1
+        return _FakePlugin('acme.sensor.multi-instance')
+
+    entry_point = SimpleNamespace(
+        name='acme.sensor.multi-instance', load=lambda: _factory,
+        dist=SimpleNamespace(name='fake-dist', version='0.1.0'),
+    )
+    registry = discover_plugins(entry_points=[entry_point])
+    record = registry.get('acme.sensor.multi-instance')
+    assert record.status == PluginStatus.AVAILABLE
+    assert build_count == 1  # discovery itself calls the factory exactly once, to obtain the descriptor
+
+    first = record.factory()
+    second = record.factory()
+    assert build_count == 3
+    assert first is not second  # a fresh object each call - never the same shared instance
+
+    assert record.instance is not first and record.instance is not second
+
+
+def test_external_plugin_registered_as_a_bare_instance_falls_back_to_reusing_it():
+    # An entry point may point straight at an already-constructed object
+    # rather than a zero-arg factory function - there's no way to mint a
+    # second independent one in that case, so the same instance is reused
+    # (no worse than the pre-Phase-102 single-global-instance behavior).
+    plugin = _FakePlugin('acme.sensor.singleton-only')
+    registry = discover_plugins(entry_points=[_entry_point('acme.sensor.singleton-only', plugin)])
+    record = registry.get('acme.sensor.singleton-only')
+    assert record.factory() is plugin
+    assert record.factory() is record.instance
+
+
 def test_discover_plugins_never_raises_regardless_of_how_badly_a_plugin_is_broken():
     class _ExplodesOnEverything:
         def descriptor(self):
