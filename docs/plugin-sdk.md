@@ -1,10 +1,33 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-99 - the SDK package, discovery/registry, the SensorConnector runtime
-wrapper, the built-in RTSP adapter, the Prediction/GroundTruth connector
-wrappers, external evaluator plugins, and external resource-collector
-plugins - shipped; Phases 100-106 not yet built).**
+93-100 - the SDK package, discovery/registry, the SensorConnector
+runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
+connector wrappers, external evaluator plugins, external
+resource-collector plugins, and the contract test kit - shipped; Phases
+101-106 not yet built).**
+
+## Contract test kit (Phase 100 - shipped)
+
+`multisens_sdk.testing` (opt-in via `pip install multisens-sdk[testing]`
+- `pytest` never becomes a forced runtime dependency of every plugin):
+plain, framework-agnostic `assert*` functions a plugin author can call
+from `pytest`, `unittest`, or a bare script -
+`assert_valid_plugin_descriptor`, `assert_health_contract`,
+`assert_connector_lifecycle` (generic across
+`SensorConnector`/`PredictionConnector`/`GroundTruthConnector`/
+`ResourceCollector` - the caller supplies a zero-arg `configure`
+closure, the one signature difference the helper can't paper over),
+`assert_metric_descriptors_valid`, `assert_evaluator_output_shape`,
+`assert_evaluator_deterministic`, and `assert_resource_observation_shape`.
+
+Every helper is proven correct before any external author relies on it -
+28 dedicated tests, each helper exercised against both a passing fake
+and a deliberately-broken one (a connector that never reports `RUNNING`
+after `start()`, a fabricated non-numeric metric value, nondeterministic
+`evaluate()` output, an out-of-range `last_sample_age_s`, ...), so a
+real bug in the helper itself would have been caught here, not by the
+first external plugin author to hit it.
 
 ## External resource-collector plugins (Phase 99 - shipped)
 
