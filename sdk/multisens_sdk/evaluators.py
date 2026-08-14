@@ -4,7 +4,17 @@ v0.8 `Evaluator`/`EvaluatorOutput` protocol already had; `Evaluator` is kept
 as an alias so every existing backend import (`from app.domain.evaluators
 import Evaluator, EvaluatorOutput`) is unaffected.
 
-`MetricDescriptor` is defined here now but not yet part of the
+`descriptor()` was added in Phase 94 - a real, deliberate correction: the
+other four connector contracts all had `descriptor()` from Phase 93
+onward (needed for the plugin registry to treat every plugin type
+uniformly, one global id namespace, one discovery/compatibility path),
+but `EvaluatorPlugin` didn't yet, since Phase 93 only relocated the
+existing v0.8 shape verbatim. Phase 94's registry needs every plugin type
+- including the three built-in evaluators - to expose a `PluginDescriptor`,
+so this method was added here rather than inventing a separate,
+evaluator-specific registration path.
+
+`MetricDescriptor` is defined here but not yet part of the
 `EvaluatorPlugin` protocol itself - Phase 98 adds a `metric_descriptors()`
 method to the protocol and wires it through the registry. Defining the
 shape now, in the same phase as the other SDK contracts, avoids Phase 98
@@ -17,6 +27,7 @@ from typing import Any, Literal, Protocol
 
 from multisens_sdk.matching import MatchResult
 from multisens_sdk.models import MetricValue
+from multisens_sdk.plugin import PluginDescriptor
 
 
 @dataclass
@@ -53,6 +64,7 @@ class EvaluatorPlugin(Protocol):
     evaluator_type: str
     format_version: str
 
+    def descriptor(self) -> PluginDescriptor: ...
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput: ...
 
 

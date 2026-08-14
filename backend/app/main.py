@@ -18,14 +18,19 @@ from app.api.evaluation import router as evaluation_router
 from app.api.profiles import router as profiles_router
 from app.api.scenarios import router as scenarios_router
 from app.api.sessions import router as sessions_router
-from app.config import load_sensors
+from app.config import load_disabled_plugin_ids, load_sensors
 from app.persistence import db as db_module
+from app.plugins.registry import PluginRegistry, PluginStatus, discover_plugins
 from app.ros_bridge import RosBridge
 from app.video_relay import mjpeg_stream
 
 WS_PUSH_INTERVAL_SEC = 0.5
 
 bridge = RosBridge()
+# Populated at startup (see lifespan below); an empty registry until then,
+# never None, so anything reading it before startup completes gets an
+# honest "nothing discovered yet" rather than an AttributeError.
+plugin_registry = PluginRegistry()
 
 
 @asynccontextmanager
@@ -37,6 +42,34 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # real path/permission/migration problem surfaces at container boot,
     # not on the first evaluation-API call.
     db_module.connect(db_module.get_db_path()).close()
+
+    global plugin_registry
+    plugin_registry = discover_plugins(disabled_plugin_ids=load_disabled_plugin_ids())
+    by_status = {status: 0 for status in PluginStatus}
+    for record in plugin_registry.records.values():
+        by_status[record.status] += 1
+    # print(), not the logging module - this project has no logging
+    # subsystem anywhere else; print() is the established convention for
+    # an operator-visible startup diagnostic (see ros2_ws's own
+    # sensor_config.py). Per-plugin non-AVAILABLE reasons are already
+    # printed individually by registry.py's own discovery code.
+    print(
+        f'plugin discovery: {by_status[PluginStatus.AVAILABLE]} available, '
+        f'{by_status[PluginStatus.INCOMPATIBLE]} incompatible, '
+        f'{by_status[PluginStatus.LOAD_FAILED]} load_failed, '
+        f'{by_status[PluginStatus.DISABLED]} disabled'
+    )
+    # Trusted-code model, not sandboxed - stated at every load, not just
+    # in docs, so it's visible in the container's own boot log. See
+    # docs/plugin-sdk.md#trust-model.
+    third_party = [r for r in plugin_registry.available() if r.distribution_name != 'multisens']
+    if third_party:
+        print(
+            f'loaded {len(third_party)} third-party plugin(s) '
+            f'({", ".join(r.plugin_id for r in third_party)}) - trusted-code model, '
+            f'see docs/plugin-sdk.md#trust-model'
+        )
+
     yield
     bridge.shutdown()
 

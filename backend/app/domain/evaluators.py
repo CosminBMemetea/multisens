@@ -50,6 +50,7 @@ from app.domain.evaluator_output import Evaluator, EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import evaluate_classification
 from app.domain.regression import RegressionEvaluator
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
 
 __all__ = ['Evaluator', 'EvaluatorOutput', 'ClassificationEvaluator', 'EVALUATOR_REGISTRY']
 
@@ -67,6 +68,14 @@ class ClassificationEvaluator:
     anything else structured) don't need a second special-cased field."""
     evaluator_type = 'classification'
     format_version = '1.0'
+
+    def descriptor(self) -> PluginDescriptor:
+        return PluginDescriptor(
+            plugin_id='multisens.builtin.evaluator.classification', name='Classification Evaluator',
+            version='1.0.0', plugin_type=PluginType.EVALUATOR, api_version=MULTISENS_PLUGIN_API_VERSION,
+            capabilities={'evaluator_type': self.evaluator_type}, author='MultiSens', license='Apache-2.0',
+            description='Single-label multi-class classification metrics (v0.2).',
+        )
 
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         cm = evaluate_classification(match_result)

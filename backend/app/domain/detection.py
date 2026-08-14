@@ -126,6 +126,7 @@ from app.domain.evaluator_output import EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import compute_f1
 from app.domain.models import MetricValue
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
 
 _COORDINATE_RANGE = (0.0, 1.0)
 
@@ -536,6 +537,14 @@ class DetectionEvaluator:
     in `details`."""
     evaluator_type = 'object_detection'
     format_version = '1.0'
+
+    def descriptor(self) -> PluginDescriptor:
+        return PluginDescriptor(
+            plugin_id='multisens.builtin.evaluator.object_detection', name='Object Detection Evaluator',
+            version='1.0.0', plugin_type=PluginType.EVALUATOR, api_version=MULTISENS_PLUGIN_API_VERSION,
+            capabilities={'evaluator_type': self.evaluator_type}, author='MultiSens', license='Apache-2.0',
+            description='Bounding-box IoU matching, precision/recall/F1/mean-IoU, per-class breakdown (v0.8).',
+        )
 
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         params = parse_detection_parameters(parameters)

@@ -56,6 +56,7 @@ from typing import Any
 from app.domain.evaluator_output import EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.models import MetricValue
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
 
 
 def _is_number(value: Any) -> bool:
@@ -160,6 +161,14 @@ class RegressionEvaluator:
     parameters."""
     evaluator_type = 'regression'
     format_version = '1.0'
+
+    def descriptor(self) -> PluginDescriptor:
+        return PluginDescriptor(
+            plugin_id='multisens.builtin.evaluator.regression', name='Regression Evaluator',
+            version='1.0.0', plugin_type=PluginType.EVALUATOR, api_version=MULTISENS_PLUGIN_API_VERSION,
+            capabilities={'evaluator_type': self.evaluator_type}, author='MultiSens', license='Apache-2.0',
+            description='Scalar regression - MAE/RMSE/bias/median-absolute-error, unit-aware (v0.8).',
+        )
 
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         samples = build_regression_samples(match_result)

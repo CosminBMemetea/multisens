@@ -1,18 +1,50 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phase 93 -
-the `multisens_sdk` package itself - shipped; Phases 94-106 not yet
-built).** This document is the single authoritative decision record the
-v0.9 phases build against - each phase updates its own section from
-*planned* to *shipped* as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s
-eventual `[0.9.0]` entry is the record of what actually got built.
-Sections describing the SDK package, its five contracts, and the model
-relocation now describe real, tested code (`sdk/multisens_sdk/`, 19
-dedicated tests, the full pre-existing 730-test backend suite passing
-unchanged against it). Anywhere this document still says a component
-"will" do something, that is a decision already made but not yet
-implemented - runtime wiring (discovery, the registry, actual
-connector/evaluator/collector execution) starts at Phase 94.
+the `multisens_sdk` package - and Phase 94 - discovery/registry - both
+shipped; Phases 95-106 not yet built).** This document is the single
+authoritative decision record the v0.9 phases build against - each phase
+updates its own section from *planned* to *shipped* as it lands, and
+[CHANGELOG.md](../CHANGELOG.md)'s eventual `[0.9.0]` entry is the record
+of what actually got built. Anywhere this document still says a
+component "will" do something, that is a decision already made but not
+yet implemented - actual connector/evaluator/collector *execution*
+(`start`/`stop`/`sample`/`poll` doing real work) starts at Phase 95.
+
+## Discovery & the plugin registry (Phase 94 - shipped)
+
+`backend/app/plugins/registry.py`'s `discover_plugins()` builds a fresh
+`PluginRegistry` at startup (`app/main.py`'s own `lifespan`): the three
+built-in evaluators register first (directly imported, each now
+exposing its own `descriptor()` -
+`multisens.builtin.evaluator.classification`/`object_detection`/
+`regression`), then `importlib.metadata.entry_points(group=
+"multisens.plugins")` is discovered for external plugins.
+
+**A required convention, not a coincidence**: an entry point's
+registered *name* must equal its plugin's own `descriptor().plugin_id`.
+This is what lets `plugins.disabled` (read from `config/sensors.yaml`'s
+new, optional `plugins.disabled` list - the same file sensors already
+live in, no separate file yet) suppress a plugin **before its code is
+ever imported** - a real safety property, not just bookkeeping - and
+lets duplicate-id detection work off entry-point metadata alone. A
+mismatch between entry-point name and `descriptor().plugin_id` is a
+`LOAD_FAILED`, never a silent pick-one.
+
+`PluginStatus` (`AVAILABLE`/`INCOMPATIBLE`/`LOAD_FAILED`/`DISABLED`) is
+tracked per `PluginRecord`, entirely separate from `ConnectorState` -
+installation-level vs. runtime-level, never conflated (see
+[Lifecycle, health, idempotency](#lifecycle-health-idempotency)).
+Duplicate `plugin_id`s (whether both external, or one external colliding
+with a built-in) reject **both** sides deterministically, never "pick
+one." Every step that touches plugin-provided code
+(`entry_point.load()`, calling the loaded factory, calling
+`.descriptor()`) is wrapped individually, proven by 12 dedicated tests
+covering zero plugins, one plugin, multiple types, an incompatible API
+version, a malformed/raising descriptor, a duplicate id, an import
+failure, a disabled plugin never being loaded at all, and one broken
+plugin never blocking any other plugin (or backend startup itself) from
+succeeding.
 
 See [architecture.md](architecture.md#the-two-planes-controltelemetry-vs-video)
 for the existing control/video-plane split this design extends rather

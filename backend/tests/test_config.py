@@ -1,6 +1,6 @@
 import textwrap
 
-from app.config import load_sensors
+from app.config import load_disabled_plugin_ids, load_sensors
 
 
 def test_load_sensors_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
@@ -39,3 +39,54 @@ def test_load_sensors_handles_empty_file(monkeypatch, tmp_path):
     monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
 
     assert load_sensors() == []
+
+
+def test_load_sensors_handles_a_bare_list_document_without_crashing(monkeypatch, tmp_path):
+    # A malformed file (the 'sensors:' key accidentally omitted, just its
+    # list body pasted directly) must degrade to "no sensors configured,"
+    # never an unhandled AttributeError from calling .get() on a list.
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('- id: rgb\n  modality: rgb\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+
+    assert load_sensors() == []
+
+
+# --- v0.9 (Phase 94): plugins.disabled -------------------------------------
+
+def test_load_disabled_plugin_ids_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(tmp_path / 'does-not-exist.yaml'))
+    assert load_disabled_plugin_ids() == []
+
+
+def test_load_disabled_plugin_ids_returns_empty_list_when_absent(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_disabled_plugin_ids() == []
+
+
+def test_load_disabled_plugin_ids_parses_real_config(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text(textwrap.dedent("""\
+        sensors: []
+        plugins:
+          disabled:
+            - example.experimental-plugin
+            - acme.sensor.broken
+    """))
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_disabled_plugin_ids() == ['example.experimental-plugin', 'acme.sensor.broken']
+
+
+def test_load_disabled_plugin_ids_handles_malformed_shapes_without_crashing(monkeypatch, tmp_path):
+    # 'plugins' present but not a mapping, and 'disabled' present but not
+    # a list - both must degrade to "nothing disabled," never an
+    # unhandled AttributeError/TypeError.
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\nplugins: "not-a-mapping"\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_disabled_plugin_ids() == []
+
+    config_file.write_text('sensors: []\nplugins:\n  disabled: "not-a-list"\n')
+    assert load_disabled_plugin_ids() == []
