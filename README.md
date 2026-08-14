@@ -523,6 +523,9 @@ cloud deployment. See
 - [docs/regression-evaluation.md](docs/regression-evaluation.md) —
   scalar value/unit schema, MAE/RMSE/bias/median, unit-mismatch rules
   (v0.8)
+- [docs/plugin-sdk.md](docs/plugin-sdk.md) — v0.9 Plugin SDK &
+  External Integration Framework: architecture decisions approved ahead
+  of implementation, updated phase by phase as it ships
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model

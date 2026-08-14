@@ -146,6 +146,11 @@ by adding a companion `sensor_msgs/TimeReference` topic
 (`/multisens/sensors/{modality}/frame_stamp`) carrying only the header, no
 pixels - see [topics.md](topics.md).
 
+**v0.9 note**: the Plugin SDK's own data-plane/control-plane split
+(external sensor/prediction/ground-truth/resource connectors) extends
+this exact decision rather than reinventing it - see
+[plugin-sdk.md](plugin-sdk.md#data-plane-vs-control-plane).
+
 ## No custom ROS messages
 
 `sensor_msgs/Image`, `sensor_msgs/CameraInfo` (declared, not yet populated -
