@@ -19,26 +19,19 @@ A pathological input - tolerance much larger than the sample rate, so many
 predictions fall in every window - degrades toward O(g * w) where w is the
 window's candidate count; still trivial at this project's target scale
 (a few thousand events, see docs/limitations.md).
+
+**v0.9 (Phase 93) note**: `MatchedPair`/`MatchResult` are no longer
+defined here - they're re-exported from `multisens_sdk.matching`, which
+now owns the data shapes (an `EvaluatorPlugin.evaluate()` call receives a
+`MatchResult`). `match_by_timestamp` itself - the actual algorithm - stays
+here, backend-only; no plugin ever re-derives frame association.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from app.domain.models import GroundTruth, Prediction
+from multisens_sdk.matching import MatchedPair, MatchResult
 
-
-@dataclass
-class MatchedPair:
-    ground_truth: GroundTruth
-    prediction: Prediction
-    delta_ms: float
-
-
-@dataclass
-class MatchResult:
-    matched: list[MatchedPair]
-    unmatched_ground_truth: list[GroundTruth]
-    unmatched_predictions: list[Prediction]
+__all__ = ['MatchedPair', 'MatchResult', 'match_by_timestamp']
 
 
 def match_by_timestamp(

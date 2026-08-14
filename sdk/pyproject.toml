@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-sdk"
+version = "0.1.0"
+description = "Stable, plugin-facing contracts for MultiSens external integrations - imports nothing from MultiSens core."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Cosmin Memetea" }]
+requires-python = ">=3.10"
+# The one real third-party dependency: the canonical models this package
+# owns (GroundTruth/Prediction/EvaluationResult/ResourceObservation) are
+# pydantic models today, and a dependency-free shadow copy would
+# reintroduce the exact drift risk this package exists to prevent. See
+# docs/plugin-sdk.md#the-central-decision-canonical-models-move-into-the-sdk
+# in the main MultiSens repository.
+dependencies = ["pydantic>=2.0,<3.0"]
+
+[project.optional-dependencies]
+# Opt-in - a plugin author who doesn't want their own runtime to depend
+# on pytest never has to install this extra. See Phase 100.
+testing = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["multisens_sdk*"]

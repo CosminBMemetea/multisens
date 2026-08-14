@@ -90,33 +90,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.domain.coverage import ACCEPTANCE_OPERATORS
 from app.domain.decision import ConfigurationDecision, PolicyStatus
 from app.domain.profiles import AcceptanceCriterion
+from multisens_sdk.models import ResourceObservation, ResourceQuality
 
-# Every value has an explicit provenance - never just a number.
-#
-#   - MEASURED: captured directly by a v0.7 collector during the
-#     experiment (psutil calls, or the existing fps_received/
-#     publish_latency_ms diagnostics reused as-is). Always preferred.
-#   - DECLARED: a human-supplied hardware/property value (e.g. "this
-#     camera's nominal bitrate is 5 Mbps"), not measured this session.
-#     Coexists with a MEASURED row for the same metric without
-#     auto-reconciliation - same "never silently merge two evidence
-#     sources" discipline EvidenceBinding already established (v0.4).
-#   - ESTIMATED: computed from an explicit, visible formula over
-#     MEASURED/DECLARED values (`source` names the formula verbatim,
-#     e.g. "estimated: bitrate_mbps * duration_hours"). Never an opaque
-#     second estimate with no visible inputs.
-#   - UNAVAILABLE: no reliable value exists. `value` is None. Reported
-#     as an explicit row, never silently dropped - same "NO EVIDENCE,
-#     always reported" discipline v0.6's decision layer established.
-#     Never coerced to 0.0, which would claim a measurement that never
-#     happened (same "unavailable is not zero" rule v0.1's diagnostics
-#     already follows for frames_dropped).
-ResourceQuality = Literal['measured', 'declared', 'estimated', 'unavailable']
+# v0.9 (Phase 93) note: ResourceQuality/ResourceObservation are no longer
+# defined here - they're re-exported from multisens_sdk.models, which now
+# owns them, so a ResourceCollector plugin can construct a real
+# ResourceObservation without importing this module. Same class, same
+# fields, same validation, relocated - not rewritten. Every existing
+# `from app.domain.resources import ResourceObservation` call site is
+# unaffected. See docs/plugin-sdk.md for ResourceQuality's own four-value
+# explanation (MEASURED/DECLARED/ESTIMATED/UNAVAILABLE), now documented
+# alongside its actual definition in multisens_sdk.models.
 
 # The v0.7 supported metric vocabulary - deliberately small (architecture
 # review, "keep v0.7 small"). Each is genuinely obtainable today, either
@@ -146,78 +135,6 @@ SUPPORTED_RESOURCE_METRICS: dict[str, str] = {
     'fps': 'fps',
     'pipeline_latency_ms': 'ms',
 }
-
-
-class ResourceObservation(BaseModel):
-    """One measured/declared/estimated/unavailable value for one metric,
-    over one time window, optionally attributed to one configuration.
-    Persisted (v0.7, Phase 65) - the ingested-evidence shape, not a
-    computed artifact; see this module's own docstring for why that
-    makes it a pydantic BaseModel like GroundTruth/Prediction rather
-    than a decision.py-style dataclass."""
-    id: str
-    session_id: str
-    # None only for a genuinely unattributed/system-wide reading -
-    # reported explicitly, never guessed at. See "configuration
-    # attribution is temporal association" above for what a non-None
-    # value actually means (and does not mean).
-    configuration_id: str | None = None
-    metric: str
-    # None iff quality == 'unavailable' - enforced below by
-    # _value_matches_quality. 0.0 is a valid, distinct measured value,
-    # never confused with "no value."
-    value: float | None
-    unit: str
-    quality: ResourceQuality
-    # Always populated, never blank even for a measured row - e.g.
-    # 'psutil.cpu_percent', 'user_declared', or an ESTIMATED row's exact
-    # formula. Free text by design, not a closed enum - mirrors
-    # RequirementResult.reasons's own free-text-with-a-real-value
-    # posture.
-    source: str
-    platform_id: str
-    started_at: datetime
-    ended_at: datetime
-    # How many individual samples this row folds together - 1 for a
-    # true point sample, >1 for a collector's periodic summary window
-    # (see "persistence" above). Always >= 1, even for an UNAVAILABLE
-    # row (the collector still attempted at least one sample).
-    sample_count: int = 1
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator('unit', 'source', 'platform_id')
-    @classmethod
-    def _non_empty(cls, v: str, info) -> str:
-        if not v.strip():
-            raise ValueError(f'{info.field_name} must not be empty')
-        return v
-
-    @field_validator('sample_count')
-    @classmethod
-    def _sample_count_positive(cls, v: int) -> int:
-        if v < 1:
-            raise ValueError(f'sample_count must be >= 1, got {v}')
-        return v
-
-    @model_validator(mode='after')
-    def _value_matches_quality(self) -> ResourceObservation:
-        # Never a fabricated zero standing in for "no value," and never a
-        # real value silently reported as unavailable - the two failure
-        # directions are equally wrong, so both are checked.
-        if self.quality == 'unavailable' and self.value is not None:
-            raise ValueError("value must be None when quality is 'unavailable'")
-        if self.quality != 'unavailable' and self.value is None:
-            raise ValueError(f"value must not be None when quality is '{self.quality}'")
-        return self
-
-    @model_validator(mode='after')
-    def _window_is_ordered(self) -> ResourceObservation:
-        if self.started_at > self.ended_at:
-            raise ValueError(
-                f'started_at ({self.started_at.isoformat()}) must not be after '
-                f'ended_at ({self.ended_at.isoformat()})'
-            )
-        return self
 
 
 class ExecutionPlatform(BaseModel):

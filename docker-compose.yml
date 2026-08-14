@@ -27,7 +27,11 @@ services:
 
   backend:
     build:
-      context: ./backend
+      # Root context (not ./backend) so the Dockerfile can COPY the
+      # sibling sdk/ directory - multisens_sdk is installed as an
+      # editable dependency, not vendored into backend/ (v0.9, Phase 93).
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
       - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION}

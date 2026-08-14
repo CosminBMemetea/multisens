@@ -10,27 +10,40 @@ a classification-specific `label: str` field: a v0.2 presence classification
 event and a future detection bounding-box event both fit without a schema
 change. Task-specific interpretation of `value` belongs to the metric
 engine (Phase 13), not here.
+
+**v0.9 (Phase 93) note**: `GroundTruth`, `Prediction`, `EvaluationResult`,
+`MetricValue`, and `derive_configuration_id` are no longer defined here -
+they're re-exported from `multisens_sdk.models`, which now owns them, so a
+plugin can construct a real `Prediction` without importing this module or
+anything else backend-internal. Same classes, same fields, same
+validation, relocated - not rewritten. Every existing
+`from app.domain.models import ...` call site in this codebase is
+unaffected. See docs/plugin-sdk.md#the-central-decision-canonical-models-move-into-the-sdk.
+`Scenario`/`Session` and the comparison-layer models below stay here -
+no plugin contract ever constructs one.
 """
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
+
+from multisens_sdk.models import (
+    EvaluationResult,
+    GroundTruth,
+    MetricValue,
+    Prediction,
+    derive_configuration_id,
+)
+
+__all__ = [
+    'SessionStatus', 'MetricValue', 'derive_configuration_id', 'Scenario', 'Session',
+    'GroundTruth', 'Prediction', 'EvaluationResult', 'ComparisonValidity', 'MetricDelta',
+    'ComparisonMetrics', 'ComparisonSide', 'PairwiseComparison',
+]
 
 SessionStatus = Literal['created', 'running', 'completed', 'failed']
-
-# A metric value of None means "not calculable" (e.g. zero denominator) and
-# must render as N/A - never coerced to 0.0, which would mean something
-# different (calculated, and the answer was zero).
-MetricValue = float | None
-
-
-def derive_configuration_id(sensor_ids: list[str]) -> str:
-    """Canonical id for a set of sensors - same sensor_ids in any order
-    always produce the same id. Not a pre-registered resource: an ad-hoc
-    combination works with zero setup, same as sensor_ids itself."""
-    return 'cfg-' + '-'.join(sorted(sensor_ids))
 
 
 class Scenario(BaseModel):
@@ -49,92 +62,6 @@ class Session(BaseModel):
     ended_at: datetime | None = None
     status: SessionStatus = 'created'
     metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class GroundTruth(BaseModel):
-    id: str
-    session_id: str
-    timestamp_ms: float
-    task: str
-    value: dict[str, Any]
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class Prediction(BaseModel):
-    id: str
-    session_id: str
-    timestamp_ms: float
-    source_id: str
-    sensor_ids: list[str]
-    # Derived from sensor_ids, not chosen by the caller - see
-    # _derive_configuration_id below. Left settable so a repository layer
-    # can round-trip a row without recomputing it.
-    configuration_id: str = ''
-    task: str
-    value: dict[str, Any]
-    confidence: float | None = None
-    latency_ms: float | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator('sensor_ids')
-    @classmethod
-    def _sensor_ids_non_empty(cls, v: list[str]) -> list[str]:
-        if not v:
-            raise ValueError(
-                'sensor_ids must not be empty - a prediction must declare '
-                'at least one input sensor'
-            )
-        return v
-
-    @field_validator('confidence')
-    @classmethod
-    def _confidence_in_range(cls, v: float | None) -> float | None:
-        if v is not None and not (0.0 <= v <= 1.0):
-            raise ValueError(f'confidence must be within [0, 1], got {v}')
-        return v
-
-    @model_validator(mode='after')
-    def _derive_configuration_id(self) -> Prediction:
-        expected = derive_configuration_id(self.sensor_ids)
-        if not self.configuration_id:
-            self.configuration_id = expected
-        elif self.configuration_id != expected:
-            raise ValueError(
-                f"configuration_id '{self.configuration_id}' does not match "
-                f"sensor_ids {self.sensor_ids} (expected '{expected}') - "
-                f"configuration_id is derived, not chosen"
-            )
-        return self
-
-
-class EvaluationResult(BaseModel):
-    id: str
-    session_id: str
-    configuration_id: str
-    task: str
-    format_version: str = '1.0'
-    # Which Evaluator (app/domain/evaluators.py, v0.8) produced this result -
-    # 'classification' for every pre-v0.8 row (migration 0005's column
-    # default), explicit on every new one. Never inferred from metric
-    # names or task strings - see evaluators.py's own module docstring.
-    evaluator_type: str = 'classification'
-    # Stored, not just passed in at evaluate-time and forgotten: a metric
-    # number is not reproducible/auditable without knowing the tolerance
-    # that produced its matched/unmatched split.
-    tolerance_ms: float
-    sample_count: int
-    matched_samples: int
-    unmatched_predictions: int
-    unmatched_ground_truth: int
-    metrics: dict[str, MetricValue]
-    confusion_matrix: dict[str, Any] | None = None
-    # Generic evaluator-specific structured evidence that doesn't fit the
-    # flat metrics dict - e.g. a detection evaluator's per-class precision/
-    # recall breakdown. None whenever an evaluator has nothing beyond its
-    # flat metrics to report. Deliberately one shared slot, not a second
-    # confusion_matrix-shaped special case per future evaluator type.
-    details: dict[str, Any] | None = None
-    computed_at: datetime
 
 
 # --- comparison (v0.3, Phase 20) ------------------------------------------

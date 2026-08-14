@@ -1,14 +1,18 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
-**Status: architecture decisions, approved ahead of implementation (Phase
-92).** Nothing described here exists in code yet. This document is the
-single authoritative decision record the v0.9 phases (93-106) build
-against - each phase updates its own section from *planned* to *shipped*
-as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s eventual `[0.9.0]`
-entry is the record of what actually got built. Anywhere this document
-says a component "will" do something, that is a decision already made,
-not yet implemented - never read a "will" here as a claim about current
-behavior.
+**Status: in progress (Phase 92 architecture review approved; Phase 93 -
+the `multisens_sdk` package itself - shipped; Phases 94-106 not yet
+built).** This document is the single authoritative decision record the
+v0.9 phases build against - each phase updates its own section from
+*planned* to *shipped* as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s
+eventual `[0.9.0]` entry is the record of what actually got built.
+Sections describing the SDK package, its five contracts, and the model
+relocation now describe real, tested code (`sdk/multisens_sdk/`, 19
+dedicated tests, the full pre-existing 730-test backend suite passing
+unchanged against it). Anywhere this document still says a component
+"will" do something, that is a decision already made but not yet
+implemented - runtime wiring (discovery, the registry, actual
+connector/evaluator/collector execution) starts at Phase 94.
 
 See [architecture.md](architecture.md#the-two-planes-controltelemetry-vs-video)
 for the existing control/video-plane split this design extends rather
@@ -178,11 +182,26 @@ shaped like `Prediction` that can silently drift from the real one. Both
 are unacceptable, so: **`GroundTruth`, `Prediction`, `EvaluationResult`,
 `ResourceObservation`, `MatchResult`/`MatchedPair` (data only, not
 `match_by_timestamp` itself), `MetricValue`, and `ResourceQuality` move
-into `multisens_sdk.models`.** `backend/app/domain/models.py` becomes a
-re-export shim - same classes, same fields, same validation, relocated,
-not rewritten. This is the single highest-blast-radius change in this
-release (Phase 93); it lands only once the full pre-existing backend
-test suite passes unchanged against it.
+into `multisens_sdk.models`.** `backend/app/domain/models.py` (and
+`matching.py`/`evaluator_output.py`/`resources.py` for the shapes they
+each owned) became re-export shims - same classes, same fields, same
+validation, relocated, not rewritten. This was the single
+highest-blast-radius change in this release (Phase 93); it shipped only
+once the full pre-existing 730-test backend suite passed unchanged
+against it (verified: `test_sdk_boundary.py::test_backend_reexports_are_the_same_objects_not_copies`
+asserts each backend name and its SDK counterpart are the literal same
+class object, never independently-defined copies).
+
+**A real packaging gotcha found and fixed while shipping this phase**:
+the backend image's base Ubuntu 22.04 system `pip` (22.0.2) silently
+mis-resolves this package's PEP 621 `pyproject.toml` metadata - every
+`pip3 install /sdk` step reported success, but installed a bogus
+`UNKNOWN-0.0.0` distribution containing none of the actual source files,
+so `import multisens_sdk` 404'd only at container *startup*, not at
+build time. Reproduced and confirmed directly (the identical
+`pyproject.toml` installs correctly under a current `pip` on the host);
+fixed by upgrading `pip` itself as the very first step in
+`backend/Dockerfile`, before installing anything else.
 
 `multisens_sdk` accepts `pydantic` as its one real third-party
 dependency (the canonical models already are pydantic; a dependency-free
