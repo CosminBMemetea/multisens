@@ -42,7 +42,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Iterable
 
-from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
 
 ENTRY_POINT_GROUP = 'multisens.plugins'
 
@@ -203,6 +203,23 @@ def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_id
             distribution_name=distribution_name, distribution_version=distribution_version,
         ))
         return
+
+    # An EVALUATOR-type plugin also needs its own evaluator_type accepted
+    # into EVALUATOR_REGISTRY (v0.9, Phase 98) - a SEPARATE namespace
+    # from plugin_id, checked independently: two plugins can have
+    # different plugin_ids yet collide on the same evaluator_type, and
+    # that collision is rejected here, before this plugin is ever
+    # reported AVAILABLE.
+    if descriptor.plugin_type == PluginType.EVALUATOR:
+        from app.domain.evaluators import DuplicateEvaluatorTypeError, register_evaluator
+        try:
+            register_evaluator(instance)
+        except DuplicateEvaluatorTypeError as e:
+            _register(registry, PluginRecord(
+                plugin_id=plugin_id, status=PluginStatus.LOAD_FAILED, descriptor=descriptor, instance=None,
+                error=str(e), distribution_name=distribution_name, distribution_version=distribution_version,
+            ))
+            return
 
     _register(registry, PluginRecord(
         plugin_id=plugin_id, status=PluginStatus.AVAILABLE, descriptor=descriptor, instance=instance,

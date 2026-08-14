@@ -14,11 +14,14 @@ existing v0.8 shape verbatim. Phase 94's registry needs every plugin type
 so this method was added here rather than inventing a separate,
 evaluator-specific registration path.
 
-`MetricDescriptor` is defined here but not yet part of the
-`EvaluatorPlugin` protocol itself - Phase 98 adds a `metric_descriptors()`
-method to the protocol and wires it through the registry. Defining the
-shape now, in the same phase as the other SDK contracts, avoids Phase 98
-needing to touch this module's own import surface.
+`metric_descriptors()` was added in Phase 98, alongside making
+`EVALUATOR_REGISTRY` externally extensible - purely descriptive UI-hint
+metadata (`MetricDescriptor`, defined since Phase 93). It is never
+consulted by the requirement/acceptance engine (`coverage.py`), which
+keeps reading `EvaluationResult.metrics[criterion.metric]` by string key
+exactly as it always has - grep-verified by a dedicated test. A plugin
+evaluator produces evidence; the profile determines sufficiency, never
+the reverse.
 """
 from __future__ import annotations
 
@@ -65,6 +68,7 @@ class EvaluatorPlugin(Protocol):
     format_version: str
 
     def descriptor(self) -> PluginDescriptor: ...
+    def metric_descriptors(self) -> list["MetricDescriptor"]: ...
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput: ...
 
 

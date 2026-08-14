@@ -126,7 +126,7 @@ from app.domain.evaluator_output import EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import compute_f1
 from app.domain.models import MetricValue
-from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, MetricDescriptor, PluginDescriptor, PluginType
 
 _COORDINATE_RANGE = (0.0, 1.0)
 
@@ -545,6 +545,17 @@ class DetectionEvaluator:
             capabilities={'evaluator_type': self.evaluator_type}, author='MultiSens', license='Apache-2.0',
             description='Bounding-box IoU matching, precision/recall/F1/mean-IoU, per-class breakdown (v0.8).',
         )
+
+    def metric_descriptors(self) -> list[MetricDescriptor]:
+        return [
+            MetricDescriptor(id='precision', higher_is_better=True),
+            MetricDescriptor(id='recall', higher_is_better=True),
+            MetricDescriptor(id='f1', higher_is_better=True),
+            MetricDescriptor(id='true_positives', higher_is_better=True),
+            MetricDescriptor(id='false_positives', higher_is_better=False),
+            MetricDescriptor(id='false_negatives', higher_is_better=False),
+            MetricDescriptor(id='mean_iou_matched', higher_is_better=True),
+        ]
 
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         params = parse_detection_parameters(parameters)

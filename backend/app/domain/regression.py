@@ -56,7 +56,7 @@ from typing import Any
 from app.domain.evaluator_output import EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.models import MetricValue
-from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, MetricDescriptor, PluginDescriptor, PluginType
 
 
 def _is_number(value: Any) -> bool:
@@ -169,6 +169,18 @@ class RegressionEvaluator:
             capabilities={'evaluator_type': self.evaluator_type}, author='MultiSens', license='Apache-2.0',
             description='Scalar regression - MAE/RMSE/bias/median-absolute-error, unit-aware (v0.8).',
         )
+
+    def metric_descriptors(self) -> list[MetricDescriptor]:
+        return [
+            MetricDescriptor(id='mae', higher_is_better=False),
+            MetricDescriptor(id='rmse', higher_is_better=False),
+            # bias has no defined direction - closer to zero is better,
+            # neither "higher" nor "lower" is uniformly better, the
+            # canonical None example (see MetricDescriptor's own
+            # docstring).
+            MetricDescriptor(id='bias', higher_is_better=None),
+            MetricDescriptor(id='median_absolute_error', higher_is_better=False),
+        ]
 
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         samples = build_regression_samples(match_result)

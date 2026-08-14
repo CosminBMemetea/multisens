@@ -50,9 +50,12 @@ from app.domain.evaluator_output import Evaluator, EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import evaluate_classification
 from app.domain.regression import RegressionEvaluator
-from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, MetricDescriptor, PluginDescriptor, PluginType
 
-__all__ = ['Evaluator', 'EvaluatorOutput', 'ClassificationEvaluator', 'EVALUATOR_REGISTRY']
+__all__ = [
+    'Evaluator', 'EvaluatorOutput', 'ClassificationEvaluator', 'EVALUATOR_REGISTRY',
+    'register_evaluator', 'DuplicateEvaluatorTypeError',
+]
 
 
 class ClassificationEvaluator:
@@ -77,6 +80,17 @@ class ClassificationEvaluator:
             description='Single-label multi-class classification metrics (v0.2).',
         )
 
+    def metric_descriptors(self) -> list[MetricDescriptor]:
+        return [
+            MetricDescriptor(id='accuracy', higher_is_better=True),
+            MetricDescriptor(id='precision_macro', higher_is_better=True),
+            MetricDescriptor(id='recall_macro', higher_is_better=True),
+            MetricDescriptor(id='f1_macro', higher_is_better=True),
+            MetricDescriptor(id='precision_micro', higher_is_better=True),
+            MetricDescriptor(id='recall_micro', higher_is_better=True),
+            MetricDescriptor(id='f1_micro', higher_is_better=True),
+        ]
+
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         cm = evaluate_classification(match_result)
         return EvaluatorOutput(
@@ -97,13 +111,40 @@ class ClassificationEvaluator:
         )
 
 
-# Static, not a dynamic plugin-loading mechanism (master prompt §6) -
-# realistically 3-4 evaluator types will ever exist for this project.
-# An `evaluator_type` absent from this dict is always a clear validation
-# error at the API layer (see api/evaluation.py) - never a silent
-# fallback to classification.
+# Starts with exactly the three built-in evaluators - externally
+# discovered EvaluatorPlugins are added at startup by
+# app/plugins/registry.py's own discovery pass (v0.9, Phase 98), never by
+# importing this module differently. An `evaluator_type` absent from
+# this dict is always a clear validation error at the API layer (see
+# api/evaluation.py) - never a silent fallback to classification.
 EVALUATOR_REGISTRY: dict[str, Evaluator] = {
     'classification': ClassificationEvaluator(),
     'object_detection': DetectionEvaluator(),
     'regression': RegressionEvaluator(),
 }
+
+
+class DuplicateEvaluatorTypeError(Exception):
+    """Raised by `register_evaluator` when an incoming plugin's own
+    `evaluator_type` is already registered - two plugins must never
+    silently share one evaluator_type key, the same "never silently
+    override" discipline `PluginRegistry`'s own duplicate `plugin_id`
+    handling already has (v0.9, Phase 94). A plugin_id collision and an
+    evaluator_type collision are checked independently - plugin_id is
+    the global registry's own identity namespace; evaluator_type is
+    this dict's own, separate namespace, and either can collide without
+    the other."""
+
+
+def register_evaluator(evaluator: Evaluator) -> None:
+    """Adds an external `EvaluatorPlugin` to `EVALUATOR_REGISTRY` - never
+    silently overrides an existing key, built-in or previously-registered
+    external. The three built-in evaluators are never re-registered
+    through this function; they're already the dict's own initial
+    contents."""
+    if evaluator.evaluator_type in EVALUATOR_REGISTRY:
+        raise DuplicateEvaluatorTypeError(
+            f"evaluator_type '{evaluator.evaluator_type}' is already registered - "
+            f"cannot register plugin '{evaluator.descriptor().plugin_id}'"
+        )
+    EVALUATOR_REGISTRY[evaluator.evaluator_type] = evaluator

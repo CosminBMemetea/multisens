@@ -1,9 +1,42 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-97 - the SDK package, discovery/registry, the SensorConnector runtime
-wrapper, the built-in RTSP adapter, and the Prediction/GroundTruth
-connector wrappers - shipped; Phases 98-106 not yet built).**
+93-98 - the SDK package, discovery/registry, the SensorConnector runtime
+wrapper, the built-in RTSP adapter, the Prediction/GroundTruth connector
+wrappers, and external evaluator plugins - shipped; Phases 99-106 not
+yet built).**
+
+## External evaluator plugins (Phase 98 - shipped)
+
+`EVALUATOR_REGISTRY` (`app/domain/evaluators.py`) is genuinely
+extensible now, not just documented as eventually-extensible: an
+EVALUATOR-type plugin discovered through `multisens.plugins` gets its
+own `evaluator_type` registered via `register_evaluator()` as part of
+the same `discover_plugins()` pass that checks `plugin_id` uniqueness -
+a *separate* namespace, checked independently. Two plugins with
+different `plugin_id`s can still collide on `evaluator_type`; unlike a
+`plugin_id` collision (which rejects both sides - genuine identity
+ambiguity), an `evaluator_type` collision rejects only the second
+registration attempt with a clear, dedicated error - the first,
+already-legitimately-registered plugin (built-in evaluators always win,
+since they register before any external discovery runs) keeps working.
+Never a silent override either way.
+
+`EvaluatorPlugin.metric_descriptors()` (purely descriptive -
+`higher_is_better`/`unit` hints) is implemented by all three built-ins
+now; `coverage.py`'s acceptance engine has zero references to it or to
+`MetricDescriptor` anywhere, grep-verified by a dedicated test - a
+plugin evaluator produces evidence, the profile alone determines
+sufficiency.
+
+Proven by 8 dedicated tests, including the full acceptance bar: a
+test-only external evaluator (`evaluator_type='test_ok_ratio'`,
+discovered through the exact same entry-point mechanism a real installed
+package would use) flows through `/evaluate` -> `EvaluationResult` ->
+`/coverage`'s requirement acceptance -> `/compare`'s metric deltas, with
+zero core edits beyond this phase's own registry wiring - the identical
+claim Phase 85's mixed-task test already proved for the three built-in
+evaluators, now proven for a genuinely external one.
 
 ## Prediction + GroundTruth connectors (Phase 97 - shipped)
 
