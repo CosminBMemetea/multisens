@@ -1,12 +1,50 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-102 - the SDK package, discovery/registry, the SensorConnector
+93-103 - the SDK package, discovery/registry, the SensorConnector
 runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
 connector wrappers, external evaluator plugins, external
 resource-collector plugins, the contract test kit, the reference
-external plugin, and the read-only integrations API/UI - shipped; Phases
-103-106 not yet built).**
+external plugin, the read-only integrations API/UI, and the
+RideSafe/PropertyWatch connector-architecture validation - shipped;
+Phases 104-106 not yet built).**
+
+## RideSafe/PropertyWatch validation (Phase 103 - shipped)
+
+Confirms the existing public demo sensor identities - `ridesafe_front_rgb`/
+`ridesafe_rear_rgb` and `property_entrance_rgb`/`property_storage_rgb`/
+`property_indoor_rgb`, the same ids the Phase 73-74/87-88 demo evaluation
+data has used all along - map cleanly onto the connector architecture:
+`backend/tests/test_ridesafe_propertywatch_connectors.py` builds a
+`config/sensors.yaml`-shaped document naming all five against the one
+`multisens.builtin.sensor.rtsp` plugin, through the real
+`load_sensors()`/`build_connector_instances()` pipeline, and proves five
+independent `ConnectorInstance` objects (distinct health, distinct
+config, distinct identity - one setting never leaks into another).
+
+**Deliberately not a new live-video claim, and explicitly not wired into
+the repo's real `config/sensors.yaml`** - a dedicated test checks that
+file directly and confirms it still lists only `rgb`/`depth`/`thermal`.
+Two reasons, both already-documented boundaries this phase respects
+rather than crosses: adding these ids to the real file would (1) surface
+them on the Dashboard's own `/api/sensors`-driven sensor list, an
+explicit out-of-scope item for this phase, and (2) very likely collide
+with ROS ingestion's own single-topic-per-modality constraint - RideSafe's
+two cameras and PropertyWatch's three would all be `modality: rgb`,
+exactly the shape `sensor_config.py`'s `select_usable_sensors` raises on
+(see [limitations.md](limitations.md)'s "one sensor per modality, for
+live ingestion only," still completely unchanged). What v0.9 actually
+changes is one layer up: the connector *plugin* itself has no modality
+concept and no single-topic constraint at all - proven here with the
+real shipped demo identities instead of the generic `front`/`rear`
+placeholders Phase 96's own tests already used.
+
+The existing RideSafe/PropertyWatch REST/evaluation demo data and tests
+(`test_ridesafe_demo.py`, `test_ridesafe_detection_demo.py`,
+`test_propertywatch_demo.py`, `test_propertywatch_detection_demo.py`) are
+untouched - this phase never modifies demo-data generation or the
+evaluation layer, only adds a connector-layer test alongside them; all
+37 passed unchanged.
 
 ## Integrations API & UI (Phase 102 - shipped)
 
