@@ -1,13 +1,42 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
 **Status: in progress (Phase 92 architecture review approved; Phases
-93-103 - the SDK package, discovery/registry, the SensorConnector
+93-104 - the SDK package, discovery/registry, the SensorConnector
 runtime wrapper, the built-in RTSP adapter, the Prediction/GroundTruth
 connector wrappers, external evaluator plugins, external
 resource-collector plugins, the contract test kit, the reference
-external plugin, the read-only integrations API/UI, and the
-RideSafe/PropertyWatch connector-architecture validation - shipped;
-Phases 104-106 not yet built).**
+external plugin, the read-only integrations API/UI, the
+RideSafe/PropertyWatch connector-architecture validation, and the
+robot/drone extensibility validation - shipped; Phases 105-106 not yet
+built).**
+
+## Robot/drone extensibility validation (Phase 104 - shipped)
+
+Builds the architecture review's own `robot_lidar`/`robot_imu` paper
+design (Phase 92's zero-core-imports test, done on paper at the time)
+for real, as two small test-only plugins -
+`backend/tests/fixtures/robot_drone_plugin/{lidar,imu}.py` - reusing
+Phase 101's reference-plugin pattern (deterministic synthetic data, the
+identical AST-based SDK-boundary check) but never shipped under
+`examples/`; they exist purely inside
+`backend/tests/test_robot_drone_extensibility.py` to prove the SDK
+against a robotics-flavored scenario. Both fixtures discover, configure,
+start, sample, health-report, and stop using nothing but
+`multisens_sdk` + the standard library (checked by the same import walk
+`examples/plugins/environment-sensor/tests/test_boundary.py` already
+established), and both really register as `AVAILABLE` through
+`discover_plugins()`, not just in isolation.
+
+**What this proves**: connector registration/routing works for a
+LiDAR/IMU-shaped sensor type, zero core changes needed. **What it does
+not prove, and never claims**: that MultiSens understands point-cloud
+geometry or IMU signal semantics - `sample()` on both fixtures emits a
+tiny, generic, JSON-serializable summary (`point_count`/`range_m`; six
+raw accel/gyro axes), never raw point-cloud data, never orientation
+estimation or sensor fusion, and no such processing exists anywhere in
+these fixtures or in core. No real LiDAR/IMU hardware, no point-cloud
+visualization, no robotics control - none of that was built, and none
+of it is claimed.
 
 ## RideSafe/PropertyWatch validation (Phase 103 - shipped)
 
