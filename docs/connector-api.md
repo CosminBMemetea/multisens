@@ -47,7 +47,32 @@ sensors:
                                      # diagnostics comparison - omit if
                                      # genuinely unknown rather than
                                      # guessing a number
+    connector: <object, optional>   # v0.9 - see below
 ```
+
+**`connector`** (v0.9, Phase 95): additive and fully optional - every
+existing entry with no `connector` block keeps working exactly as
+before, unchanged. Names a plugin (`multisens.plugins`-discovered or
+built-in) and its own config for this specific sensor id, so a plugin
+implementation can serve any number of independent sensor instances:
+
+```yaml
+sensors:
+  - id: ridesafe_front_rgb
+    connector:
+      plugin: multisens.builtin.sensor.rtsp
+      config:
+        uri: rtsp://host.docker.internal:8554/front
+        transport: tcp
+        password_env: CAMERA_PASSWORD   # resolved from os.environ at connect
+                                         # time only, never written to this
+                                         # file or echoed back anywhere -
+                                         # see docs/plugin-sdk.md#secrets
+```
+
+Full contract (lifecycle, health, idempotency, the `*_env` secret
+convention, the small-payload-only `sample()` rule): see
+[plugin-sdk.md](plugin-sdk.md).
 
 **`id`**: must be unique across the file. Used as the ROS node name
 (`{id}_ingestion`) and as the `hardware_id` in diagnostics.

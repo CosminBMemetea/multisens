@@ -1,15 +1,41 @@
 # Plugin SDK & External Integration Framework (v0.9)
 
-**Status: in progress (Phase 92 architecture review approved; Phase 93 -
-the `multisens_sdk` package - and Phase 94 - discovery/registry - both
-shipped; Phases 95-106 not yet built).** This document is the single
-authoritative decision record the v0.9 phases build against - each phase
-updates its own section from *planned* to *shipped* as it lands, and
-[CHANGELOG.md](../CHANGELOG.md)'s eventual `[0.9.0]` entry is the record
-of what actually got built. Anywhere this document still says a
-component "will" do something, that is a decision already made but not
-yet implemented - actual connector/evaluator/collector *execution*
-(`start`/`stop`/`sample`/`poll` doing real work) starts at Phase 95.
+**Status: in progress (Phase 92 architecture review approved; Phases
+93-95 - the SDK package, discovery/registry, and the SensorConnector
+runtime wrapper - shipped; Phases 96-106 not yet built).** This document
+is the single authoritative decision record the v0.9 phases build
+against - each phase updates its own section from *planned* to *shipped*
+as it lands, and [CHANGELOG.md](../CHANGELOG.md)'s eventual `[0.9.0]`
+entry is the record of what actually got built. Anywhere this document
+still says a component "will" do something, that is a decision already
+made but not yet implemented - the built-in RTSP adapter and real
+config-driven `sensor_id -> ConnectorInstance` wiring start at Phase 96.
+
+## SensorConnector runtime wrapper (Phase 95 - shipped)
+
+`backend/app/plugins/connector_instance.py`'s `ConnectorInstance` wraps
+one already-constructed `SensorConnector` plugin object per sensor id,
+enforcing the lifecycle rules below for real: mutating calls
+(`configure`/`start`/`stop`) raise a clean `ConnectorConfigError`/
+`ConnectorRuntimeError`/`ConnectorLifecycleError` on failure (and update
+tracked state to `FAILED` first, so a later `health()` reflects the same
+reality even if a caller mishandles the exception); observational calls
+(`health`/`sample`) never raise, always returning a value describing
+current reality so a poller never needs special-cased exception
+handling. `sample()`'s "small/scalar-payload-only" contract is enforced,
+not just documented: a payload that fails JSON serialization or exceeds
+a 65,536-byte cap is discarded (the connector stays `RUNNING` - an
+oversized reading is a data-quality problem with one sample, never a
+connectivity failure). `config/sensors.yaml` gained an additive,
+optional `connector:` block (`plugin:`/`config:`) - see
+[connector-api.md](connector-api.md) - and `backend/app/plugins/
+secrets.py` resolves `*_env` references (e.g. `password_env:
+CAMERA_PASSWORD`) from `os.environ` at connect time only, before the
+plugin ever sees the config, never persisted or echoed back anywhere.
+Proven by 29 dedicated tests (24 lifecycle + 5 secrets), including two
+independent `ConnectorInstance`s wrapping separate objects of the same
+connector class staying fully independent (`ridesafe_front_rgb`/
+`ridesafe_rear_rgb` never share state).
 
 ## Discovery & the plugin registry (Phase 94 - shipped)
 
