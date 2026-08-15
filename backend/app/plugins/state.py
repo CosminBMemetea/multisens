@@ -12,8 +12,16 @@ already established.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from app.plugins.connector_instance import ConnectorInstance
+from app.plugins.poll_runner import PollRunner
 from app.plugins.registry import PluginRegistry
 
 plugin_registry: PluginRegistry = PluginRegistry()
 connector_instances: dict[str, ConnectorInstance] = {}
+# {connector_id: (PredictionConnectorInstance|GroundTruthConnectorInstance,
+# PollRunner)} - v0.9 bug hunt, issue #110. Kept here (not just the
+# runner) so shutdown can stop the connector itself, not only its
+# polling thread.
+poll_runners: dict[str, tuple[Any, PollRunner]] = {}

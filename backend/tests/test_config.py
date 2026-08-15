@@ -1,6 +1,6 @@
 import textwrap
 
-from app.config import load_disabled_plugin_ids, load_sensors
+from app.config import load_disabled_plugin_ids, load_poll_connectors, load_sensors
 
 
 def test_load_sensors_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
@@ -90,3 +90,45 @@ def test_load_disabled_plugin_ids_handles_malformed_shapes_without_crashing(monk
 
     config_file.write_text('sensors: []\nplugins:\n  disabled: "not-a-list"\n')
     assert load_disabled_plugin_ids() == []
+
+
+# --- v0.9 bug hunt (issue #110): poll_connectors ----------------------------
+
+def test_load_poll_connectors_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(tmp_path / 'does-not-exist.yaml'))
+    assert load_poll_connectors() == []
+
+
+def test_load_poll_connectors_returns_empty_list_when_absent(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_poll_connectors() == []
+
+
+def test_load_poll_connectors_parses_real_config(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text(textwrap.dedent("""\
+        sensors: []
+        poll_connectors:
+          - id: acme-predictions
+            plugin: acme.prediction.detector
+            config:
+              endpoint: https://example/predict
+            poll_interval_s: 2.0
+    """))
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+
+    assert load_poll_connectors() == [{
+        'id': 'acme-predictions',
+        'plugin': 'acme.prediction.detector',
+        'config': {'endpoint': 'https://example/predict'},
+        'poll_interval_s': 2.0,
+    }]
+
+
+def test_load_poll_connectors_handles_malformed_shape_without_crashing(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\npoll_connectors: "not-a-list"\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_poll_connectors() == []

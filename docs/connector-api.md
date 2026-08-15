@@ -74,6 +74,39 @@ Full contract (lifecycle, health, idempotency, the `*_env` secret
 convention, the small-payload-only `sample()` rule): see
 [plugin-sdk.md](plugin-sdk.md).
 
+**`poll_connectors`** (v0.9 bug hunt, issue #110): a separate, top-level
+list - not nested under a sensor entry, since a `PREDICTION_CONNECTOR`/
+`GROUND_TRUTH_CONNECTOR` plugin isn't tied to one sensor id; each item
+it emits carries its own `sensor_ids`. Fully optional, additive - a
+config file with none behaves exactly as before. Each entry activates
+one installed plugin as a real background poll loop:
+
+```yaml
+poll_connectors:
+  - id: <string, required>            # unique identifier for this entry
+    plugin: <string, required>        # a discovered plugin_id, must be
+                                       # PREDICTION_CONNECTOR or
+                                       # GROUND_TRUTH_CONNECTOR
+    config: <object, optional>        # passed to the plugin's own
+                                       # configure() - same *_env secret
+                                       # convention as connector.config
+    poll_interval_s: <number, optional> # defaults to 1.0; must be a
+                                       # positive number - zero,
+                                       # negative, or NaN is rejected
+                                       # with a printed diagnostic, never
+                                       # silently busy-looped
+```
+
+An entry naming an unknown plugin, a plugin of the wrong type, or a
+plugin whose `configure()`/`start()` fails is skipped with a printed
+startup diagnostic - it never prevents the rest of the file's sensors
+or poll connectors from being wired, nor crashes application startup
+(the same failure-isolation discipline `connector:` above already
+follows). Unlike sensor connectors, a poll connector that fails to
+start is dropped entirely rather than kept in an inspectable failed
+state - there is no `/api/connectors`-equivalent read surface for poll
+connectors today, only the startup log line.
+
 **`id`**: must be unique across the file. Used as the ROS node name
 (`{id}_ingestion`) and as the `hardware_id` in diagnostics.
 

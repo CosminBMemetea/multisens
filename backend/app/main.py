@@ -19,10 +19,15 @@ from app.api.plugins import router as plugins_router
 from app.api.profiles import router as profiles_router
 from app.api.scenarios import router as scenarios_router
 from app.api.sessions import router as sessions_router
-from app.config import load_disabled_plugin_ids, load_sensors
+from app.config import load_disabled_plugin_ids, load_poll_connectors, load_sensors
 from app.persistence import db as db_module
 from app.plugins import state as plugin_state
-from app.plugins.manager import build_connector_instances, stop_connector_instances
+from app.plugins.manager import (
+    build_connector_instances,
+    build_poll_runners,
+    stop_connector_instances,
+    stop_poll_runners,
+)
 from app.plugins.registry import PluginStatus, discover_plugins
 from app.ros_bridge import RosBridge
 from app.video_relay import mjpeg_stream
@@ -72,8 +77,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # app/plugins/manager.py's own module docstring for why this only
     # ever runs once, here, and never through a mutation API.
     plugin_state.connector_instances = build_connector_instances(load_sensors(), plugin_state.plugin_registry)
+    # Same for prediction/ground-truth poll connectors (v0.9 bug hunt,
+    # issue #110) - previously never wired at all, so an installed
+    # plugin of either type would discover as AVAILABLE and then never
+    # actually poll anything.
+    plugin_state.poll_runners = build_poll_runners(load_poll_connectors(), plugin_state.plugin_registry)
 
     yield
+    stop_poll_runners(plugin_state.poll_runners)
     stop_connector_instances(plugin_state.connector_instances)
     bridge.shutdown()
 

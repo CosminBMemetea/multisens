@@ -22,6 +22,20 @@ def load_sensors() -> list[dict]:
     return sensors if isinstance(sensors, list) else []
 
 
+def load_poll_connectors() -> list[dict]:
+    """`poll_connectors` (v0.9 bug hunt, issue #110): the config surface
+    for activating an installed `PREDICTION_CONNECTOR`/
+    `GROUND_TRUTH_CONNECTOR` plugin - mirrors each sensor's own
+    `connector:` block shape (`plugin:`/`config:`), just at the top
+    level rather than nested under one sensor id, since neither
+    connector type is tied to a single sensor (each item they emit
+    carries its own `sensor_ids` - see poll_connector_instance.py's own
+    module docstring). Same restart-time-only convention as every other
+    plugin config in this file - no mutation API."""
+    poll_connectors = _load_config().get('poll_connectors', [])
+    return poll_connectors if isinstance(poll_connectors, list) else []
+
+
 def load_disabled_plugin_ids() -> list[str]:
     """`plugins.disabled` (v0.9, Phase 94) - the same config file sensors
     already live in, no separate file until a real need for one shows up.

@@ -14,12 +14,27 @@ registry's own `PluginRecord.factory` (Phase 102's own addition to
 plugin, wrong plugin_type, not AVAILABLE) is skipped with a printed
 diagnostic - it never prevents the rest of the sensors' connectors from
 being built, nor crashes application startup.
+
+`build_poll_runners()`/`stop_poll_runners()` (v0.9 bug hunt, issue #110)
+close a real gap the same discipline above didn't: Phase 97 built
+`PollRunner`/`PredictionConnectorInstance`/`GroundTruthConnectorInstance`
+and tested them thoroughly in isolation, but nothing ever called them -
+a `PREDICTION_CONNECTOR`/`GROUND_TRUTH_CONNECTOR` plugin would discover
+as `AVAILABLE` and then sit inert forever. Same wiring shape as sensor
+connectors (`poll_connectors:` config list, factory-per-entry, one bad
+entry never blocks the rest), except each entry also gets its own
+background `PollRunner` thread started immediately, since a poll
+connector's whole purpose - unlike a sensor connector, which is polled
+on demand through `/api/connectors` - is to run continuously.
 """
 from __future__ import annotations
 
 from typing import Any
 
+from app.persistence import repository as repo
 from app.plugins.connector_instance import ConnectorInstance, ConnectorLifecycleError, ConnectorRuntimeError
+from app.plugins.poll_connector_instance import GroundTruthConnectorInstance, PredictionConnectorInstance
+from app.plugins.poll_runner import DEFAULT_POLL_INTERVAL_S, PollRunner
 from app.plugins.registry import PluginRegistry, PluginStatus
 from multisens_sdk import ConnectorConfigError, PluginType
 
@@ -83,3 +98,100 @@ def stop_connector_instances(instances: dict[str, ConnectorInstance]) -> None:
             instance.stop()
         except ConnectorRuntimeError as e:
             print(f"connector shutdown: sensor '{instance.sensor_id}' failed to stop cleanly: {e}")
+
+
+_POLL_CONNECTOR_TYPES = {
+    PluginType.PREDICTION_CONNECTOR: (PredictionConnectorInstance, repo.insert_predictions_batch),
+    PluginType.GROUND_TRUTH_CONNECTOR: (GroundTruthConnectorInstance, repo.insert_ground_truth_batch),
+}
+
+
+def build_poll_runners(
+    poll_connectors: list[dict], registry: PluginRegistry, *, connect: Any = None,
+) -> dict[str, tuple[Any, PollRunner]]:
+    """Reads the `poll_connectors:` config list (`app/config.py`'s
+    `load_poll_connectors()`), wires each entry into a real
+    `PredictionConnectorInstance`/`GroundTruthConnectorInstance` plus a
+    started `PollRunner` background thread. Returns `{connector_id:
+    (instance, runner)}` - both kept (not just the runner) so
+    `stop_poll_runners()` can cleanly stop the connector itself, not
+    only the polling thread.
+
+    `connect` is forwarded to each `PollRunner` verbatim when given -
+    purely for tests, so they can point every runner at one real
+    temporary database instead of `MULTISENS_DB_PATH`, the same
+    injectable-connect pattern `PollRunner` itself already establishes;
+    `None` (the default) lets each `PollRunner` fall back to its own
+    default connection."""
+    runners: dict[str, tuple[Any, PollRunner]] = {}
+    for spec in poll_connectors:
+        connector_id = spec.get('id')
+        plugin_id = spec.get('plugin')
+        config = spec.get('config', {})
+        poll_interval_s = spec.get('poll_interval_s', DEFAULT_POLL_INTERVAL_S)
+        if not isinstance(connector_id, str) or not isinstance(plugin_id, str):
+            print(f"poll connector wiring: entry missing 'id' or 'plugin' - skipped ({spec!r})")
+            continue
+
+        record = registry.get(plugin_id)
+        if record is None or record.status != PluginStatus.AVAILABLE:
+            status = record.status.value if record is not None else 'not found'
+            print(f"poll connector wiring: '{connector_id}' names plugin '{plugin_id}' ({status}) - skipped")
+            continue
+        if record.descriptor is None or record.descriptor.plugin_type not in _POLL_CONNECTOR_TYPES:
+            print(f"poll connector wiring: '{connector_id}' names plugin '{plugin_id}' which is not a "
+                  f"prediction/ground-truth connector - skipped")
+            continue
+        if record.factory is None:
+            print(f"poll connector wiring: '{connector_id}' plugin '{plugin_id}' has no usable factory - skipped")
+            continue
+        # `not (x > 0)` rather than `x <= 0` - deliberately NaN-safe: every
+        # comparison against NaN is False in Python, so `nan <= 0` would
+        # be False and let a NaN interval slip through to
+        # threading.Event.wait(timeout=nan) (PyYAML's SafeLoader accepts
+        # the YAML 1.1 `.nan` literal, so this is a real reachable config
+        # value, not a hypothetical one) - `not (nan > 0)` is True,
+        # correctly rejecting it same as any other non-positive value.
+        if not isinstance(poll_interval_s, (int, float)) or isinstance(poll_interval_s, bool) \
+                or not (poll_interval_s > 0):
+            print(f"poll connector wiring: '{connector_id}' has an invalid poll_interval_s "
+                  f"({poll_interval_s!r}) - skipped")
+            continue
+
+        instance_cls, bulk_insert = _POLL_CONNECTOR_TYPES[record.descriptor.plugin_type]
+        instance = instance_cls(plugin_id, record.factory())
+
+        try:
+            instance.configure(dict(config) if isinstance(config, dict) else {})
+            instance.start()
+        except (ConnectorConfigError, ConnectorRuntimeError, ConnectorLifecycleError) as e:
+            # Unlike build_connector_instances() above, a poll connector
+            # that never reaches RUNNING has nothing to run - there is no
+            # equivalent of /api/connectors/{id} for poll connectors to
+            # show a FAILED reason through, so it's dropped rather than
+            # kept inert; the print() line is the only record.
+            print(f"poll connector wiring: '{connector_id}' plugin '{plugin_id}' failed to start: {e}")
+            continue
+
+        runner_kwargs: dict[str, Any] = {'poll_interval_s': poll_interval_s}
+        if connect is not None:
+            runner_kwargs['connect'] = connect
+        runner = PollRunner(poll=instance.poll, bulk_insert=bulk_insert, **runner_kwargs)
+        runner.start()
+        runners[connector_id] = (instance, runner)
+
+    return runners
+
+
+def stop_poll_runners(runners: dict[str, tuple[Any, PollRunner]]) -> None:
+    """The shutdown-time counterpart to `build_poll_runners()` - stops
+    each background thread first (so no poll is in flight against a
+    connector that's about to be stopped), then the connector itself.
+    One misbehaving `stop()` is printed and skipped, never allowed to
+    block the rest of shutdown, matching `stop_connector_instances()`."""
+    for connector_id, (instance, runner) in runners.items():
+        runner.stop()
+        try:
+            instance.stop()
+        except ConnectorRuntimeError as e:
+            print(f"poll connector shutdown: '{connector_id}' failed to stop cleanly: {e}")

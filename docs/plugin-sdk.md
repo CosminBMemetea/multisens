@@ -12,6 +12,39 @@ and release preparation - all shipped. See
 [CHANGELOG.md](../CHANGELOG.md)'s `[0.9.0]` entry for the complete,
 reconstructed-from-commit-history record of what was actually built.
 
+## Post-release fix: poll connectors were never wired up (BUG-003, issue #110)
+
+An adversarial bug hunt of the released v0.9.0 found that `PollRunner`/
+`PredictionConnectorInstance`/`GroundTruthConnectorInstance` (Phase 97) -
+fully built and tested in isolation - were never actually instantiated
+by the running application. `app/plugins/manager.py`'s startup wiring
+(Phase 102) only ever covered `SENSOR_CONNECTOR`-type plugins; a
+`PREDICTION_CONNECTOR`/`GROUND_TRUTH_CONNECTOR` plugin would discover
+correctly as `AVAILABLE` and then sit inert forever, never polling
+anything - directly contradicting this document's own extensibility
+claims for those two plugin types.
+
+Fixed by extending `manager.py` with `build_poll_runners()`/
+`stop_poll_runners()` (the same config-driven, one-bad-entry-never-
+blocks-the-rest wiring discipline `build_connector_instances()` already
+established) and a new `poll_connectors:` top-level config section - see
+[connector-api.md](connector-api.md#pollconnectors) for the schema.
+Regression-tested end to end: a fake plugin registered through a real
+`PluginRegistry`, wired through `build_poll_runners()`, genuinely
+ingesting a row into a real temporary database via its background
+thread - not just asserting the connector object reports `RUNNING`.
+
+**Known follow-up, deliberately not fixed in this pass** (see issue
+#111): the same root-cause pattern also affects `RESOURCE_COLLECTOR`-type
+plugins (`ResourceCollectorInstance` is likewise never instantiated,
+and - discovered while investigating this - neither is the pre-existing
+v0.7 built-in collector, `SystemMetricsWindow`/`collect_sensor_metrics`,
+wired into any live collection trigger). Unlike poll connectors, there
+is no existing "background thread polling into the DB" pattern to reuse
+for resource collection - the trigger point (per-session start? a
+periodic loop? an on-demand API call?) has never been designed, so
+fixing it needs a real design pass, not a same-night smallest-fix patch.
+
 ## Release preparation (Phase 106 - shipped)
 
 Full `docker compose down && docker compose build --no-cache && docker
