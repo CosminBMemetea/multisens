@@ -9,6 +9,50 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ### Added
 
+- **Dynamic multi-instance dashboard + inference status** (v1.0-RC Phase
+  4, issue #124) - five additive `SensorConfig` fields
+  (`display_name`/`role`/`capabilities`/`recorded`/`derived_from_sensor_id`),
+  a straight `GET /api/sensors` passthrough (no allowlist, no ROS
+  diagnostics duplication needed - `modality`/`source_type`'s own
+  precedent didn't actually apply here since these are genuinely static
+  config the dashboard already receives directly). `derived_from_sensor_id`
+  is the one with real validation: must name another declared sensor id,
+  checked at ROS launch (`sensor_config.py`'s `select_usable_sensors`) -
+  truthfully expresses "this simulated feed is a transform of that real
+  one" (e.g. the reference config's `depth`/`thermal` from `rgb`), which
+  `source_type: simulated` alone couldn't say. `SensorCard.tsx` renders
+  it as "derived from `<id>`", plus a new `Inference: ACTIVE/NONE/ERROR`
+  sub-block reading `GET /api/inference-connectors` (#122) and matched by
+  `config.sensor_id` - kept visually and structurally separate from
+  connection health, two genuinely independent state machines. `ACTIVE`
+  shows the connector's `plugin_id`, a real measured predictions-per-second
+  rate (new `PollRunner.predictions_per_sec` property - `total_ingested`
+  over wall-clock time since the runner actually started, `None` before
+  it has, never a fabricated `0.0`), and last-prediction age. `GET
+  /api/inference-connectors`'s list endpoint now returns the Detail shape
+  (health included) for every entry, not just Summary fields, unlike
+  `/resource-collectors`'s own list endpoint - the dashboard needs health
+  for every sensor's connector from one fetch. `Dashboard.tsx`'s sensor
+  grid changed from a hardcoded `md:grid-cols-3` to an auto-fit layout -
+  the whole point of a config-driven sensor count is that N is never
+  hardcoded in the frontend either.
+
+  9 new backend tests (1073 total: 3 for `predictions_per_sec`, 4 for the
+  widened list endpoint and per-connector rate reporting, plus the ROS
+  side), 3 new ROS pure-logic tests for `derived_from_sensor_id`
+  validation, 6 new frontend tests (65 total: the ACTIVE/NONE/ERROR
+  status mapping, the new age formatter). Live-verified through the real
+  docker compose stack with a real browser screenshot (not just API
+  JSON) in two scenarios: three simultaneous real RTSP-replayed sensors
+  (one physical, two declaring `derived_from_sensor_id`) rendering
+  correctly with the truthful `Inference: NONE` default on all three;
+  and the real `ridesafe_front_rgb`/`ridesafe_rear_rgb` two-sensor
+  scenario (issue #121) with issue #123's real YOLO worker attached to
+  the front sensor only - the dashboard correctly showed
+  `RIDESAFE_FRONT_RGB` as `Inference: ACTIVE` with a genuine model id/fps/
+  age and `RIDESAFE_REAR_RGB` as `Inference: NONE`, both through the same
+  generic, unmodified `SensorCard`/`Dashboard` code.
+
 - **Reference YOLO inference worker + thin bridge PredictionConnector**
   (v1.0-RC Phase 3, issue #123) - the actual live reproduction of the
   RideSafe one-shot experiment issue #122 only built the wiring for.

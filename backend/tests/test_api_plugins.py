@@ -470,3 +470,51 @@ def test_inference_connector_config_secret_is_redacted(client, plugin_api_state)
     for payload in (detail, listing):
         assert 'super-secret-value' not in str(payload)
     assert detail['config']['api_key'] == '***REDACTED***'
+
+
+def test_list_inference_connectors_includes_health_not_just_summary_fields(client, plugin_api_state):
+    # v1.0-RC issue #124: the dashboard's per-sensor inference status
+    # needs health (state/predictions_per_sec) for every connector from
+    # one list fetch, matched client-side by config['sensor_id'] - unlike
+    # /resource-collectors, whose list endpoint stays Summary-only.
+    instance = PredictionConnectorInstance('acme.inference.fake', _FakeInferenceBridge())
+    plugin_state.inference_connectors['vehicles-front'] = (instance, {'sensor_id': 'demo_rgb'}, 1.0)
+
+    listing = client.get('/api/inference-connectors').json()
+
+    assert len(listing) == 1
+    assert 'health' in listing[0]
+    assert listing[0]['health']['state'] == 'stopped'
+
+
+def test_inference_connector_detail_reports_a_real_predictions_per_sec_from_its_runner(client, plugin_api_state):
+    from app.plugins.poll_runner import PollRunner
+
+    instance = PredictionConnectorInstance('acme.inference.fake', _FakeInferenceBridge())
+    instance.configure({'session_id': 's1'})
+    instance.start()
+    plugin_state.inference_connectors['vehicles-front'] = (instance, {}, 1.0)
+    runner = PollRunner(poll=lambda: [], bulk_insert=lambda conn, items: None)
+    runner.start()
+    try:
+        plugin_state.inference_connector_runners['s1'] = {'vehicles-front': (instance, runner)}
+
+        detail = client.get('/api/inference-connectors/vehicles-front').json()
+        assert detail['health']['details']['predictions_per_sec'] == 0.0
+        assert detail['health']['details']['total_predictions'] == 0
+
+        listing = client.get('/api/inference-connectors').json()
+        assert listing[0]['health']['details']['predictions_per_sec'] == 0.0
+    finally:
+        runner.stop()
+
+
+def test_inference_connector_detail_omits_predictions_per_sec_when_no_runner_exists(client, plugin_api_state):
+    # Configured but never attached to a session - genuinely no rate to
+    # report, not a fabricated 0.0.
+    instance = PredictionConnectorInstance('acme.inference.fake', _FakeInferenceBridge())
+    plugin_state.inference_connectors['vehicles-front'] = (instance, {}, 1.0)
+
+    detail = client.get('/api/inference-connectors/vehicles-front').json()
+
+    assert 'predictions_per_sec' not in detail['health']['details']

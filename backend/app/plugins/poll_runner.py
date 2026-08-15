@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import time
 from typing import Any, Callable
 
 from app.persistence import db as db_module
@@ -44,13 +45,30 @@ class PollRunner:
         self.total_ingested = 0
         self.total_rejected = 0
         self.last_error: str | None = None
+        # None until start() actually launches the thread - genuinely
+        # "no rate yet," never a fabricated 0.0 (v1.0-RC issue #124,
+        # dashboard inference-FPS display - see predictions_per_sec below).
+        self._started_monotonic: float | None = None
 
     def start(self) -> None:
         if self._thread is not None:
             return  # idempotent no-op, same convention as ConnectorInstance.start()
         self._stop_event.clear()
+        self._started_monotonic = time.monotonic()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+
+    @property
+    def predictions_per_sec(self) -> float | None:
+        """A real measured rate (total_ingested over wall-clock time
+        since this runner actually started), not a fabricated number -
+        `None` before start() has ever run, matching this project's
+        "no denominator, no fabricated value" discipline elsewhere
+        (e.g. ResourceObservation's own quality semantics)."""
+        if self._started_monotonic is None:
+            return None
+        elapsed = time.monotonic() - self._started_monotonic
+        return self.total_ingested / elapsed if elapsed > 0 else 0.0
 
     def stop(self) -> None:
         self._stop_event.set()

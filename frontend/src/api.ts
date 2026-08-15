@@ -12,6 +12,7 @@ import type {
   EvidenceSample,
   Facet,
   GroundTruthEvent,
+  InferenceConnectorDetail,
   PairwiseComparison,
   ParetoDirection,
   PluginDetail,
@@ -297,4 +298,12 @@ export function fetchConnector(sensorId: string): Promise<ConnectorDetail> {
 // plugin/connector endpoints above.
 export function fetchResourceCollectors(): Promise<ResourceCollectorSummary[]> {
   return getJson("/api/resource-collectors");
+}
+
+// v1.0-RC, issue #122/#124 - same read-only posture. Returns the Detail
+// shape (health included) for every entry - see InferenceConnectorDetail's
+// own comment in types.ts for why this one list endpoint differs from
+// fetchResourceCollectors above.
+export function fetchInferenceConnectors(): Promise<InferenceConnectorDetail[]> {
+  return getJson("/api/inference-connectors");
 }

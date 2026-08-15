@@ -31,6 +31,31 @@ export function SourceTypeBadge({ sourceType }: { sourceType: "physical" | "simu
   );
 }
 
+// v1.0-RC, issue #124 - Dashboard inference status, kept visually and
+// structurally separate from sensor connection health (LevelBadge above):
+// a sensor's video can be perfectly healthy with no inference attached at
+// all, and vice versa - two independent state machines (#122's own
+// PredictionConnectorInstance vs. rtsp_ingestion_node's own connection
+// state), never conflated into one badge.
+export type InferenceStatus = "ACTIVE" | "NONE" | "ERROR";
+
+const INFERENCE_STATUS_STYLES: Record<InferenceStatus, string> = {
+  ACTIVE: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  NONE: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  ERROR: "bg-red-500/15 text-red-400 border-red-500/30",
+};
+
+export function InferenceStatusBadge({ status }: { status: InferenceStatus }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${INFERENCE_STATUS_STYLES[status]}`}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      Inference: {status}
+    </span>
+  );
+}
+
 const SESSION_STATUS_STYLES: Record<SessionStatus, string> = {
   created: "bg-slate-500/15 text-slate-400 border-slate-500/30",
   running: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",

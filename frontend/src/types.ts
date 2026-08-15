@@ -58,6 +58,18 @@ export interface SensorConfig {
   transport: string;
   url: string;
   expected_fps?: number;
+  // v1.0-RC, issue #124 - additive, all optional, straight passthrough
+  // of config/sensors.yaml (see backend/app/main.py's GET /api/sensors -
+  // no allowlist, so any of these simply aren't present when unset).
+  display_name?: string;
+  role?: string;
+  capabilities?: string[];
+  recorded?: boolean;
+  // Truthfully represents "this feed is derived from another sensor's
+  // signal" (e.g. a simulated thermal/depth pseudocolor transform of a
+  // real rgb webcam) - distinct from source_type alone, which can't
+  // express the relationship, only physical-vs-simulated.
+  derived_from_sensor_id?: string;
 }
 
 // Mirrors backend/app/domain/models.py (v0.2 evaluation layer). Same rule
@@ -752,5 +764,25 @@ export interface ResourceCollectorSummary {
 }
 
 export interface ResourceCollectorDetail extends ResourceCollectorSummary {
+  health: ConnectorHealth;
+}
+
+// v1.0-RC, issue #122 (wiring) / #124 (dashboard display). Same shape as
+// ResourceCollectorSummary/Detail, `connector_id` instead of
+// `collector_id` - but GET /api/inference-connectors (list) returns the
+// Detail shape (health included) for every entry, not just Summary
+// fields, unlike /resource-collectors's own list endpoint: the
+// dashboard needs health (state/predictions_per_sec) for every sensor's
+// connector from one fetch, matched client-side by
+// config['sensor_id'], not N individual detail requests.
+export interface InferenceConnectorSummary {
+  connector_id: string;
+  plugin_id: string;
+  state: ConnectorState;
+  session_id: string | null;
+  config: Record<string, unknown>;
+}
+
+export interface InferenceConnectorDetail extends InferenceConnectorSummary {
   health: ConnectorHealth;
 }

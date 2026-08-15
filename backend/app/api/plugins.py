@@ -260,6 +260,18 @@ def _inference_connector_session_id(connector_id: str) -> str | None:
     return None
 
 
+def _inference_connector_runner(connector_id: str) -> Any | None:
+    """The actual `PollRunner` behind a running connector, if any -
+    `None` while a connector is configured but not currently attached to
+    a session (no runner exists yet), so `predictions_per_sec` below can
+    genuinely say "no rate yet" rather than fabricate 0.0 (v1.0-RC issue
+    #124's dashboard inference-status display)."""
+    for runners in plugin_state.inference_connector_runners.values():
+        if connector_id in runners:
+            return runners[connector_id][1]
+    return None
+
+
 def _to_inference_connector_summary(connector_id: str, instance: Any, static_config: dict[str, Any]) -> InferenceConnectorSummary:
     return InferenceConnectorSummary(
         connector_id=connector_id, plugin_id=instance.plugin_id, state=instance.state.value,
@@ -269,19 +281,30 @@ def _to_inference_connector_summary(connector_id: str, instance: Any, static_con
 
 def _to_inference_connector_detail(connector_id: str, instance: Any, static_config: dict[str, Any]) -> InferenceConnectorDetail:
     health = instance.health()
+    details = dict(redact_secrets(health.details))
+    runner = _inference_connector_runner(connector_id)
+    predictions_per_sec = getattr(runner, 'predictions_per_sec', None)
+    if predictions_per_sec is not None:
+        details['predictions_per_sec'] = round(predictions_per_sec, 2)
+        details['total_predictions'] = runner.total_ingested
     return InferenceConnectorDetail(
         **_to_inference_connector_summary(connector_id, instance, static_config).model_dump(),
         health=ConnectorHealthResponse(
             state=health.state.value, last_sample_age_s=health.last_sample_age_s,
-            message=health.message, details=redact_secrets(health.details),
+            message=health.message, details=details,
         ),
     )
 
 
 @router.get('/inference-connectors')
-def list_inference_connectors() -> list[InferenceConnectorSummary]:
+def list_inference_connectors() -> list[InferenceConnectorDetail]:
+    # Detail (with health/predictions_per_sec), not just Summary, unlike
+    # /resource-collectors's own list endpoint - the dashboard's per-
+    # sensor inference status (issue #124) needs health for every
+    # connector in one fetch, matched client-side by config['sensor_id'],
+    # rather than N individual detail requests.
     return [
-        _to_inference_connector_summary(connector_id, instance, static_config)
+        _to_inference_connector_detail(connector_id, instance, static_config)
         for connector_id, (instance, static_config, _poll_interval_s) in plugin_state.inference_connectors.items()
     ]
 

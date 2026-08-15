@@ -35,9 +35,11 @@ below.
 ```yaml
 sensors:
   - id: <string, required>          # unique, becomes the ROS node name
-                                     # "<id>_ingestion"
-    modality: <string, required>    # becomes the topic namespace:
-                                     # /multisens/sensors/<modality>/*
+                                     # "<id>_ingestion" and the topic
+                                     # namespace /multisens/sensors/<id>/*
+                                     # (v1.0-RC, issue #121 - see below)
+    modality: <string, required>    # free-text metadata only, not part of
+                                     # topic identity - see below
     source_type: <physical|simulated, required>
     transport: <string, required>   # only "rtsp" is implemented; other
                                      # values are skipped with a logged
@@ -47,6 +49,11 @@ sensors:
                                      # diagnostics comparison - omit if
                                      # genuinely unknown rather than
                                      # guessing a number
+    display_name: <string, optional>   # v1.0-RC, issue #124 - see below
+    role: <string, optional>           # v1.0-RC, issue #124 - see below
+    capabilities: <list[string], optional> # v1.0-RC, issue #124 - see below
+    recorded: <boolean, optional>      # v1.0-RC, issue #124 - see below
+    derived_from_sensor_id: <string, optional> # v1.0-RC, issue #124 - see below
     connector: <object, optional>   # v0.9 - see below
 ```
 
@@ -139,6 +146,49 @@ than a breaking schema change.
 **`expected_fps`**: optional. If omitted, diagnostics report `fps_expected:
 "unavailable"` rather than a fabricated default - see
 [topics.md](topics.md) for the full diagnostics field reference.
+
+**`display_name`/`role`/`capabilities`/`recorded`/`derived_from_sensor_id`**
+(v1.0-RC, issue #124): additive and fully optional, straight config
+passthrough - `GET /api/sensors` returns whatever's in the file verbatim
+(no allowlist), so any of these simply aren't present in the response
+when unset, and every existing entry with none of them keeps working
+exactly as before. None of the five flow through ROS diagnostics -
+unlike `modality`/`source_type`, they're genuinely static config with no
+live-value reason to duplicate into the diagnostics stream, and the
+dashboard already receives the full `SensorConfig` object directly.
+
+`derived_from_sensor_id` is the one with real validation behind it: it
+must name another sensor `id` declared in this same file (checked in
+`sensor_config.py`'s `select_usable_sensors`, raising at launch on a
+typo) - truthfully declares that this feed is a transform of another
+declared sensor's signal, e.g. the reference config's own
+`depth`/`thermal` entries are FFmpeg pseudocolor transforms of `rgb`'s
+webcam capture, not independent measurements. `source_type: simulated`
+alone can express *that* a feed is synthetic but not *which* real sensor
+it's standing in for - this field closes that gap. The dashboard renders
+it as "derived from `<id>`" directly beneath the sensor's own id/modality
+header.
+
+`display_name`/`role`/`capabilities`/`recorded` are declared here as
+schema (available to any future dashboard feature or plugin that wants
+them) but have no dedicated UI surface yet - only `derived_from_sensor_id`
+and inference status (below) are rendered as of issue #124.
+
+**Inference status** (v1.0-RC, issue #124): `SensorCard` also renders a
+small `Inference: ACTIVE/NONE/ERROR` sub-block, reading
+`GET /api/inference-connectors` (issue #122) and matching by that
+connector's own `config.sensor_id` - kept visually and structurally
+separate from the connection-health badge above it, since they're two
+genuinely independent state machines (a sensor's video can be perfectly
+healthy with zero inference attached, and vice versa). `ACTIVE` shows
+the connector's `plugin_id` plus two real, measured values: predictions
+per second (`PollRunner.predictions_per_sec` - `total_ingested` over
+wall-clock time since the runner actually started, `null`/omitted
+before it has, never a fabricated `0`) and last-prediction age
+(`ConnectorHealth.last_sample_age_s`). No `inference_connectors:` entry
+at all is the truthful default - every sensor shows `Inference: NONE`
+out of the box, never a fabricated result from a model that was never
+actually pointed at that sensor.
 
 ## What happens automatically once a sensor is in config
 

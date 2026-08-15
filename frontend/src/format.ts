@@ -121,6 +121,16 @@ export function formatResourceValue(value: number | null, unit: string): string 
 // ended_at was null regardless of status, so every demo session (all
 // shipped in `created` status) rendered a fabricated multi-thousand-
 // minute duration.
+// ConnectorHealth.last_sample_age_s (v0.9+): null means "no sample yet",
+// never a fabricated 0 - same "no denominator, no fabricated value"
+// discipline as formatResourceValue above. A real 0-or-positive age
+// still renders as a number, the two must stay visually distinct.
+export function formatAgeSeconds(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  if (value < 1) return `${Math.round(value * 1000)}ms`;
+  return `${value.toFixed(1)}s`;
+}
+
 export function formatDuration(
   status: "created" | "running" | "completed" | "failed",
   startedAt: string,

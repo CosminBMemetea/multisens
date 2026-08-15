@@ -15,6 +15,13 @@
 #               if genuinely unknown rather than guessing; diagnostics report
 #               "unavailable" for expected_fps when it's absent, not a made-up
 #               number
+# derived_from_sensor_id: optional, v1.0-RC issue #124 - truthfully declares
+#               this feed is a transform of another declared sensor's signal
+#               (e.g. depth/thermal below are ffmpeg pseudocolor transforms of
+#               rgb's own webcam capture, not independent measurements).
+#               source_type: simulated alone can't express *which* real sensor
+#               a simulated feed is standing in for - this can. Must name a
+#               sensor id declared in this same file (validated at launch).
 
 sensors:
   - id: rgb
@@ -42,6 +49,7 @@ sensors:
     transport: rtsp
     url: rtsp://host.docker.internal:8554/depth
     expected_fps: 30
+    derived_from_sensor_id: rgb
 
   - id: thermal
     modality: thermal
@@ -49,6 +57,7 @@ sensors:
     transport: rtsp
     url: rtsp://host.docker.internal:8554/thermal
     expected_fps: 30
+    derived_from_sensor_id: rgb
 
 # platform_id: this machine's declared identity for live resource
 # observations (v0.9.1, issue #111) - ExecutionPlatform's own docstring

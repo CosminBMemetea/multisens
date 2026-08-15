@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchSensors } from "../api";
+import { fetchInferenceConnectors, fetchSensors } from "../api";
 import { useStatusSocket } from "../useStatusSocket";
-import type { SensorConfig } from "../types";
+import type { InferenceConnectorDetail, SensorConfig } from "../types";
 import { TopBar } from "../components/TopBar";
 import { SensorCard } from "../components/SensorCard";
 import { SyncHealthPanel } from "../components/SyncHealthPanel";
@@ -10,6 +10,7 @@ import { SystemHealthPanel } from "../components/SystemHealthPanel";
 export function Dashboard() {
   const [sensors, setSensors] = useState<SensorConfig[]>([]);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [inferenceConnectors, setInferenceConnectors] = useState<InferenceConnectorDetail[]>([]);
   const { snapshot, connected } = useStatusSocket();
 
   useEffect(() => {
@@ -25,7 +26,25 @@ export function Dashboard() {
         setConfigError(null);
       })
       .catch((err) => setConfigError(String(err)));
+    // v1.0-RC, issue #124: a fetch failure here must never block the
+    // sensor grid itself from rendering - inference status is additive
+    // per-card decoration, not a dependency of the core dashboard.
+    fetchInferenceConnectors()
+      .then(setInferenceConnectors)
+      .catch(() => setInferenceConnectors([]));
   }, [connected]);
+
+  // First match by config.sensor_id, mirroring the backend's own
+  // reverse-lookup posture elsewhere (app/api/plugins.py) - nothing
+  // prevents two connectors from targeting one sensor, but exactly one
+  // is genuinely meaningful to show per card.
+  const inferenceBySensorId = new Map<string, InferenceConnectorDetail>();
+  for (const connector of inferenceConnectors) {
+    const sensorId = connector.config["sensor_id"];
+    if (typeof sensorId === "string" && !inferenceBySensorId.has(sensorId)) {
+      inferenceBySensorId.set(sensorId, connector);
+    }
+  }
 
   const connectedCount = Object.values(snapshot?.sensors ?? {}).filter(
     (s) => s.connection_state === "connected",
@@ -66,9 +85,19 @@ export function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* v1.0-RC, issue #124: auto-fit, not a fixed md:grid-cols-3 - the
+            whole point of a config-driven sensor count is that N is never
+            hardcoded here. Cards stay a legible minimum width (18rem) and
+            wrap to as many columns as the viewport allows, for 1 sensor or
+            10 alike. */}
+        <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]">
           {sensors.map((s) => (
-            <SensorCard key={s.id} config={s} diagnostics={snapshot?.sensors[s.id]} />
+            <SensorCard
+              key={s.id}
+              config={s}
+              diagnostics={snapshot?.sensors[s.id]}
+              inference={inferenceBySensorId.get(s.id)}
+            />
           ))}
         </div>
 

@@ -71,3 +71,26 @@ def test_select_usable_sensors_defaults_missing_transport_to_rtsp():
 
 def test_select_usable_sensors_empty_input_returns_empty():
     assert select_usable_sensors([]) == []
+
+
+def test_select_usable_sensors_allows_a_valid_derived_from_sensor_id():
+    # v1.0-RC, issue #124: a simulated feed truthfully declaring it's
+    # derived from a real one, e.g. thermal pseudocolor from an rgb webcam.
+    sensors = [
+        {'id': 'rgb', 'modality': 'rgb', 'transport': 'rtsp'},
+        {'id': 'thermal', 'modality': 'thermal', 'transport': 'rtsp', 'derived_from_sensor_id': 'rgb'},
+    ]
+    assert select_usable_sensors(sensors) == sensors
+
+
+def test_select_usable_sensors_rejects_derived_from_sensor_id_naming_an_undeclared_sensor():
+    sensors = [
+        {'id': 'thermal', 'modality': 'thermal', 'transport': 'rtsp', 'derived_from_sensor_id': 'nonexistent'},
+    ]
+    with pytest.raises(ValueError, match='derived_from_sensor_id'):
+        select_usable_sensors(sensors, config_path='test.yaml')
+
+
+def test_select_usable_sensors_derived_from_sensor_id_is_optional():
+    sensors = [{'id': 'rgb', 'modality': 'rgb', 'transport': 'rtsp'}]
+    assert select_usable_sensors(sensors) == sensors

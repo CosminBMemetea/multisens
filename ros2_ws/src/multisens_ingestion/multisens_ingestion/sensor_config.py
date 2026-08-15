@@ -25,7 +25,15 @@ def select_usable_sensors(sensors: list[dict], config_path: str = '<config>') ->
     duplicate id (which would silently collide on the same topic - topics
     are keyed by id, not modality, since v1.0-RC issue #121; two sensors
     sharing one modality, e.g. two RGB cameras, is explicitly legal).
-    Returns the entries that should actually become ingestion nodes."""
+    Returns the entries that should actually become ingestion nodes.
+
+    Also raises if a declared `derived_from_sensor_id` (v1.0-RC issue
+    #124 - e.g. a simulated thermal/depth feed derived from one real
+    webcam) names an id that isn't itself declared anywhere in this same
+    config - a plugin-free config typo here would otherwise render as a
+    silently false provenance claim on the dashboard rather than a
+    startup error."""
+    all_ids = {entry['id'] for entry in sensors}
     seen_ids = set()
     usable = []
     for entry in sensors:
@@ -41,6 +49,13 @@ def select_usable_sensors(sensors: list[dict], config_path: str = '<config>') ->
                 f"duplicate sensor id '{sensor_id}' in {config_path} - two sensors "
                 f"would publish to the same /multisens/sensors/{sensor_id}/image_raw topic")
         seen_ids.add(sensor_id)
+
+        derived_from = entry.get('derived_from_sensor_id')
+        if derived_from and derived_from not in all_ids:
+            raise ValueError(
+                f"sensor '{sensor_id}' in {config_path} declares "
+                f"derived_from_sensor_id '{derived_from}', which is not itself a "
+                f"declared sensor id - this would be a false provenance claim")
 
         usable.append(entry)
 

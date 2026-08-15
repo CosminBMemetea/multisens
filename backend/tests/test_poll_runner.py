@@ -237,3 +237,37 @@ def test_start_stop_actually_run_the_background_loop(tmp_path):
     calls_after_stop = call_count['n']
     time.sleep(0.15)
     assert call_count['n'] == calls_after_stop  # genuinely stopped, not still polling in the background
+
+
+# --- predictions_per_sec (v1.0-RC, issue #124 - dashboard inference FPS) ----
+
+def test_predictions_per_sec_is_none_before_start(tmp_path):
+    db_path = tmp_path / 'test.db'
+    runner = PollRunner(poll=lambda: [], bulk_insert=repo.insert_predictions_batch,
+                         connect=_connect_factory(db_path))
+    assert runner.predictions_per_sec is None  # no fabricated 0.0 - genuinely never started
+
+
+def test_predictions_per_sec_is_a_real_measured_rate_after_start(tmp_path):
+    db_path = tmp_path / 'test.db'
+    _seed_scenario_and_session(db_path)
+    runner = PollRunner(poll=lambda: [_prediction('pred-a')], bulk_insert=repo.insert_predictions_batch,
+                         connect=_connect_factory(db_path), poll_interval_s=0.05)
+    runner.start()
+    time.sleep(0.3)
+    runner.stop()
+
+    assert runner.total_ingested >= 1
+    assert runner.predictions_per_sec is not None
+    assert runner.predictions_per_sec > 0.0
+
+
+def test_predictions_per_sec_is_zero_not_none_when_started_but_nothing_ingested_yet(tmp_path):
+    db_path = tmp_path / 'test.db'
+    runner = PollRunner(poll=lambda: [], bulk_insert=repo.insert_predictions_batch,
+                         connect=_connect_factory(db_path))
+    runner.start()
+    try:
+        assert runner.predictions_per_sec == 0.0  # started, genuinely zero so far - not "unknown"
+    finally:
+        runner.stop()

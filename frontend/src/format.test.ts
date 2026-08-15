@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  formatAgeSeconds,
   formatCoverage,
   formatDelta,
   formatDeltaPp,
@@ -172,6 +173,32 @@ describe("formatResourceValue", () => {
 
   it("formats a Mbps value with one decimal", () => {
     expect(formatResourceValue(9.75, "Mbps")).toBe("9.8 Mbps");
+  });
+});
+
+describe("formatAgeSeconds", () => {
+  it("renders null as an em dash - no sample yet, never a fabricated 0", () => {
+    expect(formatAgeSeconds(null)).toBe("—");
+  });
+
+  it("renders undefined as an em dash", () => {
+    expect(formatAgeSeconds(undefined)).toBe("—");
+  });
+
+  it("renders a sub-second age in milliseconds", () => {
+    expect(formatAgeSeconds(0.46)).toBe("460ms");
+  });
+
+  it("renders a real zero distinctly from null/undefined", () => {
+    expect(formatAgeSeconds(0)).toBe("0ms");
+  });
+
+  it("renders a one-or-more-second age in seconds with one decimal", () => {
+    expect(formatAgeSeconds(4.2)).toBe("4.2s");
+  });
+
+  it("renders exactly 1 second as seconds, not milliseconds", () => {
+    expect(formatAgeSeconds(1)).toBe("1.0s");
   });
 });
 
