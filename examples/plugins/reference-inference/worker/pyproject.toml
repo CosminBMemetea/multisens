@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-reference-inference-worker"
+version = "0.1.0"
+description = "v1.0-RC (issue #123) reference inference worker - standalone process, own RTSP reader, runs YOLOv8n, serves detections over a small local HTTP endpoint. NOT a MultiSens plugin (no entry_points, never installed into the backend image) - install its own requirements.txt separately to actually run it; `pip install -e .` alone (no extras) installs only the pure-logic modules (detections.py/state.py/server.py) with zero heavy dependencies, which is all `tests/` needs."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MultiSens Project" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+testing = ["pytest>=8.0"]
+# The actual runtime deps (ultralytics/opencv) live in requirements.txt,
+# not here - deliberately not pip-installable as a project extra, so
+# `pip install -e .[testing]` for the pure-logic test suite never drags
+# torch/ultralytics in.
+
+[tool.setuptools.packages.find]
+include = ["yolo_worker*"]

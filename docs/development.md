@@ -79,9 +79,24 @@ npm run test
 inside the backend image):
 ```bash
 docker compose build backend
-docker run --rm -v "$(pwd)/backend:/app" -w /app multisense-backend \
-  bash -c "source /opt/ros/humble/setup.bash && pip install -r requirements-dev.txt -q && pytest"
+docker run --rm --entrypoint bash -v "$(pwd):/repo" -w /repo/backend multisense-backend \
+  -c "source /opt/ros/humble/setup.bash && pip install -r requirements-dev.txt -q && pytest"
 ```
+Two things a naive version of this command silently gets wrong (found
+while verifying issue #123's own tests): `backend/entrypoint.sh` is
+`exec uvicorn ...` unconditionally, with no `exec "$@"` fallback - a
+plain `docker run multisense-backend bash -c "..."` never actually runs
+`bash -c`, it just starts another backend server and pytest never
+executes at all (no error either - it looks like it worked). `--entrypoint
+bash` is required to actually override it. Second: several demo-data
+tests (`test_synthetic_demo.py` and friends) resolve `examples/` via
+`Path(__file__).resolve().parents[2]`, i.e. two directories above
+`backend/tests/` - that's the repo root, not `backend/` itself, so
+mounting only `backend/` (`-v "$(pwd)/backend:/app"`) leaves those tests
+failing with a `FileNotFoundError` for `/examples/...`. Mounting the
+whole repo at `/repo` and setting the working directory to
+`/repo/backend` fixes both the path and keeps `app`/`tests` importable
+exactly as before.
 
 **ROS pure-logic tests** (pytest; the modules under test - `sensor_config.py`,
 `sync_logic.py` - have zero rclpy/launch_ros imports, but still need

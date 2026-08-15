@@ -1,0 +1,6 @@
+# The inference worker's own dependencies - deliberately never installed
+# into the MultiSens backend image (v1.0-RC issue #123's whole point: a
+# native-level crash in torch/ultralytics/opencv must never take down the
+# REST API/Sessions/Evaluation/Dashboard process).
+ultralytics>=8.1
+opencv-python-headless>=4.9

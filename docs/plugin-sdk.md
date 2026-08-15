@@ -187,6 +187,97 @@ worker themselves (the actual YOLO reproduction of the RideSafe
 experiment, live rather than one-shot) are issue #123, not this one -
 this issue is the wiring the plugin will attach to.
 
+## v1.0-RC Phase 3: reference YOLO inference worker + thin bridge PredictionConnector (issue #123)
+
+The actual live reproduction of the RideSafe one-shot experiment issue
+#122 built the wiring for:
+[`examples/plugins/reference-inference/`](../examples/plugins/reference-inference/) -
+a genuinely separate **inference worker** process (`worker/`, its own
+`ultralytics`/`opencv` dependencies, never installed into the backend
+image) paired with a **thin bridge** `PredictionConnector` plugin
+(`multisens_reference_inference.bridge:YoloBridgeConnector`, zero ML
+dependency of its own) that polls it over HTTP.
+
+**Process isolation, the actual point.** The worker opens its own
+independent RTSP connection to the target sensor - the same "N
+independent readers of one RTSP source" pattern
+`backend/app/video_relay.py`/`rtsp_ingestion_node` already establish -
+runs YOLOv8n (car/truck/bus/motorcycle, confidence threshold 0.40,
+matching the real one-shot experiment exactly), and serves its latest
+detection over `GET /latest`/`GET /health` on a small local HTTP
+endpoint (`worker/README.md` has the full contract). The bridge's own
+`poll()` does one HTTP GET and translates the response into
+`Prediction` objects - a worker-down HTTP error is deliberately left
+uncaught in `bridge.py`; `PredictionConnectorInstance._poll_raw()`
+(issue #97/#110's own isolation) already turns any `poll()` exception
+into an empty list plus a recorded health message, so duplicating that
+guard in the bridge would just be a second copy of it.
+
+**Model-compatibility check** lives in `configure()`: refuses (raises
+`ConnectorConfigError`) unless the target sensor's declared `modality`
+(itself a required, explicit key in the connector's own `config:`
+block - a plugin has no other way to learn what it was pointed at) is
+in the plugin's declared `supported_modalities` capability
+(`['rgb']`), unless `allow_simulated_input: true` is set explicitly.
+
+**Deterministic `Prediction.id` - and one deliberate departure from the
+issue's own phrasing.** Issue #123 describes the id as derived from
+"sensor_id/source_id/timestamp_ms." Implemented instead as
+`{plugin_id}:{session_id}:{sensor_id}:{frame_timestamp_ms}` -
+`session_id` included on purpose. `predictions.id` is a single global
+primary key (`backend/app/persistence/migrations/0001_initial.sql`),
+not scoped per session; a recorded replay looping back to the same
+`frame_timestamp_ms` in a *different* session would otherwise collide
+with the first session's own row and be silently dropped by
+`insert_batch_with_partial_failure`'s duplicate-id handling - real data
+loss attributed to the wrong session, not a harmless dedup. Within one
+session the intended dedup (a worker restart or a loop replaying the
+same window) still works exactly as described, since `session_id` is
+constant for the session's whole duration.
+
+**Timestamp honesty**: `frame_timestamp_ms` is the worker's own
+wall-clock reading at frame-read time - not a true RTSP/source capture
+timestamp, documented at the same honesty tier `docs/topics.md` already
+holds ROS's own `frame_stamp` to. No better timestamp exists anywhere
+in this pipeline to inherit.
+
+**Live-verified against the real recorded RideSafe front-dashcam
+footage** (`data/recorded/ridesafe/processed/ridesafe_front.mp4`),
+looped through a local MediaMTX via `ffmpeg` to
+`rtsp://.../ridesafe_front_rgb` - not the synthetic simulator. A
+temporary image (`FROM multisense-backend / RUN pip install
+reference-inference`, the exact pattern the
+[Packaging](#packaging) section below documents) plus a temporary
+4-sensor config proved, through the real REST API end to end: ROS
+genuinely ingesting the footage at ~30fps; `plugin discovery` picking
+up the bridge plugin as a real third-party plugin; a started session
+producing genuine `Prediction` rows including a real `car` detection at
+confidence 0.63 with a correctly frame-clamped `bbox`; killing the
+worker process leaving `/api/health` at `{"status": "ok"}` and every
+existing session-read endpoint fully functional, with the connector's
+own health surfacing `FAILED` and a clear `urlopen`-error message
+rather than silently going quiet; and a fresh session cleanly
+re-arming the same connector instance back to `RUNNING` once the worker
+was restarted, with predictions resuming immediately.
+
+**A real gap this live run surfaced, not fixed here**: within one
+*continuous* session, `_PollConnectorInstance._poll_raw()`
+(`backend/app/plugins/poll_connector_instance.py`, shared by every
+pull-based connector type since issue #110) latches a connector into
+`FAILED` permanently on the first `poll()` exception - there is no
+automatic retry once the underlying worker/feed recovers; only a fresh
+session's `configure()`+`start()` re-arms it (confirmed above; `start()`
+doesn't special-case `FAILED`, so this genuinely does work across
+sessions). A worker restarting mid-session (a routine deploy, an
+OOM-kill-and-supervisor-restart) currently means that session's
+inference silently stops for good rather than resuming - a
+cross-cutting core-wiring behavior affecting `poll_connectors`/
+`resource_collectors`/`inference_connectors` alike, not something
+specific to this bridge/worker pair. Deliberately not patched as a
+side effect of this issue (shared core code, three already-shipped
+plugin types depend on its current semantics) - tracked as issue #126
+instead.
+
 ## Release preparation (Phase 106 - shipped)
 
 Full `docker compose down && docker compose build --no-cache && docker

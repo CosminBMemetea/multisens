@@ -9,6 +9,50 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ### Added
 
+- **Reference YOLO inference worker + thin bridge PredictionConnector**
+  (v1.0-RC Phase 3, issue #123) - the actual live reproduction of the
+  RideSafe one-shot experiment issue #122 only built the wiring for.
+  Two-process split: [`examples/plugins/reference-inference/worker/`](examples/plugins/reference-inference/worker/)
+  is a standalone process (own `ultralytics`/`opencv` deps, never
+  installed into the backend image) that opens its own independent RTSP
+  connection, runs YOLOv8n (car/truck/bus/motorcycle at confidence 0.40,
+  matching the real one-shot experiment), and serves its latest
+  detection over a small local `GET /latest`/`GET /health` HTTP
+  endpoint; [`multisens_reference_inference.bridge:YoloBridgeConnector`](examples/plugins/reference-inference/multisens_reference_inference/bridge.py)
+  is a thin `PredictionConnector` (zero ML dependency) that polls it and
+  translates the response into `Prediction` objects. Model-compatibility
+  check in `configure()` (declared `modality` vs. the plugin's
+  `supported_modalities`, with an explicit `allow_simulated_input`
+  escape hatch). Deterministic `Prediction.id` including `session_id`
+  (a deliberate departure from the issue's own phrasing - `predictions.id`
+  is a single global primary key, not scoped per session, so omitting
+  `session_id` would let a recorded replay looping back to the same
+  timestamp in a *different* session silently drop real data rather
+  than just deduping a genuine repeat).
+
+  38 new tests across both packages (21 for the bridge plugin against a
+  real local HTTP server, 17 pure-logic tests for the worker's
+  box-normalization/detection-filtering/state/server modules - none of
+  which need `ultralytics`/`opencv` installed). Live-verified against
+  the real recorded RideSafe front-dashcam footage (not the synthetic
+  simulator), looped through a local MediaMTX: a real third-party plugin
+  install (`FROM multisense-backend / RUN pip install
+  reference-inference`) into a temporary image, real ROS ingestion at
+  ~30fps, a real session producing genuine `Prediction` rows including
+  an actual `car` detection at confidence 0.63 with a correctly
+  frame-clamped `bbox`, killing the worker process leaving
+  `/api/health` and every session-read endpoint fully functional while
+  the connector's own health correctly surfaced `FAILED`, and a fresh
+  session cleanly re-arming the same connector back to `RUNNING` once
+  the worker was restarted.
+
+  This live run also surfaced (but deliberately did not fix, as
+  cross-cutting shared core code) a real gap: within one *continuous*
+  session, a `poll()` exception permanently latches a connector to
+  `FAILED` with no automatic retry once the underlying feed recovers -
+  affects `poll_connectors`/`resource_collectors`/`inference_connectors`
+  alike, not just this reference pair. Tracked as issue #126.
+
 - **Session-bound background inference wiring** (v1.0-RC Phase 2, issue
   #122) - applies issue #111's session-bound lifecycle (build at boot,
   configure/start on session `/start`, stop on `/complete` - never
