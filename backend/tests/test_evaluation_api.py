@@ -75,6 +75,67 @@ def test_start_unknown_session_404(client):
     assert client.post('/api/sessions/nope/start').status_code == 404
 
 
+# --- session lifecycle state-transition guards (v0.9 bug hunt, BUG-002, ---
+# --- issue #109 - previously any transition from any state silently  ------
+# --- succeeded, including double-complete silently overwriting ended_at) --
+
+def test_repeated_start_is_an_idempotent_no_op(client):
+    _create_scenario(client)
+    _create_session(client)
+    first = client.post('/api/sessions/s1/start')
+    assert first.status_code == 200
+    assert first.json()['status'] == 'running'
+
+    second = client.post('/api/sessions/s1/start')
+    assert second.status_code == 200
+    assert second.json()['status'] == 'running'
+
+
+def test_start_after_completed_is_rejected_409(client):
+    _create_scenario(client)
+    _create_session(client)
+    client.post('/api/sessions/s1/start')
+    client.post('/api/sessions/s1/complete')
+
+    resp = client.post('/api/sessions/s1/start')
+    assert resp.status_code == 409
+    assert 'already completed' in resp.json()['detail']
+    # The session must stay completed, not silently bounce back to running.
+    assert client.get('/api/sessions/s1').json()['status'] == 'completed'
+
+
+def test_repeated_complete_is_idempotent_and_never_moves_ended_at(client):
+    _create_scenario(client)
+    _create_session(client)
+    client.post('/api/sessions/s1/start')
+
+    first = client.post('/api/sessions/s1/complete')
+    assert first.status_code == 200
+    first_ended_at = first.json()['ended_at']
+    assert first_ended_at is not None
+
+    second = client.post('/api/sessions/s1/complete')
+    assert second.status_code == 200
+    # The real bug: a second /complete call used to silently re-stamp
+    # ended_at with a new, later timestamp, destroying the true
+    # completion time.
+    assert second.json()['ended_at'] == first_ended_at
+
+
+def test_complete_before_start_is_rejected_409(client):
+    _create_scenario(client)
+    _create_session(client)
+
+    resp = client.post('/api/sessions/s1/complete')
+    assert resp.status_code == 409
+    assert 'never started' in resp.json()['detail']
+    # The session must stay created, never silently jump straight to
+    # completed skipping running entirely.
+    session = client.get('/api/sessions/s1').json()
+    assert session['status'] == 'created'
+    assert session['ended_at'] is None
+
+
 # --- ground truth batch ingestion --------------------------------------------
 
 def test_ground_truth_batch_all_valid(client):

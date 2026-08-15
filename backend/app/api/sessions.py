@@ -118,15 +118,35 @@ def get_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -> 
 
 @router.post('/{session_id}/start')
 def start_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -> Session:
-    require_session(conn, session_id)
-    repo.update_session_status(conn, session_id, 'running')
+    """`created -> running` is the only real transition. `running -> running`
+    is an idempotent no-op (a caller retrying a request that actually
+    succeeded must never be punished for it). `completed -> *` is rejected
+    outright - restarting a finished session would silently resurrect it
+    with no record that it was ever done, the same "no silent state
+    resurrection" discipline this project applies to evaluation results
+    and coverage elsewhere. (v0.9 bug hunt, issue #109 - previously any
+    transition from any state silently succeeded.)"""
+    session = require_session(conn, session_id)
+    if session.status == 'completed':
+        raise HTTPException(status_code=409, detail=f"session '{session_id}' is already completed - cannot restart it")
+    if session.status != 'running':
+        repo.update_session_status(conn, session_id, 'running')
     return require_session(conn, session_id)
 
 
 @router.post('/{session_id}/complete')
 def complete_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -> Session:
-    require_session(conn, session_id)
-    repo.update_session_status(conn, session_id, 'completed', ended_at=datetime.now(timezone.utc))
+    """`running -> completed` is the only real transition, stamping
+    `ended_at`. `completed -> completed` is an idempotent no-op that
+    deliberately does NOT re-stamp `ended_at` - the original completion
+    time is the true one, never silently overwritten by a later retry.
+    `created -> *` is rejected outright - a session that was never
+    started has no real end time to record. (v0.9 bug hunt, issue #109.)"""
+    session = require_session(conn, session_id)
+    if session.status == 'created':
+        raise HTTPException(status_code=409, detail=f"session '{session_id}' was never started - cannot complete it")
+    if session.status != 'completed':
+        repo.update_session_status(conn, session_id, 'completed', ended_at=datetime.now(timezone.utc))
     return require_session(conn, session_id)
 
 
