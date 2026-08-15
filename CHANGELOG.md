@@ -100,6 +100,56 @@ this project has shipped). Full `docker compose build` + live
 re-verification of the Resources tab with real CPU/RAM/network/latency
 data, zero console errors.
 
+A third, independently-reported batch of two confirmed bugs in the
+plugin-discovery/connector infrastructure (issues #117/#118), each
+verified against the real code with a direct reproduction before
+fixing.
+
+- **Duplicate `plugin_id` did not roll back `EVALUATOR_REGISTRY`/
+  `SUPPORTED_RESOURCE_METRICS` side effects** (BUG-010, #117) -
+  `register_evaluator()`/`register_resource_metrics()` mutate these two
+  global namespaces as a side effect of processing a single entry
+  point, *before* a same-`plugin_id` collision from a later entry point
+  is even known. When the collision was detected, both `PluginRecord`s
+  were correctly marked `LOAD_FAILED` ("neither is used"), but the
+  first plugin's `evaluator_type`/resource metric silently stayed live
+  and dispatchable through `/api/evaluation`/`/api/resource-metrics`
+  anyway - reproduced directly: `EVALUATOR_REGISTRY` still held the
+  invalidated plugin's instance by identity. Fixed with
+  `_rollback_registration_side_effects()`, called from the
+  duplicate-detection branch: an exact, identity-checked removal for
+  evaluators (`evaluator_type` is an exclusive namespace, so this is
+  unambiguous); for resource metrics, removes only what the invalidated
+  plugin newly introduced, never a metric another still-`AVAILABLE`
+  plugin also declares, and never one of the six permanent built-ins
+  (metrics are explicitly allowed to be shared across collectors,
+  unlike `evaluator_type`). Explicitly excludes built-ins from rollback
+  altogether - an early version of this fix, caught by its own
+  regression test, incorrectly deleted a built-in evaluator's registry
+  entry because a built-in's `instance` is shared by identity with its
+  `EVALUATOR_REGISTRY` entry.
+- **`PollRunner`'s background thread died silently on a database
+  connect/insert failure** (BUG-011, #118) - `poll_once()` already
+  caught the connector's own `poll()` exceptions, but a
+  `self._connect()` or `insert_batch_with_partial_failure(...)` failure
+  (e.g. `sqlite3.OperationalError: database is locked`, a realistic
+  condition under SQLite's concurrent-writer model this same codebase
+  already exercises) propagated straight out of `poll_once()` and
+  killed the daemon thread with no error recorded - silently
+  re-introducing BUG-003 (#110) on the very first transient DB hiccup,
+  just less visibly. Fixed by wrapping both calls in the same
+  catch-record-`last_error`-and-continue discipline `poll()` itself
+  already had.
+
+Backend: 8 new tests (965 total) - including one that drives a real
+background thread through an injected DB failure and proves it keeps
+polling and successfully ingests on a later cycle, not just that
+`poll_once()` in isolation doesn't raise. Both reproduced directly
+against the running code before being fixed; both fixes re-verified
+with a full `docker compose build backend` and a live plugin-discovery
+check against the rebuilt container (`plugin discovery: 4 available, 0
+incompatible, 0 load_failed, 0 disabled`).
+
 ## [0.9.0] — Plugin SDK & external integration framework
 
 Built phase by phase (Phase 92 through Phase 106), same discipline as
