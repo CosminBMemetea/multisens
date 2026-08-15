@@ -137,6 +137,14 @@ SUPPORTED_RESOURCE_METRICS: dict[str, str] = {
     'pipeline_latency_ms': 'ms',
 }
 
+# The permanent baseline, captured once at import time - a plugin's
+# metric can legitimately share one of these names+units (see
+# `register_resource_metrics`'s own docstring), but a plugin being
+# unregistered (v0.9 bug hunt, issue #117: duplicate plugin_id rollback)
+# must never be able to remove a built-in entry it merely happened to
+# also declare.
+BUILT_IN_RESOURCE_METRICS: frozenset[str] = frozenset(SUPPORTED_RESOURCE_METRICS)
+
 
 class DuplicateResourceMetricError(Exception):
     """Raised by `register_resource_metrics` when a plugin declares a

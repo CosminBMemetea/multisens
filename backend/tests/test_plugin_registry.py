@@ -8,8 +8,10 @@ hit without needing to actually build and pip-install a package.
 from types import SimpleNamespace
 
 import pytest
+from app.domain.evaluators import EVALUATOR_REGISTRY
+from app.domain.resources import SUPPORTED_RESOURCE_METRICS
 from app.plugins.registry import PluginStatus, discover_plugins
-from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType
+from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, PluginDescriptor, PluginType, ResourceMetricDescriptor
 
 BUILT_IN_EVALUATOR_IDS = {
     'multisens.builtin.evaluator.classification',
@@ -166,6 +168,137 @@ def test_duplicate_plugin_id_against_a_built_in_evaluator_rejects_both():
     # The real built-in evaluator must never keep silently running as if
     # nothing happened - a collision means BOTH sides are untrusted now.
     assert record.instance is None
+
+
+# --- bullet: duplicate plugin id must roll back registration side effects ---
+# v0.9 bug hunt, issue #117: register_evaluator()/register_resource_metrics()
+# mutate EVALUATOR_REGISTRY/SUPPORTED_RESOURCE_METRICS - separate global
+# namespaces from PluginRegistry itself - the moment the FIRST of two
+# same-plugin_id entries is processed. When the SECOND entry arrives and
+# both are marked LOAD_FAILED ("neither is used"), that mutation must be
+# undone too, or the "unusable" plugin stays live and dispatchable.
+
+@pytest.fixture
+def clean_evaluator_registry():
+    original = dict(EVALUATOR_REGISTRY)
+    yield EVALUATOR_REGISTRY
+    EVALUATOR_REGISTRY.clear()
+    EVALUATOR_REGISTRY.update(original)
+
+
+@pytest.fixture
+def clean_supported_resource_metrics():
+    original = dict(SUPPORTED_RESOURCE_METRICS)
+    yield SUPPORTED_RESOURCE_METRICS
+    SUPPORTED_RESOURCE_METRICS.clear()
+    SUPPORTED_RESOURCE_METRICS.update(original)
+
+
+class _FakeEvaluatorPlugin:
+    def __init__(self, plugin_id: str, evaluator_type: str):
+        self.evaluator_type = evaluator_type
+        self._descriptor = PluginDescriptor(
+            plugin_id=plugin_id, name=plugin_id, version='0.1.0', plugin_type=PluginType.EVALUATOR,
+            api_version=MULTISENS_PLUGIN_API_VERSION, author='Test', license='Apache-2.0',
+        )
+
+    def descriptor(self) -> PluginDescriptor:
+        return self._descriptor
+
+
+class _FakeResourceCollectorPlugin:
+    def __init__(self, plugin_id: str, metrics: list[ResourceMetricDescriptor]):
+        self._metrics = metrics
+        self._descriptor = PluginDescriptor(
+            plugin_id=plugin_id, name=plugin_id, version='0.1.0', plugin_type=PluginType.RESOURCE_COLLECTOR,
+            api_version=MULTISENS_PLUGIN_API_VERSION, author='Test', license='Apache-2.0',
+        )
+
+    def descriptor(self) -> PluginDescriptor:
+        return self._descriptor
+
+    def available_metrics(self) -> list[ResourceMetricDescriptor]:
+        return self._metrics
+
+
+def test_duplicate_plugin_id_unregisters_the_first_plugins_evaluator_type(clean_evaluator_registry):
+    first = _FakeEvaluatorPlugin('acme.evaluator.dup', 'acme_custom')
+    second = _FakeEvaluatorPlugin('acme.evaluator.dup', 'acme_custom_v2')
+    registry = discover_plugins(entry_points=[
+        _entry_point('acme.evaluator.dup', first, dist_name='dist-one'),
+        _entry_point('acme.evaluator.dup', second, dist_name='dist-two'),
+    ])
+    record = registry.get('acme.evaluator.dup')
+    assert record.status == PluginStatus.LOAD_FAILED
+    # The whole point: the registry says "neither is used", so neither
+    # evaluator_type may still be dispatchable through EVALUATOR_REGISTRY.
+    assert 'acme_custom' not in EVALUATOR_REGISTRY
+    assert 'acme_custom_v2' not in EVALUATOR_REGISTRY
+
+
+def test_duplicate_plugin_id_never_touches_a_built_in_evaluator_type(clean_evaluator_registry):
+    # A plugin_id collision against a BUILT-IN goes through a different
+    # branch (register_built_in) that never calls register_evaluator in
+    # the first place - the built-in's own EVALUATOR_REGISTRY entry (its
+    # permanent, non-plugin-sourced seed) must survive untouched.
+    fake = _FakePlugin('multisens.builtin.evaluator.classification', plugin_type=PluginType.EVALUATOR)
+    discover_plugins(entry_points=[
+        _entry_point('multisens.builtin.evaluator.classification', fake, dist_name='acme-imitation'),
+    ])
+    assert 'classification' in EVALUATOR_REGISTRY
+
+
+def test_duplicate_plugin_id_unregisters_the_first_plugins_new_resource_metric(clean_supported_resource_metrics):
+    first = _FakeResourceCollectorPlugin(
+        'acme.resource.dup', [ResourceMetricDescriptor(metric='battery_percent', unit='%')],
+    )
+    second = _FakeResourceCollectorPlugin(
+        'acme.resource.dup', [ResourceMetricDescriptor(metric='battery_percent', unit='%')],
+    )
+    registry = discover_plugins(entry_points=[
+        _entry_point('acme.resource.dup', first, dist_name='dist-one'),
+        _entry_point('acme.resource.dup', second, dist_name='dist-two'),
+    ])
+    assert registry.get('acme.resource.dup').status == PluginStatus.LOAD_FAILED
+    assert 'battery_percent' not in SUPPORTED_RESOURCE_METRICS
+
+
+def test_duplicate_plugin_id_never_removes_a_built_in_resource_metric(clean_supported_resource_metrics):
+    # The invalidated plugin happened to also (legitimately) declare a
+    # built-in metric name+unit - removing 'cpu_percent' entirely would
+    # break every other consumer of the permanent baseline.
+    first = _FakeResourceCollectorPlugin('acme.resource.dup', [ResourceMetricDescriptor(metric='cpu_percent', unit='%')])
+    second = _FakeResourceCollectorPlugin('acme.resource.dup', [ResourceMetricDescriptor(metric='cpu_percent', unit='%')])
+    discover_plugins(entry_points=[
+        _entry_point('acme.resource.dup', first, dist_name='dist-one'),
+        _entry_point('acme.resource.dup', second, dist_name='dist-two'),
+    ])
+    assert SUPPORTED_RESOURCE_METRICS['cpu_percent'] == '%'
+
+
+def test_duplicate_plugin_id_never_removes_a_metric_still_claimed_by_another_live_plugin(
+    clean_supported_resource_metrics,
+):
+    # 'shared_metric' is newly introduced by the first (soon-to-be-
+    # invalidated) plugin, but a THIRD, unrelated, still-AVAILABLE plugin
+    # also legitimately declares it - it must survive the rollback.
+    invalidated_one = _FakeResourceCollectorPlugin(
+        'acme.resource.dup', [ResourceMetricDescriptor(metric='shared_metric', unit='x')],
+    )
+    invalidated_two = _FakeResourceCollectorPlugin(
+        'acme.resource.dup', [ResourceMetricDescriptor(metric='shared_metric', unit='x')],
+    )
+    still_alive = _FakeResourceCollectorPlugin(
+        'acme.resource.other', [ResourceMetricDescriptor(metric='shared_metric', unit='x')],
+    )
+    registry = discover_plugins(entry_points=[
+        _entry_point('acme.resource.dup', invalidated_one, dist_name='dist-one'),
+        _entry_point('acme.resource.other', still_alive, dist_name='dist-three'),
+        _entry_point('acme.resource.dup', invalidated_two, dist_name='dist-two'),
+    ])
+    assert registry.get('acme.resource.dup').status == PluginStatus.LOAD_FAILED
+    assert registry.get('acme.resource.other').status == PluginStatus.AVAILABLE
+    assert SUPPORTED_RESOURCE_METRICS['shared_metric'] == 'x'
 
 
 # --- bullet: import failure ---------------------------------------------------

@@ -162,6 +162,65 @@ def register_built_in(
     ))
 
 
+def _rollback_registration_side_effects(existing: PluginRecord, registry: PluginRegistry) -> None:
+    """Undoes exactly what `_discover_one`'s own `register_evaluator`/
+    `register_resource_metrics` calls did for `existing`, the moment a
+    later duplicate `plugin_id` invalidates it (v0.9 bug hunt, issue
+    #117). Without this, the registry reports `existing` LOAD_FAILED -
+    its own error message says "neither is used" - while
+    `EVALUATOR_REGISTRY`/`SUPPORTED_RESOURCE_METRICS` (separate global
+    namespaces `register_evaluator`/`register_resource_metrics` already
+    mutated before the collision was detected) keep it fully live and
+    dispatchable through `/api/evaluation` or advertised through
+    `/api/resource-metrics`.
+
+    Never applied to a built-in: `register_built_in` never calls either
+    registration hook - the three built-in evaluators are the
+    `EVALUATOR_REGISTRY` dict's own permanent initial contents, not
+    plugin-registered - but a built-in's `instance` IS the exact same
+    object already sitting in `EVALUATOR_REGISTRY` (shared by identity),
+    so the identity check below would otherwise match it too and delete
+    a permanent entry. `distribution_name == 'multisens'` is
+    `register_built_in`'s own hard-coded default `source` (see
+    `discover_plugins`) - the same signal already used to identify a
+    built-in throughout this module."""
+    if (existing.status != PluginStatus.AVAILABLE or existing.descriptor is None or existing.instance is None
+            or existing.distribution_name == 'multisens'):
+        return
+
+    if existing.descriptor.plugin_type == PluginType.EVALUATOR:
+        from app.domain.evaluators import EVALUATOR_REGISTRY
+        evaluator_type = getattr(existing.instance, 'evaluator_type', None)
+        # Identity check, not just key presence: evaluator_type is an
+        # exclusive namespace (register_evaluator itself rejects a
+        # second plugin reusing one), so if the key still points at
+        # this exact instance, it is unambiguously safe to remove.
+        if evaluator_type is not None and EVALUATOR_REGISTRY.get(evaluator_type) is existing.instance:
+            del EVALUATOR_REGISTRY[evaluator_type]
+
+    elif existing.descriptor.plugin_type == PluginType.RESOURCE_COLLECTOR:
+        from app.domain.resources import BUILT_IN_RESOURCE_METRICS, SUPPORTED_RESOURCE_METRICS
+        # Unlike evaluator_type, a resource metric name+unit MAY be
+        # legitimately shared by more than one collector (resources.py's
+        # own DuplicateResourceMetricError docstring: "two independent
+        # collectors both legitimately reporting cpu_percent... fine").
+        # Removing a metric here is only safe if no OTHER still-AVAILABLE
+        # plugin also currently declares it, and it was never one of the
+        # permanent built-ins.
+        still_claimed = {
+            d.metric
+            for other in registry.records.values()
+            if other is not existing and other.status == PluginStatus.AVAILABLE
+            and other.descriptor is not None and other.descriptor.plugin_type == PluginType.RESOURCE_COLLECTOR
+            and other.instance is not None
+            for d in other.instance.available_metrics()
+        }
+        for d in existing.instance.available_metrics():
+            if (d.metric not in BUILT_IN_RESOURCE_METRICS and d.metric not in still_claimed
+                    and SUPPORTED_RESOURCE_METRICS.get(d.metric) == d.unit):
+                del SUPPORTED_RESOURCE_METRICS[d.metric]
+
+
 def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_ids: set[str]) -> None:
     plugin_id = entry_point.name
     dist = getattr(entry_point, 'dist', None)
@@ -179,6 +238,7 @@ def _discover_one(registry: PluginRegistry, entry_point: Any, disabled_plugin_id
             plugin_id=plugin_id, status=PluginStatus.LOAD_FAILED, descriptor=None, instance=None,
             error=msg, distribution_name=distribution_name, distribution_version=distribution_version,
         ))
+        _rollback_registration_side_effects(existing, registry)
         existing.status = PluginStatus.LOAD_FAILED
         existing.instance = None
         existing.error = msg
