@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   formatCoverage,
   formatDelta,
   formatDeltaPp,
+  formatDuration,
   formatFractionPercent,
   formatMetric,
   formatMs,
@@ -171,5 +172,48 @@ describe("formatResourceValue", () => {
 
   it("formats a Mbps value with one decimal", () => {
     expect(formatResourceValue(9.75, "Mbps")).toBe("9.8 Mbps");
+  });
+});
+
+describe("formatDuration", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T00:05:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders a never-started (created) session as an em dash, never a fabricated Date.now()-derived value", () => {
+    // Regression test: this exact bug shipped in v0.9.0 - every demo
+    // session ships in `created` status with ended_at: null, and the old
+    // implementation fell back to Date.now() regardless of status,
+    // rendering a fabricated multi-thousand-minute duration for every
+    // one of them on the live Sessions page.
+    expect(formatDuration("created", "2026-08-12T13:38:06.000Z", null)).toBe("—");
+  });
+
+  it("renders a failed session as an em dash too - not running, not completed", () => {
+    expect(formatDuration("failed", "2026-08-12T13:38:06.000Z", null)).toBe("—");
+  });
+
+  it("renders a live, growing duration for a genuinely running session", () => {
+    // started 90s before the faked "now" above.
+    expect(formatDuration("running", "2026-08-15T00:03:30.000Z", null)).toBe("1m 30s");
+  });
+
+  it("renders the real elapsed time for a completed session, using ended_at not Date.now()", () => {
+    expect(formatDuration("completed", "2026-08-15T00:00:00.000Z", "2026-08-15T00:00:45.000Z")).toBe("45s");
+  });
+
+  it("a completed session's duration is unaffected by the current time", () => {
+    // Even though "now" (faked above) is much later than ended_at, the
+    // duration must come from ended_at, never Date.now().
+    expect(formatDuration("completed", "2026-08-14T00:00:00.000Z", "2026-08-14T00:10:00.000Z")).toBe("10m 0s");
+  });
+
+  it("formats under a minute as seconds only", () => {
+    expect(formatDuration("completed", "2026-08-15T00:00:00.000Z", "2026-08-15T00:00:59.000Z")).toBe("59s");
   });
 });

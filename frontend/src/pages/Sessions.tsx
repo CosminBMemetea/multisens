@@ -10,6 +10,7 @@ import {
   fetchSessionPredictions,
   fetchSessions,
 } from "../api";
+import { formatDuration } from "../format";
 import type { Scenario, Session } from "../types";
 
 interface SessionRow {
@@ -18,16 +19,6 @@ interface SessionRow {
   isSynthetic: boolean;
   groundTruthCount: number;
   configurationIds: string[];
-}
-
-function formatDuration(startedAt: string, endedAt: string | null): string {
-  const startMs = new Date(startedAt).getTime();
-  const endMs = endedAt ? new Date(endedAt).getTime() : Date.now();
-  const totalSeconds = Math.max(0, Math.round((endMs - startMs) / 1000));
-  if (totalSeconds < 60) return `${totalSeconds}s`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds}s`;
 }
 
 const NEW_SCENARIO_OPTION = "__new_scenario__";
@@ -238,7 +229,7 @@ export function Sessions() {
                     {new Date(session.started_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-2 font-mono-data text-slate-400">
-                    {formatDuration(session.started_at, session.ended_at)}
+                    {formatDuration(session.status, session.started_at, session.ended_at)}
                   </td>
                   <td className="px-4 py-2 text-slate-400">
                     {configurationIds.length > 0 ? configurationIds.join(", ") : "—"}

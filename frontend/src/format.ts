@@ -112,3 +112,26 @@ export function formatResourceValue(value: number | null, unit: string): string 
   const decimals = unit === "%" || unit === "ms" || unit === "fps" ? 0 : 1;
   return `${value.toFixed(decimals)} ${unit}`;
 }
+
+// Session duration (Sessions.tsx): a session that was never started has
+// no elapsed time to report - "—", never a value computed against
+// Date.now(). Only a genuinely `running` session gets a live, growing
+// stopwatch; `completed` uses the real ended_at. A real bug shipped in
+// v0.9.0: the old implementation fell back to Date.now() whenever
+// ended_at was null regardless of status, so every demo session (all
+// shipped in `created` status) rendered a fabricated multi-thousand-
+// minute duration.
+export function formatDuration(
+  status: "created" | "running" | "completed" | "failed",
+  startedAt: string,
+  endedAt: string | null,
+): string {
+  if (status !== "running" && status !== "completed") return "—";
+  const startMs = new Date(startedAt).getTime();
+  const endMs = endedAt ? new Date(endedAt).getTime() : Date.now();
+  const totalSeconds = Math.max(0, Math.round((endMs - startMs) / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
