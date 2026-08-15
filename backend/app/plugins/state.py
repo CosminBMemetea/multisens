@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.plugins.connector_instance import ConnectorInstance
+from app.plugins.poll_connector_instance import PredictionConnectorInstance
 from app.plugins.poll_runner import PollRunner
 from app.plugins.registry import PluginRegistry
 from app.plugins.resource_collector_instance import ResourceCollectorInstance
@@ -40,3 +41,13 @@ resource_collectors: dict[str, tuple[ResourceCollectorInstance, dict, float]] = 
 # and drained (all sessions) at shutdown. A session_id key only exists
 # here while that session is actively being live-collected.
 resource_collection_runners: dict[str, dict[str, tuple[ResourceCollectorInstance, PollRunner]]] = {}
+
+# {connector_id: (PredictionConnectorInstance, static_config, poll_interval_s)}
+# - v1.0-RC, issue #122. Same session-bound-not-process-bound shape as
+# resource_collectors above, for background ML inference instead of
+# resource telemetry.
+inference_connectors: dict[str, tuple[PredictionConnectorInstance, dict, float]] = {}
+
+# {session_id: {connector_id: (PredictionConnectorInstance, PollRunner)}} -
+# same lifecycle as resource_collection_runners above.
+inference_connector_runners: dict[str, dict[str, tuple[PredictionConnectorInstance, PollRunner]]] = {}

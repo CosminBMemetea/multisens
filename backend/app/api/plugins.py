@@ -229,3 +229,67 @@ def get_resource_collector(collector_id: str) -> ResourceCollectorDetail:
         raise HTTPException(status_code=404, detail=f"no resource collector configured with id '{collector_id}'")
     instance, static_config, _poll_interval_s = entry
     return _to_resource_collector_detail(collector_id, instance, static_config)
+
+
+# --- inference connectors (v1.0-RC, issue #122) -------------------------------
+#
+# Same shape as resource collectors above, same reasoning: `state` means
+# something different from a sensor connector's - RUNNING only while
+# actually attached to a session. "Plugin discovered", "connector
+# configured", and "connector actually inferring" are three different
+# questions - see app/plugins/manager.py's own module docstring.
+
+class InferenceConnectorSummary(BaseModel):
+    connector_id: str
+    plugin_id: str
+    state: str
+    session_id: str | None
+    config: dict[str, Any]
+
+
+class InferenceConnectorDetail(InferenceConnectorSummary):
+    health: ConnectorHealthResponse
+
+
+def _inference_connector_session_id(connector_id: str) -> str | None:
+    """Which session (if any) this connector is currently attached to -
+    same reverse-lookup pattern as `_resource_collector_session_id`."""
+    for session_id, runners in plugin_state.inference_connector_runners.items():
+        if connector_id in runners:
+            return session_id
+    return None
+
+
+def _to_inference_connector_summary(connector_id: str, instance: Any, static_config: dict[str, Any]) -> InferenceConnectorSummary:
+    return InferenceConnectorSummary(
+        connector_id=connector_id, plugin_id=instance.plugin_id, state=instance.state.value,
+        session_id=_inference_connector_session_id(connector_id), config=redact_secrets(static_config),
+    )
+
+
+def _to_inference_connector_detail(connector_id: str, instance: Any, static_config: dict[str, Any]) -> InferenceConnectorDetail:
+    health = instance.health()
+    return InferenceConnectorDetail(
+        **_to_inference_connector_summary(connector_id, instance, static_config).model_dump(),
+        health=ConnectorHealthResponse(
+            state=health.state.value, last_sample_age_s=health.last_sample_age_s,
+            message=health.message, details=redact_secrets(health.details),
+        ),
+    )
+
+
+@router.get('/inference-connectors')
+def list_inference_connectors() -> list[InferenceConnectorSummary]:
+    return [
+        _to_inference_connector_summary(connector_id, instance, static_config)
+        for connector_id, (instance, static_config, _poll_interval_s) in plugin_state.inference_connectors.items()
+    ]
+
+
+@router.get('/inference-connectors/{connector_id}')
+def get_inference_connector(connector_id: str) -> InferenceConnectorDetail:
+    entry = plugin_state.inference_connectors.get(connector_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"no inference connector configured with id '{connector_id}'")
+    instance, static_config, _poll_interval_s = entry
+    return _to_inference_connector_detail(connector_id, instance, static_config)

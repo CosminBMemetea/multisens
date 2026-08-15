@@ -2,6 +2,7 @@ import textwrap
 
 from app.config import (
     load_disabled_plugin_ids,
+    load_inference_connectors,
     load_platform_id,
     load_poll_connectors,
     load_resource_collectors,
@@ -181,6 +182,49 @@ def test_load_resource_collectors_handles_malformed_shape_without_crashing(monke
     config_file.write_text('sensors: []\nresource_collectors: "not-a-list"\n')
     monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
     assert load_resource_collectors() == []
+
+
+# --- v1.0-RC (issue #122): inference_connectors ------------------------------
+
+def test_load_inference_connectors_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(tmp_path / 'does-not-exist.yaml'))
+    assert load_inference_connectors() == []
+
+
+def test_load_inference_connectors_returns_empty_list_when_absent(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_inference_connectors() == []
+
+
+def test_load_inference_connectors_parses_real_config(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text(textwrap.dedent("""\
+        sensors: []
+        inference_connectors:
+          - id: vehicles_front
+            plugin: multisens.reference.inference.yolo_bridge
+            config:
+              sensor_id: ridesafe_front_rgb
+              worker_url: http://localhost:9100
+            poll_interval_s: 1.0
+    """))
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+
+    assert load_inference_connectors() == [{
+        'id': 'vehicles_front',
+        'plugin': 'multisens.reference.inference.yolo_bridge',
+        'config': {'sensor_id': 'ridesafe_front_rgb', 'worker_url': 'http://localhost:9100'},
+        'poll_interval_s': 1.0,
+    }]
+
+
+def test_load_inference_connectors_handles_malformed_shape_without_crashing(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\ninference_connectors: "not-a-list"\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_inference_connectors() == []
 
 
 # --- v0.9.1 (issue #111): platform_id ----------------------------------------

@@ -19,15 +19,23 @@ from app.api.plugins import router as plugins_router
 from app.api.profiles import router as profiles_router
 from app.api.scenarios import router as scenarios_router
 from app.api.sessions import router as sessions_router
-from app.config import load_disabled_plugin_ids, load_poll_connectors, load_resource_collectors, load_sensors
+from app.config import (
+    load_disabled_plugin_ids,
+    load_inference_connectors,
+    load_poll_connectors,
+    load_resource_collectors,
+    load_sensors,
+)
 from app.domain.resources import SUPPORTED_RESOURCE_METRICS
 from app.persistence import db as db_module
 from app.plugins import state as plugin_state
 from app.plugins.manager import (
     build_connector_instances,
+    build_inference_connector_instances,
     build_poll_runners,
     build_resource_collector_instances,
     stop_connector_instances,
+    stop_inference_connectors,
     stop_poll_runners,
     stop_resource_collection,
 )
@@ -93,6 +101,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     plugin_state.resource_collectors = build_resource_collector_instances(
         load_resource_collectors(), plugin_state.plugin_registry,
     )
+    # Same session-bound-not-process-bound construction for background
+    # inference (v1.0-RC, issue #122) - see manager.py's own module
+    # docstring for why this mirrors resource collectors, not poll_runners.
+    plugin_state.inference_connectors = build_inference_connector_instances(
+        load_inference_connectors(), plugin_state.plugin_registry,
+    )
 
     yield
     stop_poll_runners(plugin_state.poll_runners)
@@ -106,6 +120,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     for runners in plugin_state.resource_collection_runners.values():
         stop_resource_collection(runners)
     plugin_state.resource_collection_runners = {}
+    for runners in plugin_state.inference_connector_runners.values():
+        stop_inference_connectors(runners)
+    plugin_state.inference_connector_runners = {}
     bridge.shutdown()
 
 

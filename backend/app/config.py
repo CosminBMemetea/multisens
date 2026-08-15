@@ -52,6 +52,25 @@ def load_resource_collectors() -> list[dict]:
     return resource_collectors if isinstance(resource_collectors, list) else []
 
 
+def load_inference_connectors() -> list[dict]:
+    """`inference_connectors` (v1.0-RC, issue #122): the config surface
+    for activating an installed `PREDICTION_CONNECTOR` plugin for live,
+    session-bound background inference - same `id`/`plugin`/`config`/
+    `poll_interval_s` shape as `poll_connectors`/`resource_collectors`
+    above. Deliberately its own section, not reused from `poll_connectors`,
+    for the exact reason `resource_collectors` already isn't:
+    `poll_connectors` is boot-bound (starts once at process boot, runs
+    for the container's whole lifetime - correct for a continuous
+    external feed with no session concept). Inference must be
+    attributable to one session and never silently contaminate another
+    (v1.0-RC architecture review) - constructed at boot, only actually
+    polling between a session's `start` and `complete`, mirroring
+    `resource_collectors`'s own session-bound lifecycle exactly (see
+    `app/plugins/manager.py`'s `build_inference_connector_instances()`)."""
+    inference_connectors = _load_config().get('inference_connectors', [])
+    return inference_connectors if isinstance(inference_connectors, list) else []
+
+
 def load_platform_id() -> str:
     """Top-level `platform_id:` (v0.9.1, issue #111) - the value live
     resource collection attributes its observations to

@@ -16,6 +16,7 @@ import pytest
 from app.plugins import state as plugin_state
 from app.plugins.connector_instance import ConnectorInstance
 from app.plugins.registry import PluginRecord, PluginRegistry, PluginStatus
+from app.plugins.poll_connector_instance import PredictionConnectorInstance
 from app.plugins.resource_collector_instance import ResourceCollectorInstance
 from multisens_sdk import (
     MULTISENS_PLUGIN_API_VERSION,
@@ -24,6 +25,7 @@ from multisens_sdk import (
     ConnectorState,
     PluginDescriptor,
     PluginType,
+    Prediction,
     ResourceMetricDescriptor,
     ResourceObservation,
     SensorSample,
@@ -66,14 +68,20 @@ def plugin_api_state():
     original_registry, original_connectors = plugin_state.plugin_registry, plugin_state.connector_instances
     original_resource_collectors = plugin_state.resource_collectors
     original_resource_collection_runners = plugin_state.resource_collection_runners
+    original_inference_connectors = plugin_state.inference_connectors
+    original_inference_connector_runners = plugin_state.inference_connector_runners
     plugin_state.plugin_registry = PluginRegistry()
     plugin_state.connector_instances = {}
     plugin_state.resource_collectors = {}
     plugin_state.resource_collection_runners = {}
+    plugin_state.inference_connectors = {}
+    plugin_state.inference_connector_runners = {}
     yield
     plugin_state.plugin_registry, plugin_state.connector_instances = original_registry, original_connectors
     plugin_state.resource_collectors = original_resource_collectors
     plugin_state.resource_collection_runners = original_resource_collection_runners
+    plugin_state.inference_connectors = original_inference_connectors
+    plugin_state.inference_connector_runners = original_inference_connector_runners
 
 
 class _FakeResourceCollector:
@@ -103,6 +111,33 @@ class _FakeResourceCollector:
         return ConnectorHealth(state=ConnectorState.RUNNING if self._active else ConnectorState.STOPPED)
 
     def sample(self) -> list[ResourceObservation]:
+        return []
+
+
+class _FakeInferenceBridge:
+    def __init__(self):
+        self._active = False
+
+    def descriptor(self) -> PluginDescriptor:
+        return PluginDescriptor(
+            plugin_id='acme.inference.fake', name='Fake Inference Bridge', version='1.0.0',
+            plugin_type=PluginType.PREDICTION_CONNECTOR, api_version=MULTISENS_PLUGIN_API_VERSION,
+        )
+
+    def configure(self, config: dict[str, Any]) -> None:
+        if not config.get('session_id'):
+            raise ConnectorConfigError("'session_id' is required")
+
+    def start(self) -> None:
+        self._active = True
+
+    def stop(self) -> None:
+        self._active = False
+
+    def health(self) -> ConnectorHealth:
+        return ConnectorHealth(state=ConnectorState.RUNNING if self._active else ConnectorState.STOPPED)
+
+    def poll(self) -> list[Prediction]:
         return []
 
 
@@ -368,6 +403,69 @@ def test_resource_collector_config_secret_is_redacted(client, plugin_api_state):
 
     detail = client.get('/api/resource-collectors/sys-metrics').json()
     listing = client.get('/api/resource-collectors').json()
+
+    for payload in (detail, listing):
+        assert 'super-secret-value' not in str(payload)
+    assert detail['config']['api_key'] == '***REDACTED***'
+
+
+# --- inference connectors (v1.0-RC, issue #122) ------------------------------
+
+def test_list_inference_connectors_empty(client, plugin_api_state):
+    resp = client.get('/api/inference-connectors')
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_get_inference_connector_404_for_unknown_id(client, plugin_api_state):
+    resp = client.get('/api/inference-connectors/does-not-exist')
+    assert resp.status_code == 404
+
+
+def test_inference_connector_configured_but_no_session_running_is_stopped_with_no_session_id(
+    client, plugin_api_state,
+):
+    instance = PredictionConnectorInstance('acme.inference.fake', _FakeInferenceBridge())
+    plugin_state.inference_connectors['vehicles-front'] = (instance, {'sensor_id': 'demo_rgb'}, 1.0)
+
+    resp = client.get('/api/inference-connectors/vehicles-front')
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['connector_id'] == 'vehicles-front'
+    assert body['plugin_id'] == 'acme.inference.fake'
+    assert body['state'] == 'stopped'
+    assert body['session_id'] is None
+    assert body['config'] == {'sensor_id': 'demo_rgb'}
+    assert body['health']['state'] == 'stopped'
+
+    listing = client.get('/api/inference-connectors').json()
+    assert [c['connector_id'] for c in listing] == ['vehicles-front']
+
+
+def test_inference_connector_attached_to_a_running_session_reports_its_session_id(client, plugin_api_state):
+    instance = PredictionConnectorInstance('acme.inference.fake', _FakeInferenceBridge())
+    instance.configure({'session_id': 's1'})
+    instance.start()
+    plugin_state.inference_connectors['vehicles-front'] = (instance, {}, 1.0)
+    # Same shape start_inference_connectors() itself produces - a runner
+    # isn't needed for this test (never started), just the key presence
+    # the reverse-lookup reads.
+    plugin_state.inference_connector_runners['s1'] = {'vehicles-front': (instance, object())}
+
+    resp = client.get('/api/inference-connectors/vehicles-front')
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['state'] == 'running'
+    assert body['session_id'] == 's1'
+    assert body['health']['state'] == 'running'
+
+
+def test_inference_connector_config_secret_is_redacted(client, plugin_api_state):
+    instance = PredictionConnectorInstance('acme.inference.fake', _FakeInferenceBridge())
+    plugin_state.inference_connectors['vehicles-front'] = (instance, {'api_key': 'super-secret-value'}, 1.0)
+
+    detail = client.get('/api/inference-connectors/vehicles-front').json()
+    listing = client.get('/api/inference-connectors').json()
 
     for payload in (detail, listing):
         assert 'super-secret-value' not in str(payload)

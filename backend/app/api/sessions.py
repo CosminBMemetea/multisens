@@ -32,7 +32,12 @@ from app.domain.models import GroundTruth, Prediction, Session, derive_configura
 from app.domain.resources import ResourceObservation
 from app.persistence import repository as repo
 from app.plugins import state as plugin_state
-from app.plugins.manager import start_resource_collection, stop_resource_collection
+from app.plugins.manager import (
+    start_inference_connectors,
+    start_resource_collection,
+    stop_inference_connectors,
+    stop_resource_collection,
+)
 
 router = APIRouter(prefix='/api/sessions', tags=['sessions'])
 
@@ -132,14 +137,15 @@ def start_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -
 
     On the real transition only, also starts live resource collection
     (v0.9.1, issue #111) for every configured `resource_collectors:`
-    entry - never on the idempotent no-op, which would either restart an
-    already-running collector for no reason or silently attach live
-    collection to a session that was deliberately never given it. A
-    collector that fails to start (see `start_resource_collection`'s own
-    docstring - most commonly, already attached to a different,
-    still-running session) never fails session start itself; check
-    `GET /api/resource-collectors` for why a given collector isn't
-    attached."""
+    entry, and live background inference (v1.0-RC, issue #122) for every
+    configured `inference_connectors:` entry - never on the idempotent
+    no-op, which would either restart an already-running collector/connector
+    for no reason or silently attach live collection to a session that was
+    deliberately never given it. A collector/connector that fails to start
+    (see `start_resource_collection`'s own docstring - most commonly,
+    already attached to a different, still-running session) never fails
+    session start itself; check `GET /api/resource-collectors`/
+    `GET /api/inference-connectors` for why a given one isn't attached."""
     session = require_session(conn, session_id)
     if session.status == 'completed':
         raise HTTPException(status_code=409, detail=f"session '{session_id}' is already completed - cannot restart it")
@@ -149,6 +155,9 @@ def start_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -
         configuration_id = derive_configuration_id(sensor_ids) if sensor_ids else None
         plugin_state.resource_collection_runners[session_id] = start_resource_collection(
             session_id, configuration_id, load_platform_id(), sensor_ids, plugin_state.resource_collectors,
+        )
+        plugin_state.inference_connector_runners[session_id] = start_inference_connectors(
+            session_id, plugin_state.inference_connectors,
         )
     return require_session(conn, session_id)
 
@@ -163,15 +172,17 @@ def complete_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)
     started has no real end time to record. (v0.9 bug hunt, issue #109.)
 
     On the real transition only, also stops this session's live resource
-    collection, if any was started (v0.9.1, issue #111) - the idempotent
-    no-op leaves an already-stopped collection alone rather than calling
-    stop() a second time."""
+    collection (v0.9.1, issue #111) and live inference connectors
+    (v1.0-RC, issue #122), if any were started - the idempotent no-op
+    leaves an already-stopped collection/connector alone rather than
+    calling stop() a second time."""
     session = require_session(conn, session_id)
     if session.status == 'created':
         raise HTTPException(status_code=409, detail=f"session '{session_id}' was never started - cannot complete it")
     if session.status != 'completed':
         repo.update_session_status(conn, session_id, 'completed', ended_at=datetime.now(timezone.utc))
         stop_resource_collection(plugin_state.resource_collection_runners.pop(session_id, {}))
+        stop_inference_connectors(plugin_state.inference_connector_runners.pop(session_id, {}))
     return require_session(conn, session_id)
 
 

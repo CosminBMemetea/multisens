@@ -36,6 +36,23 @@ resource collector's whole point is to measure one controlled
 experiment, so it's split into a boot-time construction step (this
 module) and a per-session start/stop step, called from
 `app/api/sessions.py`'s `start_session`/`complete_session`.
+
+`build_inference_connector_instances()`/`start_inference_connectors()`/
+`stop_inference_connectors()` (v1.0-RC, issue #122) apply the exact same
+session-bound split to background ML inference: a `PREDICTION_CONNECTOR`
+plugin wired here is a *thin bridge* (no ML dependency of its own - see
+`examples/plugins/reference-inference` once it exists) whose `poll()`
+reads a separate, independently-running inference worker process's
+latest output and translates it into `Prediction` objects.
+`PredictionConnectorInstance.poll()` already matches `PollRunner`'s own
+`poll` shape exactly (Phase 97), so this reuses `PollRunner`/
+`insert_predictions_batch` unmodified, same as `build_poll_runners()`
+above - the only thing new here is *when* configure/start/stop happen.
+Unlike `poll_connectors:` (boot-bound, no session concept, correct for a
+continuous external feed), inference predictions must be attributable
+to one session and never silently contaminate a second, concurrently
+-running one - `resource_collectors:`'s own session-bound lifecycle,
+reused rather than reinvented.
 """
 from __future__ import annotations
 
@@ -324,3 +341,108 @@ def stop_resource_collection(runners: dict[str, tuple[ResourceCollectorInstance,
             instance.stop()
         except ConnectorRuntimeError as e:
             print(f"resource collection shutdown: '{collector_id}' failed to stop cleanly: {e}")
+
+
+# --- inference connectors (v1.0-RC, issue #122): session-bound, not boot-bound
+#
+# Same two-step split as resource collectors above, same reasoning: a
+# prediction produced during session A must never land in session B just
+# because both happened to be running against the same continuously-active
+# plugin. See this module's own docstring for the full reasoning.
+
+def build_inference_connector_instances(
+    inference_connectors: list[dict], registry: PluginRegistry,
+) -> dict[str, tuple[PredictionConnectorInstance, dict, float]]:
+    """Returns `{connector_id: (instance, static_config, poll_interval_s)}`
+    - constructed at boot, never configured/started here (no session yet).
+    Same skip-and-continue failure isolation as every other `build_*`
+    function in this module - one bad entry never blocks the rest.
+
+    Unlike `resource_collectors:`, an inference connector's target
+    `sensor_id` is not injected by the session-lifecycle wiring below - it
+    already lives in the plugin's own static `config:` block (one
+    inference connector entry names exactly one sensor), and
+    `Prediction.configuration_id` auto-derives from whatever `sensor_ids`
+    the plugin's own `poll()` sets on each `Prediction` it constructs
+    (`multisens_sdk.models.Prediction`'s own validator) - nothing here
+    needs to compute or inject it."""
+    instances: dict[str, tuple[PredictionConnectorInstance, dict, float]] = {}
+    for spec in inference_connectors:
+        connector_id = spec.get('id')
+        plugin_id = spec.get('plugin')
+        config = spec.get('config', {})
+        poll_interval_s = spec.get('poll_interval_s', DEFAULT_POLL_INTERVAL_S)
+        if not isinstance(connector_id, str) or not isinstance(plugin_id, str):
+            print(f"inference connector wiring: entry missing 'id' or 'plugin' - skipped ({spec!r})")
+            continue
+
+        record = registry.get(plugin_id)
+        if record is None or record.status != PluginStatus.AVAILABLE:
+            status = record.status.value if record is not None else 'not found'
+            print(f"inference connector wiring: '{connector_id}' names plugin '{plugin_id}' ({status}) - skipped")
+            continue
+        if record.descriptor is None or record.descriptor.plugin_type != PluginType.PREDICTION_CONNECTOR:
+            print(f"inference connector wiring: '{connector_id}' names plugin '{plugin_id}' which is not a "
+                  f"prediction connector - skipped")
+            continue
+        if record.factory is None:
+            print(f"inference connector wiring: '{connector_id}' plugin '{plugin_id}' has no usable factory - skipped")
+            continue
+        if not isinstance(poll_interval_s, (int, float)) or isinstance(poll_interval_s, bool) \
+                or not (poll_interval_s > 0):
+            print(f"inference connector wiring: '{connector_id}' has an invalid poll_interval_s "
+                  f"({poll_interval_s!r}) - skipped")
+            continue
+
+        instance = PredictionConnectorInstance(plugin_id, record.factory())
+        instances[connector_id] = (instance, dict(config) if isinstance(config, dict) else {}, poll_interval_s)
+
+    return instances
+
+
+def start_inference_connectors(
+    session_id: str, connectors: dict[str, tuple[PredictionConnectorInstance, dict, float]], *, connect: Any = None,
+) -> dict[str, tuple[PredictionConnectorInstance, PollRunner]]:
+    """Configures and starts every inference connector built by
+    `build_inference_connector_instances()` for one session, each with its
+    own `PollRunner` polling loop. A connector that fails to start (e.g.
+    `ConnectorLifecycleError` because it's already `RUNNING` for a
+    *different*, still-in-progress session) is printed and skipped, never
+    raised - an inference problem must never fail session start itself,
+    same posture `start_resource_collection()` already has. Callers that
+    need to know *why* a given connector isn't attached to this session
+    read `GET /api/inference-connectors` afterward.
+
+    `connect` is forwarded to each `PollRunner` verbatim when given - same
+    test-only injectable-connect convention every other `build_*`/`start_*`
+    function in this module already establishes."""
+    runners: dict[str, tuple[PredictionConnectorInstance, PollRunner]] = {}
+    for connector_id, (instance, static_config, poll_interval_s) in connectors.items():
+        config = {**static_config, 'session_id': session_id}
+        try:
+            instance.configure(config)
+            instance.start()
+        except (ConnectorConfigError, ConnectorRuntimeError, ConnectorLifecycleError) as e:
+            print(f"inference connector: '{connector_id}' failed to start for session '{session_id}': {e}")
+            continue
+
+        runner_kwargs: dict[str, Any] = {'poll_interval_s': poll_interval_s}
+        if connect is not None:
+            runner_kwargs['connect'] = connect
+        runner = PollRunner(poll=instance.poll, bulk_insert=repo.insert_predictions_batch, **runner_kwargs)
+        runner.start()
+        runners[connector_id] = (instance, runner)
+
+    return runners
+
+
+def stop_inference_connectors(runners: dict[str, tuple[PredictionConnectorInstance, PollRunner]]) -> None:
+    """The session-/complete counterpart to `start_inference_connectors()` -
+    same stop-runner-then-stop-instance order and one-failure-never-blocks
+    -the-rest discipline as `stop_resource_collection()`."""
+    for connector_id, (instance, runner) in runners.items():
+        runner.stop()
+        try:
+            instance.stop()
+        except ConnectorRuntimeError as e:
+            print(f"inference connector shutdown: '{connector_id}' failed to stop cleanly: {e}")

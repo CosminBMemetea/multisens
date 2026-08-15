@@ -9,6 +9,39 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ### Added
 
+- **Session-bound background inference wiring** (v1.0-RC Phase 2, issue
+  #122) - applies issue #111's session-bound lifecycle (build at boot,
+  configure/start on session `/start`, stop on `/complete` - never
+  boot-bound like `poll_connectors:`, which has no session concept and
+  would let a prediction from one session silently contaminate another)
+  to background ML inference. No new plugin type, no new abstraction:
+  `PredictionConnector` (Phase 97) already matches the need exactly -
+  the intended shape is a thin bridge plugin with no ML dependency of
+  its own, reading a separately-running inference worker process's
+  latest output over HTTP and translating it into `Prediction` objects,
+  so a native-level crash in the actual model can never take down the
+  backend. New `inference_connectors:` config section (same
+  `id`/`plugin`/`config`/`poll_interval_s` shape as `poll_connectors:`/
+  `resource_collectors:`), new `GET /api/inference-connectors` (+`/{id}`)
+  read endpoint. `PollRunner`/`insert_predictions_batch` reused
+  unmodified - `PredictionConnectorInstance.poll()` already matches
+  `PollRunner`'s own `poll` shape exactly.
+
+  28 new backend tests (1067 total): config loader, manager-layer wiring
+  (including the concurrent-session-conflict case and a direct real
+  -database-write regression test through a real background thread),
+  session-lifecycle hooks (including a test confirming resource
+  collection and inference wiring stay independent of each other), and
+  API-layer tests (including secret redaction). Live-verified through
+  the full real `docker compose` stack: the new endpoint returns `[]`
+  cleanly with no config entries, and a real session start/complete
+  cycle (both #111's and #122's hooks firing together) completes with
+  zero errors.
+
+  The reference inference worker/bridge plugin themselves - the actual
+  live reproduction of the RideSafe experiment - are issue #123, not
+  this one; this issue is the wiring they attach to.
+
 - **ROS sensor-id topic migration - two simultaneous same-modality live
   sensors** (v1.0-RC Phase 1, issue #121) - `rtsp_ingestion_node.py`
   published `/multisens/sensors/{modality}/image_raw`/`frame_stamp`;

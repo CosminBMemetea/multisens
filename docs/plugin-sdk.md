@@ -113,6 +113,80 @@ temporary database via its background thread - and a full REST-API
 -level test (`POST /sessions/{id}/start` through a real `TestClient`)
 confirming the same for the actual session-lifecycle wiring.
 
+## v1.0-RC Phase 2: session-bound background inference wiring (issue #122)
+
+Applies the exact same session-bound lifecycle from issue #111 above to
+background ML inference, for the exact same reason: a prediction
+produced during session A must never land in session B just because
+both happened to be running against the same continuously-active
+plugin. `poll_connectors:` (boot-bound, no session concept) is correct
+for a continuous external feed; it is the wrong shape for
+evaluation-quality inference.
+
+**No new plugin type, no new abstraction.** `PredictionConnector`
+(Phase 97) already matches this need exactly - pull-based,
+`poll() -> list[Prediction]`, "empty list = nothing new since last
+poll." The intended shape is a *thin bridge* plugin with no ML
+dependency of its own: a genuinely separate, independently-running
+inference worker process owns the actual model (keeping a native-level
+crash from ever taking down the backend - see the v1.0-RC architecture
+review for the full reasoning); the bridge's own `poll()` just reads
+that worker's latest output over HTTP and translates it into
+`Prediction` objects. `PredictionConnectorInstance.poll()` already
+matches `PollRunner`'s own `poll` shape exactly, so this reuses
+`PollRunner`/`insert_predictions_batch` unmodified, same as
+`build_poll_runners()` and issue #111's own resource-collector wiring.
+
+```text
+Session /start    -> configure({..., session_id})+start() every
+                      inference_connectors: entry, each with its own
+                      PollRunner poll() loop
+Session /complete -> stop() them
+```
+
+**`configure()`'s config dict gains exactly one new key** -
+`session_id`. Unlike resource collectors, a target `sensor_id` is not
+injected by the session-lifecycle wiring - it already lives in the
+plugin's own static `config:` block (one inference connector entry
+names exactly one sensor), and `Prediction.configuration_id`
+auto-derives from whatever `sensor_ids` the plugin's own `poll()` sets
+on each `Prediction` (`multisens_sdk.models.Prediction`'s own
+validator) - nothing needs to compute or inject it.
+
+**Config surface** - `inference_connectors:`, same `id`/`plugin`/
+`config`/`poll_interval_s` shape as `poll_connectors:`/
+`resource_collectors:`:
+
+```yaml
+inference_connectors:
+  - id: vehicles_front
+    plugin: multisens.reference.inference.yolo_bridge
+    config:
+      sensor_id: ridesafe_front_rgb
+      worker_url: http://localhost:9100
+    poll_interval_s: 1.0
+```
+
+**Concurrent sessions**: `PredictionConnectorInstance.configure()`
+already rejects being called while `RUNNING` - a second session's
+`/start` still succeeds, it just doesn't get that connector attached;
+`GET /api/inference-connectors`'s `session_id` field shows which
+session (if any) currently owns it.
+
+**Visibility**: `GET /api/inference-connectors` (+`/{id}`) - read-only,
+same posture as `/api/resource-collectors`.
+
+Regression-tested the same way: a fake bridge plugin wired through the
+real config loader → `build_inference_connector_instances()` →
+`start_inference_connectors()`, genuinely writing a row to a real
+temporary database via its background thread; a full REST-API-level
+test confirming the same for the actual session-lifecycle wiring; and a
+dedicated test confirming resource collection and inference wiring stay
+independent of each other. The reference bridge plugin and inference
+worker themselves (the actual YOLO reproduction of the RideSafe
+experiment, live rather than one-shot) are issue #123, not this one -
+this issue is the wiring the plugin will attach to.
+
 ## Release preparation (Phase 106 - shipped)
 
 Full `docker compose down && docker compose build --no-cache && docker
