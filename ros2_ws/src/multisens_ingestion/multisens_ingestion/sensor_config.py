@@ -22,9 +22,11 @@ def load_sensors_config(config_path: str) -> list[dict]:
 
 def select_usable_sensors(sensors: list[dict], config_path: str = '<config>') -> list[dict]:
     """Filters out sensors with an unsupported transport and raises on a
-    duplicate modality (which would silently collide on the same topic).
+    duplicate id (which would silently collide on the same topic - topics
+    are keyed by id, not modality, since v1.0-RC issue #121; two sensors
+    sharing one modality, e.g. two RGB cameras, is explicitly legal).
     Returns the entries that should actually become ingestion nodes."""
-    seen_modalities = set()
+    seen_ids = set()
     usable = []
     for entry in sensors:
         transport = entry.get('transport', 'rtsp')
@@ -33,12 +35,12 @@ def select_usable_sensors(sensors: list[dict], config_path: str = '<config>') ->
                   f"unsupported transport '{transport}' (only rtsp is implemented)")
             continue
 
-        modality = entry['modality']
-        if modality in seen_modalities:
+        sensor_id = entry['id']
+        if sensor_id in seen_ids:
             raise ValueError(
-                f"duplicate modality '{modality}' in {config_path} - two sensors "
-                f"would publish to the same /multisens/sensors/{modality}/image_raw topic")
-        seen_modalities.add(modality)
+                f"duplicate sensor id '{sensor_id}' in {config_path} - two sensors "
+                f"would publish to the same /multisens/sensors/{sensor_id}/image_raw topic")
+        seen_ids.add(sensor_id)
 
         usable.append(entry)
 

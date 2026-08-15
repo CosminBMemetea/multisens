@@ -36,13 +36,23 @@ def test_select_usable_sensors_passes_through_valid_entries():
     assert select_usable_sensors(sensors) == sensors
 
 
-def test_select_usable_sensors_rejects_duplicate_modality():
+def test_select_usable_sensors_rejects_duplicate_id():
     sensors = [
-        {'id': 'rgb', 'modality': 'rgb', 'transport': 'rtsp'},
-        {'id': 'rgb2', 'modality': 'rgb', 'transport': 'rtsp'},
+        {'id': 'front_rgb', 'modality': 'rgb', 'transport': 'rtsp'},
+        {'id': 'front_rgb', 'modality': 'rgb', 'transport': 'rtsp'},
     ]
-    with pytest.raises(ValueError, match='duplicate modality'):
+    with pytest.raises(ValueError, match='duplicate sensor id'):
         select_usable_sensors(sensors, config_path='test.yaml')
+
+
+def test_select_usable_sensors_allows_two_sensors_sharing_one_modality():
+    # v1.0-RC, issue #121: two RGB cameras (different ids) must be legal -
+    # topics are keyed by id now, so there is no collision to guard against.
+    sensors = [
+        {'id': 'ridesafe_front_rgb', 'modality': 'rgb', 'transport': 'rtsp'},
+        {'id': 'ridesafe_rear_rgb', 'modality': 'rgb', 'transport': 'rtsp'},
+    ]
+    assert select_usable_sensors(sensors) == sensors
 
 
 def test_select_usable_sensors_skips_unsupported_transport():

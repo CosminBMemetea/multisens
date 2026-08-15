@@ -412,8 +412,8 @@ Full deployment-trade-off API surface: [docs/deployment-tradeoffs.md](docs/deplo
 
 | Topic | Type |
 |---|---|
-| `/multisens/sensors/{modality}/image_raw` | `sensor_msgs/Image` |
-| `/multisens/sensors/{modality}/frame_stamp` | `sensor_msgs/TimeReference` |
+| `/multisens/sensors/{sensor_id}/image_raw` | `sensor_msgs/Image` |
+| `/multisens/sensors/{sensor_id}/frame_stamp` | `sensor_msgs/TimeReference` |
 | `/multisens/diagnostics` | `diagnostic_msgs/DiagnosticArray` |
 | `/multisens/sync/status` | `diagnostic_msgs/DiagnosticArray` |
 

@@ -1,6 +1,6 @@
 """Cross-sensor timestamp synchronization status.
 
-Subscribes to every configured sensor's /multisens/sensors/{modality}/
+Subscribes to every configured sensor's /multisens/sensors/{sensor_id}/
 frame_stamp topic (sensor_msgs/TimeReference, published by
 rtsp_ingestion_node alongside each Image message) via
 message_filters.ApproximateTimeSynchronizer - the standard ROS mechanism for
@@ -39,6 +39,15 @@ known-good numbers as if they were still current.
 
 /multisens/sync/frames (actual grouped/republished synchronized frame
 bundles) is out of scope for v0.1 - this node publishes status only.
+
+**v1.0-RC (issue #121)**: participants are keyed by sensor id, not
+modality (`_load_sensor_ids`, was `_load_modalities`) - two sensors
+sharing one modality (e.g. two RGB cameras) now both get their own
+watchdog/offset entry instead of colliding on one modality-keyed slot.
+`sync_logic.compute_sync_status`'s own `sensor_ids` parameter (was
+`modalities`) was already fully opaque-key-generic - a rename, not a
+logic change. Reference demo configs where `id == modality` are
+unaffected: `offset_ms_rgb` etc. report identically to before.
 """
 import os
 import time
@@ -90,10 +99,10 @@ class SyncStatusNode(Node):
         self._tolerance_ms = self.get_parameter('tolerance_ms').value
 
         config_path = os.environ.get('MULTISENS_SENSORS_CONFIG', DEFAULT_CONFIG_PATH)
-        self._modalities = self._load_modalities(config_path)
-        if len(self._modalities) < 2:
+        self._sensor_ids = self._load_sensor_ids(config_path)
+        if len(self._sensor_ids) < 2:
             self.get_logger().warning(
-                f'{len(self._modalities)} sensor(s) configured - synchronization '
+                f'{len(self._sensor_ids)} sensor(s) configured - synchronization '
                 f'needs at least 2 to mean anything')
 
         self._last_seen_monotonic = {}
@@ -110,12 +119,12 @@ class SyncStatusNode(Node):
         # measured throughput problem.
         cb_group = ReentrantCallbackGroup()
         subs = []
-        for modality in self._modalities:
-            topic = f'/multisens/sensors/{modality}/frame_stamp'
+        for sensor_id in self._sensor_ids:
+            topic = f'/multisens/sensors/{sensor_id}/frame_stamp'
             sub = message_filters.Subscriber(
                 self, TimeReference, topic, qos_profile=qos_profile_sensor_data,
                 callback_group=cb_group)
-            sub.registerCallback(self._make_watchdog_cb(modality))
+            sub.registerCallback(self._make_watchdog_cb(sensor_id))
             subs.append(sub)
 
         self._synchronizer = None
@@ -128,30 +137,30 @@ class SyncStatusNode(Node):
         self.create_timer(PUBLISH_PERIOD_SEC, self._publish_status)
 
         self.get_logger().info(
-            f'synchronizing modalities {self._modalities}, tolerance={self._tolerance_ms}ms')
+            f'synchronizing sensors {self._sensor_ids}, tolerance={self._tolerance_ms}ms')
 
     @staticmethod
-    def _load_modalities(config_path: str):
+    def _load_sensor_ids(config_path: str):
         if not os.path.isfile(config_path):
             return []
         with open(config_path) as f:
             data = yaml.safe_load(f) or {}
-        return [entry['modality'] for entry in data.get('sensors', [])]
+        return [entry['id'] for entry in data.get('sensors', [])]
 
-    def _make_watchdog_cb(self, modality: str):
+    def _make_watchdog_cb(self, sensor_id: str):
         def cb(_msg):
-            self._last_seen_monotonic[modality] = time.monotonic()
+            self._last_seen_monotonic[sensor_id] = time.monotonic()
         return cb
 
     def _on_synchronized_group(self, *msgs):
         stamps_sec = {}
-        for modality, msg in zip(self._modalities, msgs):
-            stamps_sec[modality] = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        for sensor_id, msg in zip(self._sensor_ids, msgs):
+            stamps_sec[sensor_id] = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
         mean_stamp = sum(stamps_sec.values()) / len(stamps_sec)
         self._last_group_offsets_ms = {
-            modality: (stamp - mean_stamp) * 1000.0
-            for modality, stamp in stamps_sec.items()
+            sensor_id: (stamp - mean_stamp) * 1000.0
+            for sensor_id, stamp in stamps_sec.items()
         }
         self._last_group_max_skew_ms = (
             (max(stamps_sec.values()) - min(stamps_sec.values())) * 1000.0)
@@ -165,18 +174,18 @@ class SyncStatusNode(Node):
         self._window_group_count = 0
         self._window_start_monotonic = now
 
-        missing = [m for m in self._modalities if m not in self._last_seen_monotonic]
+        missing = [s for s in self._sensor_ids if s not in self._last_seen_monotonic]
         stale = [
-            m for m in self._modalities
-            if m in self._last_seen_monotonic
-            and now - self._last_seen_monotonic[m] > STALE_AFTER_SEC
+            s for s in self._sensor_ids
+            if s in self._last_seen_monotonic
+            and now - self._last_seen_monotonic[s] > STALE_AFTER_SEC
         ]
         group_is_fresh = (
             self._last_group_monotonic is not None
             and now - self._last_group_monotonic <= STALE_AFTER_SEC)
 
         result = compute_sync_status(
-            modalities=self._modalities,
+            sensor_ids=self._sensor_ids,
             missing=missing,
             stale=stale,
             group_is_fresh=group_is_fresh,

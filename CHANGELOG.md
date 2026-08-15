@@ -9,6 +9,52 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ### Added
 
+- **ROS sensor-id topic migration - two simultaneous same-modality live
+  sensors** (v1.0-RC Phase 1, issue #121) - `rtsp_ingestion_node.py`
+  published `/multisens/sensors/{modality}/image_raw`/`frame_stamp`;
+  `sensor_config.py`'s launch guard hard-failed on a duplicate
+  *modality*. Two RGB cameras (e.g. `ridesafe_front_rgb`/
+  `ridesafe_rear_rgb`) could never be live-ingested simultaneously.
+  Fixed: topics now key by `sensor_id`
+  (`/multisens/sensors/{sensor_id}/...`); the launch guard now rejects a
+  duplicate *id*, explicitly allowing a shared modality.
+  `sync_status_node.py`/`sync_logic.py` migrated the same way
+  (`_load_modalities` → `_load_sensor_ids`, `offset_ms_{modality}` →
+  `offset_ms_{sensor_id}`) - confirmed via full code read that neither
+  ever actually depended on "modality" as a concept, only on each
+  participant having a unique key, so this was a rename, not a logic
+  change. `modality` remains metadata (a `KeyValue` in diagnostics),
+  never part of topic identity.
+
+  Also fixed in the same pass: `docker-compose.yml`'s `ros` healthcheck
+  hardcoded `rgb_ingestion`/`depth_ingestion`/`thermal_ingestion` node
+  names - flagged as contradicting "config-driven, not hardcoded" back
+  in the original v0.9.0 adversarial bug hunt, now genuinely config-driven
+  (counts `_ingestion`-suffixed nodes against the sensor count in the
+  mounted config, names none of them).
+
+  Backward compatibility: the reference `rgb`/`depth`/`thermal` config
+  (`id == modality`) produces byte-identical topic/node names to before -
+  confirmed live, not assumed. 15 ROS-side tests (8 `sensor_config` + 7
+  `sync_logic`, including two new tests: duplicate-id-still-rejected,
+  same-modality-different-id-now-legal), backend suite unaffected
+  (1039 passed). Live-verified through the full real `docker compose`
+  stack with two genuine RTSP-replayed RideSafe cameras: both connected
+  independently (`fps_received` ~30 each), `system` reported "2/2
+  configured sensors connected," `sync` reported
+  `offset_ms_ridesafe_front_rgb`/`offset_ms_ridesafe_rear_rgb`
+  independently and "synchronized within 25ms tolerance" - and the
+  reference 3-sensor config re-verified afterward to produce the exact
+  same node/topic names as before the migration.
+
+  Also fixed: `docs/development.md`'s documented ROS pure-logic test
+  command included a `pip install pytest -q` step that fails outright
+  (`ros:humble-ros-base` + colcon has no `pip` at all) - found while
+  running this issue's own tests. `python3-pytest` is already present
+  via apt (a transitive `python3-colcon-common-extensions` dependency);
+  the command now matches what actually works, verified by running it
+  exactly as documented.
+
 - **Evidence Playback: per-sample GT/prediction inspection with
   multi-source overlap, agreement & disagreement** (issue #120) - the
   first real recorded-data experiment (front/rear 70mai footage) exposed

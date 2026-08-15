@@ -11,12 +11,22 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
+      # Config-driven, not hardcoded (v1.0-RC issue #121): ingestion node
+      # names are `{sensor_id}_ingestion`, and sensor ids are only known
+      # at runtime from the mounted sensors.yaml - a healthcheck naming
+      # specific ids (rgb/depth/thermal) would break for any other config,
+      # including two same-modality sensors (e.g. ridesafe_front_rgb/
+      # ridesafe_rear_rgb), directly contradicting the "add a sensor via
+      # config, not code" claim this project makes throughout. Counts
+      # `_ingestion`-suffixed nodes against the number of sensor entries
+      # actually declared in the mounted config instead of naming any of
+      # them - genuinely config-driven either way.
       test: [
         "CMD-SHELL",
         ". /opt/ros/humble/setup.sh && . /workspace/install/setup.sh && \
-         ros2 node list | grep -q rgb_ingestion && \
-         ros2 node list | grep -q depth_ingestion && \
-         ros2 node list | grep -q thermal_ingestion && \
+         expected=$$(python3 -c \"import yaml; print(len(yaml.safe_load(open('/config/sensors.yaml')).get('sensors', [])))\") && \
+         actual=$$(ros2 node list | grep -c _ingestion) && \
+         [ \"$$actual\" -ge \"$$expected\" ] && \
          ros2 node list | grep -q system_diagnostics && \
          ros2 node list | grep -q sync_status"
       ]

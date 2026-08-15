@@ -143,7 +143,7 @@ throughput - and still works even if the `ros` container is down.
 This same "large message defeats a generic subscriber" problem resurfaced
 in Phase 5 when `multisens_sync` needed frame timestamps at full rate: fixed
 by adding a companion `sensor_msgs/TimeReference` topic
-(`/multisens/sensors/{modality}/frame_stamp`) carrying only the header, no
+(`/multisens/sensors/{sensor_id}/frame_stamp`) carrying only the header, no
 pixels - see [topics.md](topics.md).
 
 **v0.9 note**: the Plugin SDK's own data-plane/control-plane split
@@ -223,10 +223,17 @@ sensor is a config entry, not a code change - see
 
 ## Known limitations (v0.1, deliberate)
 
-- **One sensor per modality.** Topics are keyed by modality
-  (`/multisens/sensors/rgb/image_raw`), not by sensor ID. Two RGB cameras
-  would collide on the same topic - guarded against with a hard launch-time
-  error (tested), not silently broken, but not supported either.
+- ~~One sensor per modality~~ **Resolved, v1.0-RC (issue #121).** Topics
+  are keyed by `sensor_id` (`/multisens/sensors/{sensor_id}/image_raw`),
+  not modality - two RGB cameras (different ids, same `modality: rgb`) no
+  longer collide. `sensor_config.py`'s launch-time guard now rejects a
+  duplicate *id*, not a duplicate modality. Live-verified with the real
+  RideSafe recorded front/rear RTSP replay: both `ridesafe_front_rgb`/
+  `ridesafe_rear_rgb` connected simultaneously, `sync_status_node` reported
+  `offset_ms_ridesafe_front_rgb`/`offset_ms_ridesafe_rear_rgb` independently,
+  "synchronized within 25ms tolerance." Reference config (`id == modality`
+  for `rgb`/`depth`/`thermal`) produces byte-identical topic/node names to
+  before - confirmed, not assumed.
 - **MJPEG relay is one ffmpeg subprocess per HTTP client**, not fanned out
   across multiple simultaneous viewers of the same sensor. Fine for a single
   dashboard; would need a shared-broadcast design for multiple concurrent

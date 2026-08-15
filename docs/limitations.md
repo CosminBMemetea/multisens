@@ -197,18 +197,21 @@ release, not silently worked around now.
   calls via a script (`scripts/load_demo_data.py`), not a dedicated
   import route - deferred deliberately until a second example file
   actually needs one (see [evaluation.md](evaluation.md#import-format-format_version-10)).
-- **One sensor per modality, for live ingestion only.** Topics are keyed
-  by modality (`/multisens/sensors/rgb/image_raw`), not by sensor ID. Two
-  cameras sharing a modality collide on the same topic - guarded against
-  with a hard, tested launch-time error, not silently broken, but
-  genuinely not supported for **live, simultaneous dashboard viewing**.
-  Reviewed for v0.6 and explicitly deferred (issue #58, closed): decision
-  support reasons entirely over already-ingested evaluation data via the
-  same REST batch path every synthetic demo uses, so `front_rgb`/
-  `rear_rgb` are already distinct, valid configuration members there with
-  zero code changes - this restriction is unchanged, and blocks only live
-  video viewing of two same-modality physical sensors at once. See
-  [decision-support.md](decision-support.md#sensor-instance-identity-not-modality).
+- ~~One sensor per modality, for live ingestion~~ **Resolved, v1.0-RC
+  (issue #121).** Topics are now keyed by sensor `id`
+  (`/multisens/sensors/{id}/image_raw`), not modality - two cameras
+  sharing a modality (e.g. two RGB cameras) no longer collide; the
+  launch-time guard now rejects a duplicate `id` instead. Live-verified
+  with two simultaneous real RTSP-replayed RGB cameras
+  (`ridesafe_front_rgb`/`ridesafe_rear_rgb`) through the full real
+  `docker compose` stack: both connected independently, `sync_status`
+  reported both by id and confirmed "synchronized within 25ms tolerance,"
+  and the reference `rgb`/`depth`/`thermal` config (where `id == modality`)
+  produces byte-identical topic/node names to before - confirmed, not
+  assumed. See
+  [decision-support.md](decision-support.md#sensor-instance-identity-not-modality)
+  for the evaluation-layer side of this, which was already unaffected
+  (issue #58, closed) even before this fix.
 - **RTSP only.** `config/sensors.yaml`'s `transport` field exists for
   future extension, but only `"rtsp"` does anything; other values are
   skipped with a logged warning.
@@ -216,7 +219,7 @@ release, not silently worked around now.
   frame bundles, as opposed to status *about* synchronization) does not
   exist. Only sync *status* is published.
 - **No `sensor_msgs/CameraInfo` data.** The topic contract reserves
-  `/multisens/sensors/{modality}/info` for it, but no calibration data
+  `/multisens/sensors/{sensor_id}/info` for it, but no calibration data
   exists for the simulated reference sensors, and none is fabricated -
   this is unpopulated, not broken.
 - **MJPEG relay is one ffmpeg subprocess per connected HTTP client**, not

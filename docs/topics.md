@@ -2,15 +2,22 @@
 
 All topics use only standard ROS message types - no custom `.msg` files
 exist in this repo (see [architecture.md](architecture.md#no-custom-ros-messages)
-for why). `{modality}` is whatever string a sensor's config entry declares
-(`rgb`, `depth`, `thermal` in the reference config - not hardcoded).
+for why). `{sensor_id}` is whatever string a sensor's config entry
+declares as its `id` (`rgb`, `depth`, `thermal` in the reference config -
+not hardcoded; two sensors may share one `modality` and still get their
+own independent topics, e.g. `ridesafe_front_rgb`/`ridesafe_rear_rgb`,
+both `modality: rgb` - see "Resolved, v1.0-RC" in
+[architecture.md](architecture.md#known-limitations-v01-deliberate)).
+`modality` itself is metadata, carried in diagnostics only, never part
+of a topic path (since v1.0-RC issue #121 - topics were modality-keyed
+before that).
 
 ## Per-sensor topics
 
 Published by each `rtsp_ingestion_node` instance
 ([source](../ros2_ws/src/multisens_ingestion/multisens_ingestion/rtsp_ingestion_node.py)).
 
-### `/multisens/sensors/{modality}/image_raw`
+### `/multisens/sensors/{sensor_id}/image_raw`
 
 - **Type**: `sensor_msgs/Image`
 - **QoS**: `qos_profile_sensor_data` (best-effort, small depth) - a slow
@@ -24,7 +31,7 @@ Published by each `rtsp_ingestion_node` instance
   this node published it."
 - **`header.frame_id`**: `multisens_{sensor_id}`.
 
-### `/multisens/sensors/{modality}/frame_stamp`
+### `/multisens/sensors/{sensor_id}/frame_stamp`
 
 - **Type**: `sensor_msgs/TimeReference`
 - **QoS**: `qos_profile_sensor_data`, same as `image_raw`.
@@ -38,7 +45,7 @@ Published by each `rtsp_ingestion_node` instance
   consumers read one field, some the other).
 - **`source`**: the sensor's configured `id`.
 
-### `/multisens/sensors/{modality}/info`
+### `/multisens/sensors/{sensor_id}/info`
 
 - **Type**: `sensor_msgs/CameraInfo`
 - **Status**: declared in the architecture, **not yet published in v0.1**.
@@ -123,10 +130,10 @@ disconnected or (for `system`) any configured sensor is missing entirely,
 |---|---|
 | `tolerance_ms` | configured skew tolerance (`ros2 param`, default 25.0 - see architecture.md for how this default was set) |
 | `synchronized_group_rate_hz` | how often a full N-way timestamp-matched group was found in the last publish window |
-| `missing_sensors` | comma-separated modalities never seen at all, or `"none"` |
-| `stale_sensors` | comma-separated modalities seen before but not within the last 3s, or `"none"` |
+| `missing_sensors` | comma-separated sensor ids never seen at all, or `"none"` |
+| `stale_sensors` | comma-separated sensor ids seen before but not within the last 3s, or `"none"` |
 | `max_skew_ms` | max timestamp spread within the most recent matched group; `"unavailable"` if no group matched within the last 3s |
-| `offset_ms_{modality}` | that sensor's offset from the matched group's mean timestamp; `"unavailable"` under the same condition as `max_skew_ms` |
+| `offset_ms_{sensor_id}` | that sensor's offset from the matched group's mean timestamp; `"unavailable"` under the same condition as `max_skew_ms` |
 
 ### `/multisens/sync/frames`
 

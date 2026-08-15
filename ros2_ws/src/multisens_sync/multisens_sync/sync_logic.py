@@ -10,7 +10,7 @@ from typing import Optional
 
 
 def compute_sync_status(
-    modalities: list[str],
+    sensor_ids: list[str],
     missing: list[str],
     stale: list[str],
     group_is_fresh: bool,
@@ -21,7 +21,12 @@ def compute_sync_status(
     stale_after_sec: float,
 ) -> dict:
     """Returns {'level': 'ok'|'warn'|'error', 'message': str, 'fields': dict}
-    - 'fields' is the exact set of KeyValue entries the node publishes."""
+    - 'fields' is the exact set of KeyValue entries the node publishes.
+
+    `sensor_ids` (was `modalities` before v1.0-RC issue #121) - this
+    function never actually depended on modality as a concept, only on
+    each participant having a unique key; the rename just makes that
+    honest now that two participants may share one modality."""
     fields = {
         'tolerance_ms': f'{tolerance_ms:.1f}',
         'synchronized_group_rate_hz': f'{group_rate_hz:.1f}',
@@ -33,13 +38,13 @@ def compute_sync_status(
     if group_is_fresh:
         within_tolerance = max_skew_ms <= tolerance_ms
         fields['max_skew_ms'] = f'{max_skew_ms:.1f}'
-        for modality in modalities:
-            offset = offsets_ms.get(modality)
-            fields[f'offset_ms_{modality}'] = f'{offset:.1f}' if offset is not None else 'unavailable'
+        for sensor_id in sensor_ids:
+            offset = offsets_ms.get(sensor_id)
+            fields[f'offset_ms_{sensor_id}'] = f'{offset:.1f}' if offset is not None else 'unavailable'
     else:
         fields['max_skew_ms'] = 'unavailable'
-        for modality in modalities:
-            fields[f'offset_ms_{modality}'] = 'unavailable'
+        for sensor_id in sensor_ids:
+            fields[f'offset_ms_{sensor_id}'] = 'unavailable'
 
     if not group_is_fresh:
         level = 'error'

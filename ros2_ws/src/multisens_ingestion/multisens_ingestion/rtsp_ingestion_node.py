@@ -1,7 +1,7 @@
 """Generic RTSP-to-ROS ingestion node.
 
 Opens one RTSP source and publishes sensor_msgs/Image on
-/multisens/sensors/{modality}/image_raw. Identity (sensor_id, modality,
+/multisens/sensors/{sensor_id}/image_raw. Identity (sensor_id, modality,
 source_type, url) is configured entirely via ROS parameters so the same
 node handles any sensor — no per-sensor subclassing.
 
@@ -14,7 +14,7 @@ image topic. Global diagnostics (CPU/RAM/uptime/sensor count), which no
 single sensor owns, are a separate node - see multisens_diagnostics.
 
 Also publishes sensor_msgs/TimeReference on
-/multisens/sensors/{modality}/frame_stamp, carrying the same header as the
+/multisens/sensors/{sensor_id}/frame_stamp, carrying the same header as the
 Image message with no pixel payload. Added for Phase 5 (multisens_sync)
 after measuring that a subscriber processing three concurrent ~900KB raw
 Image topics at 30fps couldn't keep up well enough to measure real
@@ -29,6 +29,15 @@ Phase 2 scope: one instantiation, RGB, launch-hardcoded parameters, basic
 reconnect-on-failure. Phase 3 generalized this to N instantiations driven by
 config/sensors.yaml. Phase 4 added the self-diagnostics described above.
 Phase 5 added the frame_stamp topic described above.
+
+**v1.0-RC (issue #121)**: topics moved from `{modality}` to `{sensor_id}`
+keying - two sensors sharing one `modality` (e.g. two RGB cameras) used to
+collide on the same topic; `sensor_id` is already required-unique
+(`sensor_config.py`'s own duplicate-id guard), so this can never happen.
+`modality` stays available as a `KeyValue` in the published diagnostics
+(metadata), never part of any topic identity. Reference demo configs where
+`id == modality` (e.g. `rgb`/`depth`/`thermal`) are unaffected - the
+resulting topic path is identical either way.
 """
 import time
 
@@ -69,9 +78,9 @@ class RtspIngestionNode(Node):
             # bake in any particular host or sensor simulator's address.
             raise ValueError("rtsp_url parameter is required and was not set")
 
-        topic = f'/multisens/sensors/{self._modality}/image_raw'
+        topic = f'/multisens/sensors/{self._sensor_id}/image_raw'
         self._publisher = self.create_publisher(Image, topic, qos_profile_sensor_data)
-        stamp_topic = f'/multisens/sensors/{self._modality}/frame_stamp'
+        stamp_topic = f'/multisens/sensors/{self._sensor_id}/frame_stamp'
         self._stamp_publisher = self.create_publisher(
             TimeReference, stamp_topic, qos_profile_sensor_data)
         self._diagnostics_pub = self.create_publisher(DiagnosticArray, '/multisens/diagnostics', 10)

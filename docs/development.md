@@ -92,11 +92,18 @@ tooling):
 ```bash
 docker build --target build -t multisense-ros-build ./ros2_ws
 docker run --rm multisense-ros-build bash -c \
-  "source /opt/ros/humble/setup.bash && source /workspace/install/setup.bash && \
-   pip install pytest -q && \
-   cd /workspace/src/multisens_ingestion && python3 -m pytest test && \
+  "cd /workspace/src/multisens_ingestion && python3 -m pytest test && \
    cd /workspace/src/multisens_sync && python3 -m pytest test"
 ```
+No `pip install pytest` step (found stale while verifying issue #121's own
+tests) - `python3-pytest` is already present via apt, pulled in
+transitively by `python3-colcon-common-extensions`
+(`ros:humble-ros-base` + colcon has no `pip`/`python3-pip` at all, so a
+literal `pip install` here fails outright, not just redundantly). Sourcing
+`setup.bash` is also unnecessary for these two modules specifically - both
+are pure-Python with zero `rclpy`/`launch_ros` imports (that's the whole
+point of `test_sensor_config.py`/`test_sync_logic.py`'s own module
+docstrings), so nothing here needs the ROS environment sourced.
 
 ## What's deliberately *not* tested
 

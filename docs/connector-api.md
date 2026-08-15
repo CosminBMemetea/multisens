@@ -110,13 +110,16 @@ connectors today, only the startup log line.
 **`id`**: must be unique across the file. Used as the ROS node name
 (`{id}_ingestion`) and as the `hardware_id` in diagnostics.
 
-**`modality`**: must also be unique across the file - **this is enforced**,
-not just documented. Two entries sharing a modality would collide on the
-same `/multisens/sensors/{modality}/image_raw` topic; `ingestion.launch.py`
-raises a hard error at launch time rather than allowing that, verified in
-Phase 3 by feeding it a deliberately broken config. This is the concrete
-limit described in [architecture.md](architecture.md#known-limitations-v01-deliberate):
-one sensor per modality in v0.1.
+**`modality`**: free-text metadata (`rgb`, `depth`, `thermal`, or any
+other string a plugin/config author chooses) - **no longer required to
+be unique** (resolved v1.0-RC, issue #121). Topics are keyed by `id`, not
+`modality` (`/multisens/sensors/{id}/image_raw`), so two entries sharing
+one modality - e.g. `ridesafe_front_rgb`/`ridesafe_rear_rgb`, both
+`modality: rgb` - are fully legal and get independent topics; only a
+duplicate `id` is rejected at launch time (same hard-error mechanism,
+now checking the field that's actually the topic key). Live-verified
+with two simultaneous real RTSP-replayed RGB cameras - see
+[architecture.md](architecture.md#known-limitations-v01-deliberate).
 
 **`source_type`**: `physical` means the stream is genuine sensor data.
 `simulated` means it's synthetic (like the reference depth/thermal

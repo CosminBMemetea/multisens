@@ -253,19 +253,22 @@ config, distinct identity - one setting never leaks into another).
 **Deliberately not a new live-video claim, and explicitly not wired into
 the repo's real `config/sensors.yaml`** - a dedicated test checks that
 file directly and confirms it still lists only `rgb`/`depth`/`thermal`.
-Two reasons, both already-documented boundaries this phase respects
-rather than crosses: adding these ids to the real file would (1) surface
-them on the Dashboard's own `/api/sensors`-driven sensor list, an
-explicit out-of-scope item for this phase, and (2) very likely collide
-with ROS ingestion's own single-topic-per-modality constraint - RideSafe's
-two cameras and PropertyWatch's three would all be `modality: rgb`,
-exactly the shape `sensor_config.py`'s `select_usable_sensors` raises on
-(see [limitations.md](limitations.md)'s "one sensor per modality, for
-live ingestion only," still completely unchanged). What v0.9 actually
-changes is one layer up: the connector *plugin* itself has no modality
-concept and no single-topic constraint at all - proven here with the
-real shipped demo identities instead of the generic `front`/`rear`
-placeholders Phase 96's own tests already used.
+Two reasons at the time, both already-documented boundaries this phase
+respected rather than crossed: adding these ids to the real file would
+(1) surface them on the Dashboard's own `/api/sensors`-driven sensor
+list, an explicit out-of-scope item for this phase, and (2) would have
+collided with ROS ingestion's own single-topic-per-modality constraint -
+RideSafe's two cameras and PropertyWatch's three would all be
+`modality: rgb`, exactly the shape `sensor_config.py`'s
+`select_usable_sensors` raised on at the time. **Reason (2) no longer
+applies as of v1.0-RC (issue #121)** - topics are now keyed by sensor
+id, not modality, so same-modality sensors coexist live without
+collision (live-verified with the real RideSafe front/rear RTSP replay).
+Reason (1) is still a deliberate scope boundary, unchanged. What v0.9
+actually changed is one layer up: the connector *plugin* itself has no
+modality concept and no single-topic constraint at all - proven here
+with the real shipped demo identities instead of the generic
+`front`/`rear` placeholders Phase 96's own tests already used.
 
 The existing RideSafe/PropertyWatch REST/evaluation demo data and tests
 (`test_ridesafe_demo.py`, `test_ridesafe_detection_demo.py`,
