@@ -244,6 +244,87 @@ documents for the `ros` container's own diagnostics, now measured from
 inside the **backend** container instead, and extended for the first
 time to network metrics (host-interface-wide, not per-RTSP-stream).
 
+## Live collection (v0.9.1, issue #111)
+
+Through v0.9.0, everything above existed and was fully tested, but had
+no live trigger anywhere in the running application - every resource
+observation ever shipped in a demo was populated via the batch API by
+an offline generator script, never by a collector actually sampling
+while a session ran. v0.9.1 closes that gap, session-bound:
+
+```text
+Session /start  → resource collectors configure() + start()
+                → one PollRunner-driven background sample() loop per
+                  configured collector, on a bounded interval
+Session /complete → collectors stop()
+```
+
+**Config-driven, opt-in, same shape as `poll_connectors:`:**
+
+```yaml
+resource_collectors:
+  - id: system-metrics
+    plugin: multisens.builtin.resource.system-metrics
+    poll_interval_s: 5.0
+```
+
+A `RESOURCE_COLLECTOR` plugin being discovered as `AVAILABLE` (registry-
+level) is a *different* fact from a `resource_collectors:` entry naming
+it (collector-configured) which is a *different* fact again from it
+actually being `RUNNING` for a specific session right now
+(`GET /api/resource-collectors`) - see
+[plugin-sdk.md](plugin-sdk.md#v091-live-session-bound-resource-collection-issue-111)
+for the full plugin-authoring contract, including the
+`configuration_id`/`platform_id`/`sensor_ids` keys now passed into
+`configure()`.
+
+**No new runner class.** `ResourceCollectorInstance.sample() -> list[
+ResourceObservation]` already matches `PollRunner`'s own `poll` callback
+shape exactly (and, like `poll()`, never raises), so live resource
+collection reuses `PollRunner` unmodified - it inherits the same
+connect/insert-failure survival a transient SQLite error already gets
+for prediction/ground-truth connectors, not a second, parallel
+implementation of that discipline.
+
+**Built-in collector, one lifecycle model.** `SystemMetricsWindow`/
+`collect_sensor_metrics` above are unchanged; a thin adapter
+(`app/plugins/builtin_resource_collector.py`,
+`multisens.builtin.resource.system-metrics`) wraps them behind the same
+plugin interface an external `RESOURCE_COLLECTOR` needs, registered as a
+built-in exactly like the RTSP `SensorConnector` already is. There is
+only ever one way a resource collector gets wired into a session, built
+-in or external.
+
+**Configuration attribution stays honest, not solved for the general
+case.** A `Session` has no `configuration_id` of its own (see "Session,
+not a new `ResourceMeasurementRun` entity" above) - live collection
+derives one stable `configuration_id` for the session's whole live
+-collection window from `config/sensors.yaml`'s own currently-configured
+sensor set (`derive_configuration_id`), which is only well-defined
+because the live ROS ingestion path currently supports exactly one
+active sensor per modality at a time. **This assumption does not survive
+multi-sensor-per-modality live ingestion** (a v1.0-RC-scale change,
+explicitly out of scope here) and must be revisited then. Offline/batch
+-uploaded evidence is unaffected and can still legitimately span multiple
+configurations per session, as the RideSafe reference dataset does.
+
+**Concurrent sessions.** Nothing prevents two `Session`s being `running`
+simultaneously, but a given collector instance can only ever be
+attached to one at a time (`ResourceCollectorInstance.configure()`
+itself rejects being called while `RUNNING`). A second session's
+`/start` still succeeds - a resource-collector conflict never fails
+session lifecycle - but that collector simply isn't attached to the
+second session; check `GET /api/resource-collectors`'s `session_id`
+field to see which session (if any) currently owns it.
+
+**Backend restart.** `plugin_state` is in-memory only. A restart does
+not resume live collection for a `Session` left `running` - the session
+row stays `running` (no auto-transition), no observations are
+fabricated to paper over the gap, and any resumed collection after
+restart starts a fresh window rather than claiming continuity across the
+downtime. Deliberate, not an oversight - see
+[limitations.md](limitations.md).
+
 ## API surface
 
 ```
@@ -287,18 +368,28 @@ render:
   per-row contributing-observations list (each with its own quality
   badge) - so a `mixed` population's true composition is visible, not
   collapsed into a guess.
+- **The Integrations page's "Resource Collectors" table** (v0.9.1, issue
+  #111) - one row per `resource_collectors:` config entry, showing its
+  live `state` and which `session_id` (if any) it's currently attached
+  to. Read-only, same posture as the Plugins/Connector Instances tables
+  on the same page.
 
 ## Known resource-layer limitations
 
 See [limitations.md](limitations.md) for the current authoritative list;
-summarized here: only six metrics are supported (no GPU/power/
-temperature/storage-write); a resource observation's `unit` is fully
-open at ingestion, not validated against `SUPPORTED_RESOURCE_METRICS`;
-`measurement_window` is never cross-checked against a session's own
-evaluation-evidence timespan; resource evidence is measured from inside
-whichever container the collector runs in (Docker-Desktop-VM caveat
-inherited from v0.1's own diagnostics, now extended to network metrics);
-and cross-platform comparison has only ever been exercised with one
-platform in the environment this release was built in (Jetson/
-cross-platform validation explicitly deferred - see
-[deployment-tradeoffs.md](deployment-tradeoffs.md#comparability-four-independent-rules)).
+summarized here: only six built-in metrics are supported (no GPU/power/
+temperature/storage-write, though a plugin can extend the vocabulary);
+a resource observation's `unit` is fully open at ingestion, not
+validated against `SUPPORTED_RESOURCE_METRICS`; `measurement_window` is
+never cross-checked against a session's own evaluation-evidence
+timespan; resource evidence is measured from inside whichever container
+the collector runs in (Docker-Desktop-VM caveat inherited from v0.1's
+own diagnostics, now extended to network metrics); cross-platform
+comparison has only ever been exercised with one platform in the
+environment this release was built in (Jetson/cross-platform validation
+explicitly deferred - see
+[deployment-tradeoffs.md](deployment-tradeoffs.md#comparability-four-independent-rules));
+and live collection's `configuration_id` derivation (see "Live
+collection" above) depends on the current one-sensor-per-modality live
+architecture, not yet re-examined for a future multi-sensor-per-modality
+design.

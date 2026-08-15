@@ -353,6 +353,7 @@ def discover_plugins(
     `app/main.py` passes its own real bridge instance.
     """
     from app.domain.evaluators import EVALUATOR_REGISTRY
+    from app.plugins.builtin_resource_collector import BuiltInResourceCollector
     from app.plugins.builtin_rtsp import RtspSensorConnector
 
     registry = PluginRegistry()
@@ -364,6 +365,15 @@ def discover_plugins(
         register_built_in(
             registry, RtspSensorConnector(ros_bridge), source='multisens',
             factory=lambda: RtspSensorConnector(ros_bridge),
+        )
+        # v0.9.1, issue #111 - same built-in-adapter pattern as the RTSP
+        # connector above, just for RESOURCE_COLLECTOR: wraps the
+        # existing, unchanged v0.7 psutil/ROS-snapshot collection code so
+        # it goes through the identical session-bound live-collection
+        # path an external ResourceCollector plugin uses.
+        register_built_in(
+            registry, BuiltInResourceCollector(ros_bridge), source='multisens',
+            factory=lambda: BuiltInResourceCollector(ros_bridge),
         )
 
     resolved_entry_points = (

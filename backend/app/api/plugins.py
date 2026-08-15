@@ -160,3 +160,72 @@ def get_connector(sensor_id: str) -> ConnectorDetail:
     if instance is None:
         raise HTTPException(status_code=404, detail=f"no connector configured for sensor '{sensor_id}'")
     return _to_connector_detail(sensor_id, instance)
+
+
+# --- resource collectors (v0.9.1, issue #111) --------------------------------
+#
+# Deliberately a separate pair of endpoints, not folded into /connectors
+# above: a resource collector's `state` means something different from a
+# sensor connector's - RUNNING only while actually attached to a session
+# (`session_id` below is `None` between sessions, or whenever a
+# `resource_collectors:` entry is configured but its plugin never
+# reached RUNNING - "plugin discovered" and "collector actually
+# sampling" are two different questions, see app/plugins/manager.py's
+# own module docstring).
+
+class ResourceCollectorSummary(BaseModel):
+    collector_id: str
+    plugin_id: str
+    state: str
+    session_id: str | None
+    config: dict[str, Any]
+
+
+class ResourceCollectorDetail(ResourceCollectorSummary):
+    health: ConnectorHealthResponse
+
+
+def _resource_collector_session_id(collector_id: str) -> str | None:
+    """Which session (if any) this collector is currently attached to -
+    `plugin_state.resource_collection_runners` is keyed by session_id
+    first (so complete_session can stop exactly its own session's
+    runners), so this is a small reverse lookup, not a stored field."""
+    for session_id, runners in plugin_state.resource_collection_runners.items():
+        if collector_id in runners:
+            return session_id
+    return None
+
+
+def _to_resource_collector_summary(collector_id: str, instance: Any, static_config: dict[str, Any]) -> ResourceCollectorSummary:
+    return ResourceCollectorSummary(
+        collector_id=collector_id, plugin_id=instance.plugin_id, state=instance.state.value,
+        session_id=_resource_collector_session_id(collector_id), config=redact_secrets(static_config),
+    )
+
+
+def _to_resource_collector_detail(collector_id: str, instance: Any, static_config: dict[str, Any]) -> ResourceCollectorDetail:
+    health = instance.health()
+    return ResourceCollectorDetail(
+        **_to_resource_collector_summary(collector_id, instance, static_config).model_dump(),
+        health=ConnectorHealthResponse(
+            state=health.state.value, last_sample_age_s=health.last_sample_age_s,
+            message=health.message, details=redact_secrets(health.details),
+        ),
+    )
+
+
+@router.get('/resource-collectors')
+def list_resource_collectors() -> list[ResourceCollectorSummary]:
+    return [
+        _to_resource_collector_summary(collector_id, instance, static_config)
+        for collector_id, (instance, static_config, _poll_interval_s) in plugin_state.resource_collectors.items()
+    ]
+
+
+@router.get('/resource-collectors/{collector_id}')
+def get_resource_collector(collector_id: str) -> ResourceCollectorDetail:
+    entry = plugin_state.resource_collectors.get(collector_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"no resource collector configured with id '{collector_id}'")
+    instance, static_config, _poll_interval_s = entry
+    return _to_resource_collector_detail(collector_id, instance, static_config)

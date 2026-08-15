@@ -34,16 +34,84 @@ Regression-tested end to end: a fake plugin registered through a real
 ingesting a row into a real temporary database via its background
 thread - not just asserting the connector object reports `RUNNING`.
 
-**Known follow-up, deliberately not fixed in this pass** (see issue
-#111): the same root-cause pattern also affects `RESOURCE_COLLECTOR`-type
-plugins (`ResourceCollectorInstance` is likewise never instantiated,
-and - discovered while investigating this - neither is the pre-existing
-v0.7 built-in collector, `SystemMetricsWindow`/`collect_sensor_metrics`,
-wired into any live collection trigger). Unlike poll connectors, there
-is no existing "background thread polling into the DB" pattern to reuse
-for resource collection - the trigger point (per-session start? a
-periodic loop? an on-demand API call?) has never been designed, so
-fixing it needs a real design pass, not a same-night smallest-fix patch.
+**Follow-up closed in v0.9.1** (issue #111, see below) - the same
+root-cause pattern also affected `RESOURCE_COLLECTOR`-type plugins.
+
+## v0.9.1: live, session-bound resource collection (issue #111)
+
+Closes the follow-up flagged above. Unlike poll connectors (process
+-lifetime, started once at boot), a resource collector's whole point is
+to measure one controlled experiment, so the fix is session-bound
+rather than boot-bound:
+
+```text
+Session /start    -> configure()+start() every resource_collectors:
+                      entry, each with its own PollRunner sample() loop
+Session /complete -> stop() them
+```
+
+**No new runner class** - `ResourceCollectorInstance.sample() -> list[
+ResourceObservation]` already matches `PollRunner`'s `poll` callback
+shape exactly (and, like `poll()`, never raises), so this reuses
+`PollRunner` unmodified rather than a parallel implementation.
+
+**`configure()`'s config dict gains three new, optional, informal keys**
+for `RESOURCE_COLLECTOR` plugins specifically - a non-breaking addition,
+existing plugins that only read `session_id` are unaffected:
+
+```python
+def configure(self, config: dict[str, Any]) -> None:
+    session_id = config["session_id"]              # already required
+    configuration_id = config.get("configuration_id")  # str | None - see caveat below
+    platform_id = config.get("platform_id")             # str | None
+    sensor_ids = config.get("sensor_ids", [])            # list[str]
+```
+
+`configuration_id` is derived from `config/sensors.yaml`'s own currently
+-configured sensor set, which is only well-defined because live
+ingestion currently supports exactly one active sensor per modality -
+see [resources.md#live-collection](resources.md#live-collection-v091-issue-111)
+for the full reasoning and its explicit limit.
+
+**Config surface** - `resource_collectors:`, same `id`/`plugin`/
+`config`/`poll_interval_s` shape `poll_connectors:` already established:
+
+```yaml
+resource_collectors:
+  - id: system-metrics
+    plugin: multisens.builtin.resource.system-metrics
+    poll_interval_s: 5.0
+```
+
+Plus a top-level `platform_id:` (declared, never auto-detected -
+`ExecutionPlatform`'s own established posture), defaulting to
+`UNKNOWN_PLATFORM_ID` when omitted.
+
+**Built-in collector, one lifecycle model** - `app/plugins/
+builtin_resource_collector.py`'s `BuiltInResourceCollector` wraps the
+existing, unchanged v0.7 `SystemMetricsWindow`/`collect_sensor_metrics`
+behind the same `ResourceCollector` contract below, registered as a
+built-in exactly like the RTSP `SensorConnector` already is
+(`multisens.builtin.resource.system-metrics`) - no separate `pip
+install`, always discovered whenever a `RosBridge` is available.
+
+**Concurrent sessions**: `ResourceCollectorInstance.configure()` already
+rejects being called while `RUNNING` - a second session's `/start` still
+succeeds (a resource-collector conflict never fails session lifecycle),
+it just doesn't get that collector attached; `GET /api/resource
+-collectors`'s `session_id` field shows which session (if any) currently
+owns it.
+
+**Visibility**: `GET /api/resource-collectors` (+`/{id}`) - read-only,
+same posture as `/api/plugins`/`/api/connectors`; one new "Resource
+Collectors" table on the Integrations page.
+
+Regression-tested the same way BUG-003 was: a fake collector wired
+through the real config loader → `build_resource_collector_instances()`
+→ `start_resource_collection()`, genuinely writing a row to a real
+temporary database via its background thread - and a full REST-API
+-level test (`POST /sessions/{id}/start` through a real `TestClient`)
+confirming the same for the actual session-lifecycle wiring.
 
 ## Release preparation (Phase 106 - shipped)
 
@@ -850,6 +918,11 @@ values are unioned in at connector-registration time - `gpu_percent`
 becomes valid only once a plugin that declares it is actually
 registered, never a permanently open vocabulary. Keeps v0.7's reviewed,
 deliberate metric-list discipline while genuinely extending it.
+
+`configure()`'s `config` dict carries `session_id` (required) plus,
+since v0.9.1 (issue #111, "live, session-bound resource collection"
+above), three optional keys a live-collection-aware plugin can read:
+`configuration_id`, `platform_id`, `sensor_ids`.
 
 ## Lifecycle, health, idempotency
 

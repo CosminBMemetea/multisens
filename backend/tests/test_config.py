@@ -1,6 +1,13 @@
 import textwrap
 
-from app.config import load_disabled_plugin_ids, load_poll_connectors, load_sensors
+from app.config import (
+    load_disabled_plugin_ids,
+    load_platform_id,
+    load_poll_connectors,
+    load_resource_collectors,
+    load_sensors,
+)
+from app.domain.resources import UNKNOWN_PLATFORM_ID
 
 
 def test_load_sensors_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
@@ -132,3 +139,73 @@ def test_load_poll_connectors_handles_malformed_shape_without_crashing(monkeypat
     config_file.write_text('sensors: []\npoll_connectors: "not-a-list"\n')
     monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
     assert load_poll_connectors() == []
+
+
+# --- v0.9.1 (issue #111): resource_collectors -------------------------------
+
+def test_load_resource_collectors_returns_empty_list_when_file_missing(monkeypatch, tmp_path):
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(tmp_path / 'does-not-exist.yaml'))
+    assert load_resource_collectors() == []
+
+
+def test_load_resource_collectors_returns_empty_list_when_absent(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_resource_collectors() == []
+
+
+def test_load_resource_collectors_parses_real_config(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text(textwrap.dedent("""\
+        sensors: []
+        resource_collectors:
+          - id: battery-monitor
+            plugin: acme.resource.battery
+            config:
+              device: /dev/battery0
+            poll_interval_s: 5.0
+    """))
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+
+    assert load_resource_collectors() == [{
+        'id': 'battery-monitor',
+        'plugin': 'acme.resource.battery',
+        'config': {'device': '/dev/battery0'},
+        'poll_interval_s': 5.0,
+    }]
+
+
+def test_load_resource_collectors_handles_malformed_shape_without_crashing(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\nresource_collectors: "not-a-list"\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_resource_collectors() == []
+
+
+# --- v0.9.1 (issue #111): platform_id ----------------------------------------
+
+def test_load_platform_id_falls_back_to_unknown_when_file_missing(monkeypatch, tmp_path):
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(tmp_path / 'does-not-exist.yaml'))
+    assert load_platform_id() == UNKNOWN_PLATFORM_ID
+
+
+def test_load_platform_id_falls_back_to_unknown_when_absent(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_platform_id() == UNKNOWN_PLATFORM_ID
+
+
+def test_load_platform_id_parses_a_declared_value(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\nplatform_id: jetson-orin-01\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_platform_id() == 'jetson-orin-01'
+
+
+def test_load_platform_id_falls_back_to_unknown_for_a_malformed_value(monkeypatch, tmp_path):
+    config_file = tmp_path / 'sensors.yaml'
+    config_file.write_text('sensors: []\nplatform_id: 123\n')
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(config_file))
+    assert load_platform_id() == UNKNOWN_PLATFORM_ID

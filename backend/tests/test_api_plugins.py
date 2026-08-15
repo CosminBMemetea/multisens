@@ -16,12 +16,16 @@ import pytest
 from app.plugins import state as plugin_state
 from app.plugins.connector_instance import ConnectorInstance
 from app.plugins.registry import PluginRecord, PluginRegistry, PluginStatus
+from app.plugins.resource_collector_instance import ResourceCollectorInstance
 from multisens_sdk import (
     MULTISENS_PLUGIN_API_VERSION,
+    ConnectorConfigError,
     ConnectorHealth,
     ConnectorState,
     PluginDescriptor,
     PluginType,
+    ResourceMetricDescriptor,
+    ResourceObservation,
     SensorSample,
 )
 
@@ -60,10 +64,46 @@ def plugin_api_state():
     test_external_evaluator_plugin.py) - each test gets a clean slate and
     never leaks into the next."""
     original_registry, original_connectors = plugin_state.plugin_registry, plugin_state.connector_instances
+    original_resource_collectors = plugin_state.resource_collectors
+    original_resource_collection_runners = plugin_state.resource_collection_runners
     plugin_state.plugin_registry = PluginRegistry()
     plugin_state.connector_instances = {}
+    plugin_state.resource_collectors = {}
+    plugin_state.resource_collection_runners = {}
     yield
     plugin_state.plugin_registry, plugin_state.connector_instances = original_registry, original_connectors
+    plugin_state.resource_collectors = original_resource_collectors
+    plugin_state.resource_collection_runners = original_resource_collection_runners
+
+
+class _FakeResourceCollector:
+    def __init__(self):
+        self._active = False
+
+    def descriptor(self) -> PluginDescriptor:
+        return PluginDescriptor(
+            plugin_id='acme.resource.fake', name='Fake Resource Collector', version='1.0.0',
+            plugin_type=PluginType.RESOURCE_COLLECTOR, api_version=MULTISENS_PLUGIN_API_VERSION,
+        )
+
+    def available_metrics(self) -> list[ResourceMetricDescriptor]:
+        return [ResourceMetricDescriptor(metric='fake_metric', unit='x')]
+
+    def configure(self, config: dict[str, Any]) -> None:
+        if not config.get('session_id'):
+            raise ConnectorConfigError("'session_id' is required")
+
+    def start(self) -> None:
+        self._active = True
+
+    def stop(self) -> None:
+        self._active = False
+
+    def health(self) -> ConnectorHealth:
+        return ConnectorHealth(state=ConnectorState.RUNNING if self._active else ConnectorState.STOPPED)
+
+    def sample(self) -> list[ResourceObservation]:
+        return []
 
 
 def _register_fake_plugin(secret_in_capabilities: bool = True) -> None:
@@ -269,3 +309,66 @@ def test_connector_health_message_is_plain_text_not_dict_redacted_by_design(clie
     detail = client.get('/api/connectors/rgb').json()
     assert detail['health']['state'] == 'failed'
     assert detail['health']['message'] == 'connect failed: password=hunter2-in-exception-message'
+
+
+# --- resource collectors (v0.9.1, issue #111) --------------------------------
+
+def test_list_resource_collectors_empty(client, plugin_api_state):
+    resp = client.get('/api/resource-collectors')
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_get_resource_collector_404_for_unknown_id(client, plugin_api_state):
+    resp = client.get('/api/resource-collectors/does-not-exist')
+    assert resp.status_code == 404
+
+
+def test_resource_collector_configured_but_no_session_running_is_stopped_with_no_session_id(
+    client, plugin_api_state,
+):
+    instance = ResourceCollectorInstance('acme.resource.fake', _FakeResourceCollector())
+    plugin_state.resource_collectors['sys-metrics'] = (instance, {'k': 'v'}, 5.0)
+
+    resp = client.get('/api/resource-collectors/sys-metrics')
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['collector_id'] == 'sys-metrics'
+    assert body['plugin_id'] == 'acme.resource.fake'
+    assert body['state'] == 'stopped'
+    assert body['session_id'] is None
+    assert body['config'] == {'k': 'v'}
+    assert body['health']['state'] == 'stopped'
+
+    listing = client.get('/api/resource-collectors').json()
+    assert [c['collector_id'] for c in listing] == ['sys-metrics']
+
+
+def test_resource_collector_attached_to_a_running_session_reports_its_session_id(client, plugin_api_state):
+    instance = ResourceCollectorInstance('acme.resource.fake', _FakeResourceCollector())
+    instance.configure({'session_id': 's1'})
+    instance.start()
+    plugin_state.resource_collectors['sys-metrics'] = (instance, {}, 5.0)
+    # Same shape start_resource_collection() itself produces - a runner
+    # isn't needed for this test (never started), just the key presence
+    # the reverse-lookup reads.
+    plugin_state.resource_collection_runners['s1'] = {'sys-metrics': (instance, object())}
+
+    resp = client.get('/api/resource-collectors/sys-metrics')
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['state'] == 'running'
+    assert body['session_id'] == 's1'
+    assert body['health']['state'] == 'running'
+
+
+def test_resource_collector_config_secret_is_redacted(client, plugin_api_state):
+    instance = ResourceCollectorInstance('acme.resource.fake', _FakeResourceCollector())
+    plugin_state.resource_collectors['sys-metrics'] = (instance, {'api_key': 'super-secret-value'}, 5.0)
+
+    detail = client.get('/api/resource-collectors/sys-metrics').json()
+    listing = client.get('/api/resource-collectors').json()
+
+    for payload in (detail, listing):
+        assert 'super-secret-value' not in str(payload)
+    assert detail['config']['api_key'] == '***REDACTED***'

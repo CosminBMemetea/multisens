@@ -26,6 +26,16 @@ entry never blocks the rest), except each entry also gets its own
 background `PollRunner` thread started immediately, since a poll
 connector's whole purpose - unlike a sensor connector, which is polled
 on demand through `/api/connectors` - is to run continuously.
+
+`build_resource_collector_instances()`/`start_resource_collection()`/
+`stop_resource_collection()` (v0.9.1, issue #111) close the last gap of
+this kind: `ResourceCollectorInstance` (Phase 99) and the pre-existing
+v0.7 built-in collector had no live trigger at all. Deliberately NOT the
+same one-shot "build once at boot" shape as everything above - a
+resource collector's whole point is to measure one controlled
+experiment, so it's split into a boot-time construction step (this
+module) and a per-session start/stop step, called from
+`app/api/sessions.py`'s `start_session`/`complete_session`.
 """
 from __future__ import annotations
 
@@ -36,6 +46,7 @@ from app.plugins.connector_instance import ConnectorInstance, ConnectorLifecycle
 from app.plugins.poll_connector_instance import GroundTruthConnectorInstance, PredictionConnectorInstance
 from app.plugins.poll_runner import DEFAULT_POLL_INTERVAL_S, PollRunner
 from app.plugins.registry import PluginRegistry, PluginStatus
+from app.plugins.resource_collector_instance import ResourceCollectorInstance
 from multisens_sdk import ConnectorConfigError, PluginType
 
 
@@ -195,3 +206,121 @@ def stop_poll_runners(runners: dict[str, tuple[Any, PollRunner]]) -> None:
             instance.stop()
         except ConnectorRuntimeError as e:
             print(f"poll connector shutdown: '{connector_id}' failed to stop cleanly: {e}")
+
+
+# --- resource collectors (v0.9.1, issue #111): session-bound, not boot-bound
+#
+# Unlike everything above - a sensor/poll connector is built once and runs
+# for the whole container lifetime - a resource collector's whole point is
+# to measure one controlled experiment (docs/resources.md's own
+# "configuration attribution is temporal association" rule). So this is
+# split into two steps instead of one `build_*` function:
+#
+#   build_resource_collector_instances() - boot time, from `resource_collectors:`
+#     config. Constructs each `ResourceCollectorInstance` but never calls
+#     configure()/start() - there is no session yet, nothing to attribute
+#     observations to.
+#   start_resource_collection()/stop_resource_collection() - called from
+#     the session /start and /complete API handlers, per session.
+
+def build_resource_collector_instances(
+    resource_collectors: list[dict], registry: PluginRegistry,
+) -> dict[str, tuple[ResourceCollectorInstance, dict, float]]:
+    """Returns `{collector_id: (instance, static_config, poll_interval_s)}`
+    - the static YAML `config:` block and interval are kept alongside the
+    instance because `configure()` is called again per-session (merged
+    with session_id/configuration_id/platform_id/sensor_ids), not once
+    here. Same skip-and-continue failure isolation as
+    `build_connector_instances()`/`build_poll_runners()` - one bad entry
+    never blocks the rest."""
+    instances: dict[str, tuple[ResourceCollectorInstance, dict, float]] = {}
+    for spec in resource_collectors:
+        collector_id = spec.get('id')
+        plugin_id = spec.get('plugin')
+        config = spec.get('config', {})
+        poll_interval_s = spec.get('poll_interval_s', DEFAULT_POLL_INTERVAL_S)
+        if not isinstance(collector_id, str) or not isinstance(plugin_id, str):
+            print(f"resource collector wiring: entry missing 'id' or 'plugin' - skipped ({spec!r})")
+            continue
+
+        record = registry.get(plugin_id)
+        if record is None or record.status != PluginStatus.AVAILABLE:
+            status = record.status.value if record is not None else 'not found'
+            print(f"resource collector wiring: '{collector_id}' names plugin '{plugin_id}' ({status}) - skipped")
+            continue
+        if record.descriptor is None or record.descriptor.plugin_type != PluginType.RESOURCE_COLLECTOR:
+            print(f"resource collector wiring: '{collector_id}' names plugin '{plugin_id}' which is not a "
+                  f"resource collector - skipped")
+            continue
+        if record.factory is None:
+            print(f"resource collector wiring: '{collector_id}' plugin '{plugin_id}' has no usable factory - skipped")
+            continue
+        if not isinstance(poll_interval_s, (int, float)) or isinstance(poll_interval_s, bool) \
+                or not (poll_interval_s > 0):
+            print(f"resource collector wiring: '{collector_id}' has an invalid poll_interval_s "
+                  f"({poll_interval_s!r}) - skipped")
+            continue
+
+        instance = ResourceCollectorInstance(plugin_id, record.factory())
+        instances[collector_id] = (instance, dict(config) if isinstance(config, dict) else {}, poll_interval_s)
+
+    return instances
+
+
+def start_resource_collection(
+    session_id: str, configuration_id: str | None, platform_id: str | None, sensor_ids: list[str],
+    collectors: dict[str, tuple[ResourceCollectorInstance, dict, float]], *, connect: Any = None,
+) -> dict[str, tuple[ResourceCollectorInstance, PollRunner]]:
+    """Configures and starts every collector built by
+    `build_resource_collector_instances()` for one session, each with its
+    own `PollRunner` sampling loop - `ResourceCollectorInstance.sample()`
+    already matches `PollRunner`'s own `poll: Callable[[], list[Any]]`
+    shape exactly (never raises, returns `list[ResourceObservation]`), so
+    this reuses `PollRunner` unmodified rather than a second runner class.
+
+    A collector that fails to start (e.g. `ConnectorLifecycleError`
+    because it's already `RUNNING` for a *different*, still-in-progress
+    session - `ResourceCollectorInstance.configure()`'s own guard) is
+    printed and skipped, never raised - a resource-collector problem must
+    never fail session start itself (docs/resources.md's own "the
+    resource layer must never corrupt session state" posture). Callers
+    that need to know *why* a given collector isn't attached to this
+    session read `GET /api/resource-collectors` afterward, rather than
+    session /start growing a parallel status shape of its own.
+
+    `connect` is forwarded to each `PollRunner` verbatim when given -
+    same test-only injectable-connect convention `build_poll_runners()`
+    already establishes."""
+    runners: dict[str, tuple[ResourceCollectorInstance, PollRunner]] = {}
+    for collector_id, (instance, static_config, poll_interval_s) in collectors.items():
+        config = {
+            **static_config, 'session_id': session_id, 'configuration_id': configuration_id,
+            'platform_id': platform_id, 'sensor_ids': sensor_ids,
+        }
+        try:
+            instance.configure(config)
+            instance.start()
+        except (ConnectorConfigError, ConnectorRuntimeError, ConnectorLifecycleError) as e:
+            print(f"resource collection: '{collector_id}' failed to start for session '{session_id}': {e}")
+            continue
+
+        runner_kwargs: dict[str, Any] = {'poll_interval_s': poll_interval_s}
+        if connect is not None:
+            runner_kwargs['connect'] = connect
+        runner = PollRunner(poll=instance.sample, bulk_insert=repo.insert_resource_observations_batch, **runner_kwargs)
+        runner.start()
+        runners[collector_id] = (instance, runner)
+
+    return runners
+
+
+def stop_resource_collection(runners: dict[str, tuple[ResourceCollectorInstance, PollRunner]]) -> None:
+    """The session-/complete counterpart to `start_resource_collection()` -
+    same stop-runner-then-stop-instance order and one-failure-never-blocks
+    -the-rest discipline as `stop_poll_runners()`."""
+    for collector_id, (instance, runner) in runners.items():
+        runner.stop()
+        try:
+            instance.stop()
+        except ConnectorRuntimeError as e:
+            print(f"resource collection shutdown: '{collector_id}' failed to stop cleanly: {e}")

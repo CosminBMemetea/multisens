@@ -49,3 +49,21 @@ sensors:
     transport: rtsp
     url: rtsp://host.docker.internal:8554/thermal
     expected_fps: 30
+
+# platform_id: this machine's declared identity for live resource
+# observations (v0.9.1, issue #111) - ExecutionPlatform's own docstring
+# (backend/app/domain/resources.py) is explicit that this is "declared,
+# never auto-detected by magic." Falls back to 'unknown' if omitted.
+platform_id: reference-dev-macbook
+
+# resource_collectors: activates live, session-bound resource collection
+# (v0.9.1, issue #111 - see docs/resources.md#live-collection). Each
+# entry mirrors poll_connectors' own id/plugin/config/poll_interval_s
+# shape. The built-in system-metrics collector needs no separate
+# `pip install` - it's always discovered alongside the RTSP connector
+# (app/plugins/builtin_resource_collector.py) - naming it here is what
+# turns "discovered" into "actually sampling while a session runs."
+resource_collectors:
+  - id: system-metrics
+    plugin: multisens.builtin.resource.system-metrics
+    poll_interval_s: 5.0

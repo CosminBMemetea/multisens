@@ -26,10 +26,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
 from app.api.deps import get_db, require_session
+from app.config import load_platform_id, load_sensors
 from app.domain.evidence import matches_conditions
-from app.domain.models import GroundTruth, Prediction, Session
+from app.domain.models import GroundTruth, Prediction, Session, derive_configuration_id
 from app.domain.resources import ResourceObservation
 from app.persistence import repository as repo
+from app.plugins import state as plugin_state
+from app.plugins.manager import start_resource_collection, stop_resource_collection
 
 router = APIRouter(prefix='/api/sessions', tags=['sessions'])
 
@@ -125,12 +128,28 @@ def start_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)) -
     with no record that it was ever done, the same "no silent state
     resurrection" discipline this project applies to evaluation results
     and coverage elsewhere. (v0.9 bug hunt, issue #109 - previously any
-    transition from any state silently succeeded.)"""
+    transition from any state silently succeeded.)
+
+    On the real transition only, also starts live resource collection
+    (v0.9.1, issue #111) for every configured `resource_collectors:`
+    entry - never on the idempotent no-op, which would either restart an
+    already-running collector for no reason or silently attach live
+    collection to a session that was deliberately never given it. A
+    collector that fails to start (see `start_resource_collection`'s own
+    docstring - most commonly, already attached to a different,
+    still-running session) never fails session start itself; check
+    `GET /api/resource-collectors` for why a given collector isn't
+    attached."""
     session = require_session(conn, session_id)
     if session.status == 'completed':
         raise HTTPException(status_code=409, detail=f"session '{session_id}' is already completed - cannot restart it")
     if session.status != 'running':
         repo.update_session_status(conn, session_id, 'running')
+        sensor_ids = [s['id'] for s in load_sensors() if isinstance(s.get('id'), str)]
+        configuration_id = derive_configuration_id(sensor_ids) if sensor_ids else None
+        plugin_state.resource_collection_runners[session_id] = start_resource_collection(
+            session_id, configuration_id, load_platform_id(), sensor_ids, plugin_state.resource_collectors,
+        )
     return require_session(conn, session_id)
 
 
@@ -141,12 +160,18 @@ def complete_session(session_id: str, conn: sqlite3.Connection = Depends(get_db)
     deliberately does NOT re-stamp `ended_at` - the original completion
     time is the true one, never silently overwritten by a later retry.
     `created -> *` is rejected outright - a session that was never
-    started has no real end time to record. (v0.9 bug hunt, issue #109.)"""
+    started has no real end time to record. (v0.9 bug hunt, issue #109.)
+
+    On the real transition only, also stops this session's live resource
+    collection, if any was started (v0.9.1, issue #111) - the idempotent
+    no-op leaves an already-stopped collection alone rather than calling
+    stop() a second time."""
     session = require_session(conn, session_id)
     if session.status == 'created':
         raise HTTPException(status_code=409, detail=f"session '{session_id}' was never started - cannot complete it")
     if session.status != 'completed':
         repo.update_session_status(conn, session_id, 'completed', ended_at=datetime.now(timezone.utc))
+        stop_resource_collection(plugin_state.resource_collection_runners.pop(session_id, {}))
     return require_session(conn, session_id)
 
 

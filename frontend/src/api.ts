@@ -18,6 +18,7 @@ import type {
   PredictionEvent,
   ProfileSummary,
   ProfileUsageEntry,
+  ResourceCollectorSummary,
   ResourceObservation,
   Scenario,
   SensorConfig,
@@ -272,4 +273,10 @@ export function fetchConnectors(): Promise<ConnectorSummary[]> {
 
 export function fetchConnector(sensorId: string): Promise<ConnectorDetail> {
   return getJson(`/api/connectors/${encodeURIComponent(sensorId)}`);
+}
+
+// v0.9.1, issue #111 - same read-only, no-mutation posture as the
+// plugin/connector endpoints above.
+export function fetchResourceCollectors(): Promise<ResourceCollectorSummary[]> {
+  return getJson("/api/resource-collectors");
 }

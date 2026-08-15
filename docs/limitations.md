@@ -323,6 +323,35 @@ release, not silently worked around now.
   network/data-shape errors are handled (see `docs/diagnostics.md` and the
   dashboard's own `NO SIGNAL`/`WARN` states), but a genuine React render
   crash would currently blank the page rather than show a fallback UI.
+- **Live resource collection does not resume across a backend restart**
+  (v0.9.1, issue #111). `plugin_state` is in-memory only; a `Session`
+  left `running` when the backend restarts stays `running` in the
+  database (no auto-transition) but has no live collector reattached -
+  no observations are fabricated to paper over the gap, and any
+  collection resumed after restart starts a fresh measurement window
+  rather than claiming continuity across the downtime. See
+  [resources.md#live-collection-v091-issue-111](resources.md#live-collection-v091-issue-111).
+- **Live resource collection's `configuration_id` assumes exactly one
+  active sensor per modality** (v0.9.1, issue #111) - it's derived from
+  `config/sensors.yaml`'s current sensor set, which is only unambiguous
+  under the live one-sensor-per-modality architecture
+  ([connector-api.md](connector-api.md)'s own documented v0.1 limit,
+  still current). Offline/batch-uploaded resource evidence is
+  unaffected and can still span multiple configurations per session, as
+  the RideSafe reference dataset does. This assumption does not survive
+  a future multi-sensor-per-modality live-ingestion design and must be
+  revisited then - not solved here.
+- **A resource collector can only be attached to one session at a time**
+  (v0.9.1, issue #111) - if two `Session`s are `running` concurrently, a
+  second session's `/start` still succeeds, but a collector already
+  attached to the first session simply isn't started for the second;
+  `GET /api/resource-collectors`'s `session_id` field shows which
+  session (if any) currently owns each collector. No queueing, no
+  automatic handoff.
+- **Live-collected `platform_id` is a declared config value
+  (`platform_id:` in `config/sensors.yaml`), never auto-detected** -
+  falls back to `unknown` if omitted, same "declared, never guessed"
+  posture `ExecutionPlatform` has always had.
 
 ## What would likely break first
 

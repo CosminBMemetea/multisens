@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { TopBar } from "../components/TopBar";
 import { LevelBadge } from "../components/Badge";
-import { fetchConnectors, fetchPlugins } from "../api";
-import type { ConnectorState, ConnectorSummary, Level, PluginStatus, PluginSummary } from "../types";
+import { fetchConnectors, fetchPlugins, fetchResourceCollectors } from "../api";
+import type {
+  ConnectorState,
+  ConnectorSummary,
+  Level,
+  PluginStatus,
+  PluginSummary,
+  ResourceCollectorSummary,
+} from "../types";
 
 // Read-only visibility into installed plugins and connector instances
 // (v0.9, Phase 102, issue #103) - deliberately never a marketplace: no
@@ -36,13 +43,15 @@ function formatDict(value: Record<string, unknown>): string {
 export function Integrations() {
   const [plugins, setPlugins] = useState<PluginSummary[] | null>(null);
   const [connectors, setConnectors] = useState<ConnectorSummary[] | null>(null);
+  const [resourceCollectors, setResourceCollectors] = useState<ResourceCollectorSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([fetchPlugins(), fetchConnectors()])
-      .then(([p, c]) => {
+    Promise.all([fetchPlugins(), fetchConnectors(), fetchResourceCollectors()])
+      .then(([p, c, rc]) => {
         setPlugins(p);
         setConnectors(c);
+        setResourceCollectors(rc);
         setError(null);
       })
       .catch((err) => setError(String(err)));
@@ -163,6 +172,63 @@ export function Integrations() {
                     <td className="px-4 py-2 font-mono-data text-xs text-slate-400">{c.plugin_id}</td>
                     <td className="px-4 py-2">
                       <LevelBadge level={CONNECTOR_STATE_LEVEL[c.state]} text={c.state} />
+                    </td>
+                    <td className="px-4 py-2 font-mono-data text-xs text-slate-500">
+                      {formatDict(c.config)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Resource Collectors
+          </h2>
+          <p className="text-xs text-slate-500">
+            One row per <code className="font-mono-data">resource_collectors:</code> config entry.
+            Session-bound: a collector only actually samples between a session's start and complete -
+            "available" here just means it's configured, not that it's currently collecting. See{" "}
+            <code className="font-mono-data">Session</code> column for which session (if any) it's
+            attached to right now.
+          </p>
+          <div className="overflow-x-auto rounded border border-slate-800">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-800 bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Collector</th>
+                  <th className="px-4 py-2 font-medium">Plugin</th>
+                  <th className="px-4 py-2 font-medium">State</th>
+                  <th className="px-4 py-2 font-medium">Session</th>
+                  <th className="px-4 py-2 font-medium">Config</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resourceCollectors === null && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {resourceCollectors !== null && resourceCollectors.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                      No resource collectors configured.
+                    </td>
+                  </tr>
+                )}
+                {resourceCollectors?.map((c) => (
+                  <tr key={c.collector_id} className="border-b border-slate-800/60 last:border-0 hover:bg-slate-900/40">
+                    <td className="px-4 py-2 font-medium text-slate-200">{c.collector_id}</td>
+                    <td className="px-4 py-2 font-mono-data text-xs text-slate-400">{c.plugin_id}</td>
+                    <td className="px-4 py-2">
+                      <LevelBadge level={CONNECTOR_STATE_LEVEL[c.state]} text={c.state} />
+                    </td>
+                    <td className="px-4 py-2 font-mono-data text-xs text-slate-400">
+                      {c.session_id ?? "—"}
                     </td>
                     <td className="px-4 py-2 font-mono-data text-xs text-slate-500">
                       {formatDict(c.config)}

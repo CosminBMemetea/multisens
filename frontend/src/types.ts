@@ -702,3 +702,19 @@ export interface ConnectorSummary {
 export interface ConnectorDetail extends ConnectorSummary {
   health: ConnectorHealth;
 }
+
+// v0.9.1, issue #111 - live, session-bound resource collection.
+// `session_id` is `null` between sessions (or whenever this collector's
+// plugin never reached RUNNING) - "configured" and "actually attached to
+// a running session" are different questions, both answered here.
+export interface ResourceCollectorSummary {
+  collector_id: string;
+  plugin_id: string;
+  state: ConnectorState;
+  session_id: string | null;
+  config: Record<string, unknown>;
+}
+
+export interface ResourceCollectorDetail extends ResourceCollectorSummary {
+  health: ConnectorHealth;
+}

@@ -36,6 +36,38 @@ def load_poll_connectors() -> list[dict]:
     return poll_connectors if isinstance(poll_connectors, list) else []
 
 
+def load_resource_collectors() -> list[dict]:
+    """`resource_collectors` (v0.9.1, issue #111): the config surface for
+    activating an installed `RESOURCE_COLLECTOR` plugin for live,
+    session-bound sampling - same `id`/`plugin`/`config`/
+    `poll_interval_s` shape as `poll_connectors` above, deliberately not
+    reused as one combined list since the two are wired at completely
+    different trigger points (poll connectors start at process boot and
+    run for the container's lifetime; resource collectors are
+    constructed at boot but only actually sample between a session's
+    `start` and `complete` - see `app/plugins/manager.py`'s own
+    `build_resource_collector_instances()`). Same restart-time-only
+    convention as every other plugin config in this file."""
+    resource_collectors = _load_config().get('resource_collectors', [])
+    return resource_collectors if isinstance(resource_collectors, list) else []
+
+
+def load_platform_id() -> str:
+    """Top-level `platform_id:` (v0.9.1, issue #111) - the value live
+    resource collection attributes its observations to
+    (`ResourceObservation.platform_id` is required, never `None`).
+    `ExecutionPlatform`'s own docstring (`app/domain/resources.py`) is
+    explicit that this is "a small, explicitly-declared record... never
+    auto-detected by magic" - matched here by reading a declared config
+    value rather than guessing from `/proc`/`uname`. Falls back to
+    `UNKNOWN_PLATFORM_ID` ('unknown') when absent, the same documented
+    fallback `resources.py` already uses whenever a collector "genuinely
+    couldn't determine one" - never a fabricated guess."""
+    from app.domain.resources import UNKNOWN_PLATFORM_ID
+    platform_id = _load_config().get('platform_id')
+    return platform_id if isinstance(platform_id, str) and platform_id else UNKNOWN_PLATFORM_ID
+
+
 def load_disabled_plugin_ids() -> list[str]:
     """`plugins.disabled` (v0.9, Phase 94) - the same config file sensors
     already live in, no separate file until a real need for one shows up.

@@ -19,15 +19,17 @@ from app.api.plugins import router as plugins_router
 from app.api.profiles import router as profiles_router
 from app.api.scenarios import router as scenarios_router
 from app.api.sessions import router as sessions_router
-from app.config import load_disabled_plugin_ids, load_poll_connectors, load_sensors
+from app.config import load_disabled_plugin_ids, load_poll_connectors, load_resource_collectors, load_sensors
 from app.domain.resources import SUPPORTED_RESOURCE_METRICS
 from app.persistence import db as db_module
 from app.plugins import state as plugin_state
 from app.plugins.manager import (
     build_connector_instances,
     build_poll_runners,
+    build_resource_collector_instances,
     stop_connector_instances,
     stop_poll_runners,
+    stop_resource_collection,
 )
 from app.plugins.registry import PluginStatus, discover_plugins
 from app.ros_bridge import RosBridge
@@ -83,10 +85,27 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # plugin of either type would discover as AVAILABLE and then never
     # actually poll anything.
     plugin_state.poll_runners = build_poll_runners(load_poll_connectors(), plugin_state.plugin_registry)
+    # Resource collectors are constructed here (v0.9.1, issue #111) but
+    # deliberately never configured/started - unlike poll_runners above,
+    # they're session-bound, not process-bound. api/sessions.py's
+    # start_session/complete_session configure/start/stop them per
+    # session; see app/plugins/manager.py's own module docstring.
+    plugin_state.resource_collectors = build_resource_collector_instances(
+        load_resource_collectors(), plugin_state.plugin_registry,
+    )
 
     yield
     stop_poll_runners(plugin_state.poll_runners)
     stop_connector_instances(plugin_state.connector_instances)
+    # Any session still RUNNING at shutdown has live collection attached -
+    # stop every one of them (never just the most recent), same "no
+    # orphan background threads" requirement as poll_runners above. The
+    # Session rows themselves are untouched here (still 'running' in the
+    # database) - see docs/resources.md's own restart-semantics note:
+    # collection does not claim continuity across backend downtime.
+    for runners in plugin_state.resource_collection_runners.values():
+        stop_resource_collection(runners)
+    plugin_state.resource_collection_runners = {}
     bridge.shutdown()
 
 

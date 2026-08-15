@@ -150,6 +150,55 @@ with a full `docker compose build backend` and a live plugin-discovery
 check against the rebuilt container (`plugin discovery: 4 available, 0
 incompatible, 0 load_failed, 0 disabled`).
 
+The fourth finding deferred above (issue #111) is now closed: live,
+session-bound resource collection.
+
+### Added
+
+- **Live resource collection, session-bound** (#111) - `ResourceCollectorInstance`
+  (Phase 99) and the pre-existing v0.7 built-in collector
+  (`SystemMetricsWindow`/`collect_sensor_metrics`) had no live trigger
+  anywhere in the running application; every resource observation ever
+  shipped came from an offline batch generator, never a real collector.
+  Fixed session-bound, not process-bound: `POST /sessions/{id}/start`
+  now configures and starts every `resource_collectors:`-configured
+  collector, each with its own background sampling loop;
+  `POST /sessions/{id}/complete` stops them. No new runner class -
+  `ResourceCollectorInstance.sample()` already matches `PollRunner`'s
+  `poll` callback shape exactly, so this reuses `PollRunner` unmodified,
+  inheriting BUG-011's DB-failure survival fix directly. A new built-in
+  adapter (`multisens.builtin.resource.system-metrics`,
+  `app/plugins/builtin_resource_collector.py`) wraps the existing,
+  unchanged v0.7 collection code behind the same plugin interface an
+  external `RESOURCE_COLLECTOR` plugin uses - one lifecycle model, not
+  two. New config: `resource_collectors:` (mirrors `poll_connectors:`)
+  and a declared top-level `platform_id:`. New read-only
+  `GET /api/resource-collectors` (+`/{id}`) and an Integrations-page
+  table, matching `/api/connectors`'s existing posture. A collector
+  already attached to one session is never silently double-attached to
+  a second, concurrently-running one - `configure()`'s own
+  already-RUNNING guard makes that safe, and session `/start` never
+  fails because of it. See
+  [docs/resources.md#live-collection-v091-issue-111](docs/resources.md)
+  and [docs/plugin-sdk.md](docs/plugin-sdk.md) for the full design,
+  including the explicit limits (backend restart does not resume
+  collection; `configuration_id` derivation assumes today's
+  one-sensor-per-modality live architecture, documented in
+  `docs/limitations.md`, not solved for the general case).
+
+Backend: 43 new tests (1008 total) across five new/extended files -
+built-in adapter (17), manager wiring including a concurrent-session
+conflict test and a direct DB-write regression test (12), config
+loaders (8), session-lifecycle wiring including a real REST-API-level
+end-to-end test (6). Frontend: `tsc`/`oxlint` clean, 53/53 vitest
+unchanged (UI/wiring-level change, same established test-coverage
+boundary as BUG-009). Full `docker compose build --no-cache` (all three
+images) + live verification: a real session's `/start` genuinely
+produces persisted resource-observation rows via the background thread
+(not a batch POST), visible through the existing read API, the
+Integrations page's new table, and the Resources tab's trade-off view;
+`/complete` stops collection cleanly.
+
 ## [0.9.0] — Plugin SDK & external integration framework
 
 Built phase by phase (Phase 92 through Phase 106), same discipline as
