@@ -4,6 +4,7 @@ round-trips correctly, malformed items never reach the database, and a
 broken connector never affects data posted through the ordinary REST
 API against the same session.
 """
+import sqlite3
 import time
 
 from app.persistence import db as db_module
@@ -117,6 +118,65 @@ def test_poll_once_when_poll_itself_raises_records_error_never_crashes(tmp_path)
     runner.poll_once()  # must not raise
     assert runner.total_ingested == 0
     assert 'broken' in runner.last_error
+
+
+# --- database failures (connect/insert) must not crash the loop either ------
+# The connector's own poll() failing was already handled (above); a
+# *database*-side failure on the same cycle - the connection itself
+# refusing to open, or the insert erroring for a reason that isn't a
+# plain duplicate id (e.g. "database is locked") - used to propagate
+# straight out of poll_once() uncaught, which would kill _run()'s
+# background thread silently and stop the connector forever.
+
+def test_poll_once_when_connect_itself_raises_records_error_never_crashes(tmp_path):
+    def _explode_connect():
+        raise sqlite3.OperationalError('database is locked')
+
+    runner = PollRunner(poll=lambda: [_prediction('pred-a')],
+                         bulk_insert=repo.insert_predictions_batch, connect=_explode_connect)
+    runner.poll_once()  # must not raise
+    assert runner.total_ingested == 0
+    assert 'database is locked' in runner.last_error
+
+
+def test_poll_once_when_bulk_insert_raises_a_non_integrity_error_never_crashes(tmp_path):
+    db_path = tmp_path / 'test.db'
+    _seed_scenario_and_session(db_path)
+
+    def _explode_insert(conn, items):
+        raise sqlite3.OperationalError('disk I/O error')
+
+    runner = PollRunner(poll=lambda: [_prediction('pred-a')], bulk_insert=_explode_insert,
+                         connect=_connect_factory(db_path))
+    runner.poll_once()  # must not raise
+    assert runner.total_ingested == 0
+    assert 'disk I/O error' in runner.last_error
+
+
+def test_background_loop_survives_a_db_failure_and_resumes_on_the_next_cycle(tmp_path):
+    db_path = tmp_path / 'test.db'
+    _seed_scenario_and_session(db_path)
+    call_count = {'n': 0}
+
+    def _poll():
+        call_count['n'] += 1
+        return [_prediction(f'pred-{call_count["n"]}')]
+
+    def _connect_fails_once_then_works():
+        if call_count['n'] == 1:
+            raise sqlite3.OperationalError('database is locked')
+        return db_module.connect(str(db_path))
+
+    runner = PollRunner(poll=_poll, bulk_insert=repo.insert_predictions_batch,
+                         connect=_connect_fails_once_then_works, poll_interval_s=0.05)
+    runner.start()
+    time.sleep(0.3)
+    runner.stop()
+
+    # The first cycle's DB failure must not have killed the thread - later
+    # cycles still ran and successfully wrote data.
+    assert call_count['n'] >= 2
+    assert runner.total_ingested >= 1
 
 
 # --- connector failure isolation from the real REST API ---------------------

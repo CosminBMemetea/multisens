@@ -70,10 +70,21 @@ class PollRunner:
         if not items:
             return
 
-        conn = self._connect()
+        try:
+            conn = self._connect()
+        except Exception as e:  # noqa: BLE001 - a transient DB problem (e.g. "database is
+            # locked") must never kill this thread - the same discipline the
+            # self._poll() call above already has. Without this, one bad
+            # cycle stops the connector forever with no visible sign.
+            self.last_error = str(e)
+            return
+
         try:
             indexed = list(enumerate(items))
             errors = repo.insert_batch_with_partial_failure(conn, indexed, self._bulk_insert)
+        except Exception as e:  # noqa: BLE001 - same reasoning as above
+            self.last_error = str(e)
+            return
         finally:
             conn.close()
 
