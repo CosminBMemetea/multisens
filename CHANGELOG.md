@@ -52,6 +52,54 @@ Backend: 24 new tests (930 → 950). Frontend: 6 new tests (47 → 53),
 frontend) + live re-verification of all three fixes against the
 rebuilt containers.
 
+A second, independently-reported batch of five confirmed bugs in
+`POST /api/profiles/{id}/tradeoffs` (issues #112-#116), critiqued against
+the actual code before fixing, then fixed with regression tests and a
+second full rebuild + live re-verification.
+
+- **Resource-only configurations (real resource evidence, no decision
+  evidence) were silently excluded from `resource_comparison` and the
+  Pareto front** (BUG-005/006, #112/#113) - both were built from a list
+  (`tradeoffs`) only ever populated for decision-evaluated
+  configurations, even though the same response's own `configurations`
+  array already reported resource evidence for them (a Phase 76
+  guarantee this endpoint's own comparison/Pareto logic didn't fully
+  carry through). `resource_comparison` 422'd with a misleading "has no
+  evidence in this analysis" for a configuration the response itself
+  showed evidence for. Fixed by appending a `ConfigurationTradeoff` for
+  every resource-only configuration too (`policy_status: PolicyStatus |
+  None`, widened from non-optional - neither downstream consumer ever
+  reads that field).
+- **`resource_constraints` silently produced zero results if its metric
+  wasn't also in `resource_metrics`** (BUG-007, #114) - no error, not
+  even an `na` entry, just an empty `constraint_results` list. Fixed
+  with a validator requiring every constraint metric to already be
+  requested, matching the existing `pareto_dimensions` rule.
+- **Unrequested resource metrics could corrupt `platform_id`/
+  comparability metadata** (BUG-008, #115) - `platform_id` and the
+  representative metadata were derived from *every* observation for a
+  configuration before `resource_metrics` narrowed anything, so an
+  unrequested metric recorded under a different platform could force
+  `platform_id` to `'unknown'` or leak the wrong resolution/target_fps
+  into comparability warnings. Fixed by filtering to requested metrics
+  first.
+- **Plugin-added resource metrics were invisible in the frontend**
+  (BUG-009, #116) - the backend's `SUPPORTED_RESOURCE_METRICS` is
+  dynamically extensible via a `RESOURCE_COLLECTOR` plugin, but the
+  frontend hardcoded the original six built-in metrics and never
+  requested anything else. Fixed with a new read-only
+  `GET /api/resource-metrics` endpoint, fetched dynamically by the
+  Resources tab instead of a hardcoded constant.
+
+Backend: 9 new tests (957 total). Frontend: `tsc`/`oxlint` clean, 53/53
+vitest unchanged (the fix is hook/wiring-level, consistent with this
+project's existing test-coverage boundary of pure functions only - live
+Playwright verification against the real RideSafe demo profile stands
+in for component-level coverage here, same as every other UI change
+this project has shipped). Full `docker compose build` + live
+re-verification of the Resources tab with real CPU/RAM/network/latency
+data, zero console errors.
+
 ## [0.9.0] — Plugin SDK & external integration framework
 
 Built phase by phase (Phase 92 through Phase 106), same discipline as
