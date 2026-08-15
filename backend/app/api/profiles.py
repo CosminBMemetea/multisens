@@ -774,6 +774,25 @@ class TradeoffRequest(BaseModel):
             )
         return self
 
+    @model_validator(mode='after')
+    def _resource_constraints_reference_requested_metrics(self) -> TradeoffRequest:
+        # v0.9 bug hunt, issue #114: _constraints_reference_supported_metrics
+        # above only checks a constraint names a *real* metric (the global
+        # registry) - it says nothing about whether this *request* ever
+        # asked for that metric's evidence. Without this check, a
+        # constraint whose metric isn't in resource_metrics silently
+        # produces zero constraint_results (never an error, never even an
+        # 'na' entry) - same "require, don't auto-union" convention
+        # pareto_dimensions above already established, rather than
+        # silently unioning the metric in on the caller's behalf.
+        unrequested = sorted({c.metric for c in self.resource_constraints} - set(self.resource_metrics))
+        if unrequested:
+            raise ValueError(
+                f'resource_constraints references metric(s) not in resource_metrics: {unrequested} - '
+                f'add them to resource_metrics to request their evidence'
+            )
+        return self
+
 
 class ResourceMetricSummaryResponse(BaseModel):
     mean: float
@@ -874,20 +893,30 @@ def _fetch_configuration_resource_profile(
     ConfigurationTradeoff's own docstring in app/domain/resources.py). A
     genuine unit mismatch among this configuration's own observations for
     one metric (compute_resource_metric_summary's own ValueError) is
-    surfaced as a clean 422, never an unhandled 500."""
+    surfaced as a clean 422, never an unhandled 500.
+
+    `platform_id`/the representative `metadata` are derived only from
+    observations for a *requested* metric (v0.9 bug hunt, issue #115) -
+    fetching every observation for the configuration in one query (below)
+    is still correct and efficient (compute_configuration_resource_profile
+    itself filters per metric for `profile.metrics`), but computing
+    platform/metadata from the *unfiltered* set let an unrequested
+    metric's own platform/resolution/target_fps leak into comparability
+    warnings for evidence the caller never asked about."""
     if not resource_metrics:
         return None, {}
     observations = repo.list_resource_observations(conn, session_id, configuration_id=configuration_id)
-    platform_ids = {o.platform_id for o in observations}
+    relevant_observations = [o for o in observations if o.metric in resource_metrics]
+    platform_ids = {o.platform_id for o in relevant_observations}
     platform_id = platform_ids.pop() if len(platform_ids) == 1 else UNKNOWN_PLATFORM_ID
     try:
         profile = compute_configuration_resource_profile(
             session_id=session_id, configuration_id=configuration_id, platform_id=platform_id,
-            requested_metrics=resource_metrics, observations=observations,
+            requested_metrics=resource_metrics, observations=relevant_observations,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"resource evidence for configuration '{configuration_id}': {e}")
-    metadata = observations[0].metadata if observations else {}
+    metadata = relevant_observations[0].metadata if relevant_observations else {}
     return profile, metadata
 
 
@@ -1015,6 +1044,22 @@ def compute_profile_tradeoffs(
             if resource_profile is not None else []
         )
         qualification = evaluate_resource_qualification(constraint_results)
+
+        # Also appended to `tradeoffs` itself (v0.9 bug hunt, issues
+        # #112/#113) - not just `configurations_response` - so both
+        # resource_comparison's lookup and the Pareto front below stop
+        # silently excluding a configuration this same response already
+        # reports resource evidence for. policy_status=None is real, not
+        # a placeholder: this configuration genuinely has no decision
+        # evidence, same NO EVIDENCE convention sensor_count=0/
+        # requirement_coverage=None/evidence_completeness=None already
+        # signal two lines up.
+        tradeoff = ConfigurationTradeoff(
+            configuration_id=configuration_id, sensor_count=0, requirement_coverage=None,
+            evidence_completeness=None, policy_status=None, resource_profile=resource_profile,
+            resource_validity=resource_profile.validity if resource_profile is not None else 'unavailable',
+        )
+        tradeoffs.append(tradeoff)
 
         configurations_response.append(ConfigurationTradeoffResponse(
             configuration_id=configuration_id, sensor_count=0, requirement_coverage=None,

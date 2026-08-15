@@ -344,12 +344,24 @@ class ConfigurationTradeoff:
     side by side - never blended into one number (master prompt §16,
     already enforced in decision.py: no universal importance/efficiency
     score exists anywhere in this project, and this type doesn't add
-    one either)."""
+    one either).
+
+    `policy_status` is `None` only for a configuration with real
+    resource evidence but no decision evidence at all - named explicitly
+    (or discovered) but never evaluated against this profile's
+    requirements (v0.9 bug hunt, issues #112/#113). Distinct from any of
+    the three real `PolicyStatus` values, same "NO EVIDENCE, never
+    estimated" convention `sensor_count`/`requirement_coverage`/
+    `evidence_completeness` already use for the identical case - a
+    resource-only configuration must still be a first-class
+    `ConfigurationTradeoff`, not silently excluded from
+    `/tradeoffs`'s own comparison/Pareto consumers just because it has
+    no decision half."""
     configuration_id: str
     sensor_count: int
     requirement_coverage: float | None
     evidence_completeness: float | None
-    policy_status: PolicyStatus
+    policy_status: PolicyStatus | None
     resource_profile: ConfigurationResourceProfile | None
     resource_validity: Literal['complete', 'partial', 'unavailable']
 

@@ -284,3 +284,115 @@ def test_tradeoffs_resource_comparison_unknown_baseline_422(client):
                                  'candidate_configuration_id': 'cfg-front_rgb'},
     })
     assert resp.status_code == 422
+
+
+# --- v0.9 bug hunt: resource-only configurations (issues #112/#113) -----------
+# A configuration named explicitly but never evaluated against this
+# profile's requirements (no decision evidence) can still have real
+# resource evidence - previously that configuration was correctly
+# reported in `configurations` (Phase 76) but silently excluded from
+# both `resource_comparison` and the Pareto front, since both were built
+# from a list that only ever held decision-evaluated configurations.
+
+def test_tradeoffs_resource_only_configuration_is_eligible_for_resource_comparison(client):
+    _seed_scenario(client)
+    client.post('/api/sessions/s1/resource-observations/batch', json={'items': [
+        _resource_item(configuration_id='cfg-front_rgb', value=20.0),
+        _resource_item(configuration_id='cfg-resource-only', value=45.0),
+    ]})
+
+    resp = client.post('/api/profiles/p1/tradeoffs', json={
+        'policy': DEMO_POLICY, 'session_id': 's1',
+        'configuration_ids': ['cfg-front_rgb', 'cfg-resource-only'],
+        'resource_metrics': ['cpu_percent'],
+        'resource_comparison': {
+            'baseline_configuration_id': 'cfg-front_rgb', 'candidate_configuration_id': 'cfg-resource-only',
+        },
+    })
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    resource_only = next(c for c in body['configurations'] if c['configuration_id'] == 'cfg-resource-only')
+    assert resource_only['policy_status'] is None  # genuinely no decision evidence
+    assert resource_only['resource_profile']['metrics']['cpu_percent']['mean'] == 45.0  # genuinely has resource evidence
+
+    # The actual regression: this used to 422 with "has no evidence in
+    # this analysis" even though the configuration above clearly does.
+    comparison = body['resource_comparison']
+    assert comparison is not None
+    cpu_delta = next(d for d in comparison['metric_deltas'] if d['metric'] == 'cpu_percent')
+    assert cpu_delta['baseline'] == 20.0
+    assert cpu_delta['candidate'] == 45.0
+    assert cpu_delta['delta'] == 25.0
+
+
+def test_tradeoffs_resource_only_configuration_appears_in_pareto_front(client):
+    _seed_scenario(client)
+    client.post('/api/sessions/s1/resource-observations/batch', json={'items': [
+        _resource_item(configuration_id='cfg-front_rgb', value=50.0),
+        # No decision evidence at all for this one, but it has the lowest
+        # cpu_percent of the two - it must win the (single-dimension)
+        # Pareto front, not be silently dropped from consideration.
+        _resource_item(configuration_id='cfg-resource-only', value=10.0),
+    ]})
+
+    resp = client.post('/api/profiles/p1/tradeoffs', json={
+        'policy': DEMO_POLICY, 'session_id': 's1',
+        'configuration_ids': ['cfg-front_rgb', 'cfg-resource-only'],
+        'resource_metrics': ['cpu_percent'],
+        'pareto_dimensions': {'cpu_percent': 'minimize'},
+    })
+    assert resp.status_code == 200, resp.text
+    assert resp.json()['pareto_front_configuration_ids'] == ['cfg-resource-only']
+
+
+# --- v0.9 bug hunt: resource_constraints must reference requested metrics -----
+# (issue #114) - a constraint naming a real, supported metric that simply
+# wasn't included in resource_metrics used to silently produce zero
+# constraint_results, with no error and no 'na' entry either.
+
+def test_tradeoffs_constraint_metric_not_in_resource_metrics_422(client):
+    _seed_scenario(client)
+    resp = client.post('/api/profiles/p1/tradeoffs', json={
+        'policy': DEMO_POLICY, 'session_id': 's1',
+        'resource_metrics': ['memory_mb'],  # cpu_percent deliberately not requested
+        'resource_constraints': [{'metric': 'cpu_percent', 'operator': '<=', 'value': 50.0}],
+    })
+    assert resp.status_code == 422
+    assert 'cpu_percent' in str(resp.json()['detail'])
+
+
+def test_tradeoffs_constraint_with_resource_metrics_entirely_omitted_422(client):
+    # The exact original repro: a constraint with no resource_metrics
+    # field at all used to 200 with a silently-empty constraint_results
+    # list rather than surfacing the mistake.
+    _seed_scenario(client)
+    resp = client.post('/api/profiles/p1/tradeoffs', json={
+        'policy': DEMO_POLICY, 'session_id': 's1',
+        'resource_constraints': [{'metric': 'cpu_percent', 'operator': '<=', 'value': 50.0}],
+    })
+    assert resp.status_code == 422
+
+
+# --- v0.9 bug hunt: platform_id must reflect only requested metrics (#115) ----
+
+def test_tradeoffs_platform_id_reflects_only_requested_metrics(client):
+    _seed_scenario(client)
+    client.post('/api/sessions/s1/resource-observations/batch', json={'items': [
+        _resource_item(configuration_id='cfg-front_rgb', metric='cpu_percent', value=20.0,
+                        platform_id='macbook-m2-dockerdesktop'),
+        # A different metric, deliberately recorded under a different
+        # platform - never requested by this call.
+        _resource_item(configuration_id='cfg-front_rgb', metric='memory_mb', unit='MB', value=500.0,
+                        platform_id='jetson-orin'),
+    ]})
+
+    resp = client.post('/api/profiles/p1/tradeoffs', json={
+        'policy': DEMO_POLICY, 'session_id': 's1', 'resource_metrics': ['cpu_percent'],
+    })
+    assert resp.status_code == 200, resp.text
+    front = next(c for c in resp.json()['configurations'] if c['configuration_id'] == 'cfg-front_rgb')
+    # Before the fix: platform_id would be 'unknown' (two distinct
+    # platform_ids across all of this configuration's observations),
+    # even though the one requested metric has a single, real platform.
+    assert front['resource_profile']['platform_id'] == 'macbook-m2-dockerdesktop'
