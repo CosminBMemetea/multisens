@@ -202,6 +202,7 @@ GET    /api/sessions/{id}/predictions
 POST   /api/sessions/{id}/evaluate      # body: {task, configuration_ids?, tolerance_ms?, evaluator_type?, parameters?}
 GET    /api/sessions/{id}/evaluation    # every persisted result for this session, any evaluator_type
 GET    /api/sessions/{id}/timeline      # ?task=&configuration_id=&tolerance_ms= - classification only, see below
+GET    /api/sessions/{id}/evidence      # ?task=&positive_label=&tolerance_ms=&configuration_ids= - see below
 ```
 
 `evaluator_type`/`parameters` are v0.8 additions - see
@@ -267,6 +268,48 @@ result is a clean `422` naming the actual `evaluator_type`, checked
 explicitly against the persisted result rather than left to fail
 accidentally inside `extract_label`. See
 [evaluators.md](evaluators.md#api-surface).
+
+### `/evidence` (v0.9.1, issue #120) - Evidence Playback
+
+`/timeline` above is single-configuration. `/evidence` is the
+multi-source generalization: one row per ground-truth sample, one
+column per `(configuration_id, source_id)` pair active in the session
+for the task - built from the exact same `match_by_timestamp` call, run
+once per source and pivoted by ground-truth sample
+(`domain/evidence_playback.py`), never new matching logic. A source
+with no matching prediction for a given sample still gets a column
+(`prediction_id: null`) - "no evidence here" is a real, displayable
+fact for that specific source/sample pair, never an absent row.
+
+**`positive_label` is required, no default.** Which label is "the event
+of interest" (needed to classify `TP`/`FP`/`FN`/`TN` and
+`AGREE_POSITIVE` vs `AGREE_NEGATIVE`) is a modeling decision this layer
+was never told and must never guess - same posture `confidence_threshold`/
+`iou_threshold` already have for `object_detection` (no default,
+`EvaluateRequest`). A value's per-source `outcome` is `null` whenever
+there's no match, or the matched value has no `label_key` field (not
+classification-shaped) - the raw `value`/`confidence`/timestamps are
+still reported even then, never silently dropped.
+
+**Relationship classification is computed once, server-side** -
+`AGREE_POSITIVE`/`AGREE_NEGATIVE`/`DISAGREE`/`ONLY_ONE_SOURCE_AVAILABLE`/
+`NO_COMMON_GT_SAMPLE` per sample, from the count of matched sources and
+whether their predicted labels agree - the same "don't let a UI
+silently reimplement and possibly drift from the server's own answer"
+reasoning `/compare`'s own `validity: {status, reasons}` already
+established. Agreement and correctness are deliberately different axes
+never collapsed into one: two sources can `AGREE_POSITIVE` while both
+being wrong (see the real RideSafe recorded experiment's own false
+positive - two sources agreeing on `present` when ground truth says
+`absent` is `AGREE_POSITIVE` *and* `FP` on both sides, shown as two
+separate badges in the frontend, not merged into a single verdict).
+
+**Never infers a combined/fused prediction.** A "source" here is always
+exactly one already-ingested `Prediction` stream, identified by its own
+`source_id`. A combined/union source is only ever visible because a
+real `Prediction` row with that `source_id` was ingested - this
+endpoint has no fusion logic anywhere, never averages, votes, or ORs
+two sources together on the caller's behalf.
 
 ## Persistence
 

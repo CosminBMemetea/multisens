@@ -15,14 +15,15 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_db, require_session
 from app.domain.evaluators import EVALUATOR_REGISTRY
+from app.domain.evidence_playback import build_evidence_samples
 from app.domain.matching import match_by_timestamp
 from app.domain.metrics import extract_label
-from app.domain.models import EvaluationResult
+from app.domain.models import EvaluationResult, Prediction
 from app.persistence import repository as repo
 
 router = APIRouter(prefix='/api/sessions', tags=['evaluation'])
@@ -123,6 +124,91 @@ def get_session_evaluation(
 ) -> list[EvaluationResult]:
     require_session(conn, session_id)
     return repo.list_evaluation_results(conn, session_id)
+
+
+# --- evidence playback (v0.9.1, issue #120) ----------------------------------
+
+class SourceEvidenceResponse(BaseModel):
+    configuration_id: str
+    source_id: str
+    sensor_ids: list[str]
+    prediction_id: str | None
+    prediction_timestamp_ms: float | None
+    value: dict[str, Any] | None
+    confidence: float | None
+    match_delta_ms: float | None
+    outcome: Literal['TP', 'FP', 'FN', 'TN'] | None
+
+
+class EvidenceSampleResponse(BaseModel):
+    gt_sample_id: str
+    gt_timestamp_ms: float
+    task: str
+    gt_value: dict[str, Any]
+    sources: list[SourceEvidenceResponse]
+    relationship: Literal[
+        'AGREE_POSITIVE', 'AGREE_NEGATIVE', 'DISAGREE', 'ONLY_ONE_SOURCE_AVAILABLE', 'NO_COMMON_GT_SAMPLE',
+    ]
+
+
+@router.get('/{session_id}/evidence')
+def session_evidence(
+    session_id: str, task: str, positive_label: str,
+    tolerance_ms: float = DEFAULT_TOLERANCE_MS,
+    configuration_ids: list[str] | None = Query(default=None),
+    conn: sqlite3.Connection = Depends(get_db),
+) -> list[EvidenceSampleResponse]:
+    """Per-ground-truth-sample evidence, joined across every
+    `(configuration_id, source_id)` pair active in the session for this
+    task - see `domain/evidence_playback.py`'s own module docstring for
+    why this is a join over `match_by_timestamp`'s already-computed
+    per-sample results, never new matching logic, and never an inferred
+    combined/fused value.
+
+    `positive_label` is required, not defaulted - see
+    `build_evidence_samples`'s own docstring for why guessing which
+    label is "the event of interest" would be a fabrication this project
+    doesn't make elsewhere (object_detection's confidence_threshold/
+    iou_threshold have the same no-default posture).
+
+    `configuration_ids` defaults to every configuration with at least
+    one prediction for this task (same discovery convention `/evaluate`
+    already uses), not an enumerated list the caller must know in advance.
+    """
+    require_session(conn, session_id)
+    if tolerance_ms < 0:
+        raise HTTPException(status_code=422, detail=f'tolerance_ms must be >= 0, got {tolerance_ms}')
+
+    ground_truth = repo.list_ground_truth(conn, session_id, task=task)
+
+    ids = configuration_ids if configuration_ids is not None else repo.list_configuration_ids(conn, session_id, task)
+    predictions_by_source: dict[tuple[str, str], list[Prediction]] = {}
+    for configuration_id in ids:
+        for source_id in repo.list_distinct_source_ids(conn, session_id, configuration_id, task):
+            predictions_by_source[(configuration_id, source_id)] = repo.list_predictions(
+                conn, session_id, configuration_id=configuration_id, task=task, source_id=source_id,
+            )
+
+    samples = build_evidence_samples(
+        ground_truth=ground_truth, predictions_by_source=predictions_by_source,
+        tolerance_ms=tolerance_ms, positive_label=positive_label,
+    )
+    return [
+        EvidenceSampleResponse(
+            gt_sample_id=s.gt_sample_id, gt_timestamp_ms=s.gt_timestamp_ms, task=s.task, gt_value=s.gt_value,
+            relationship=s.relationship,
+            sources=[
+                SourceEvidenceResponse(
+                    configuration_id=src.configuration_id, source_id=src.source_id, sensor_ids=src.sensor_ids,
+                    prediction_id=src.prediction_id, prediction_timestamp_ms=src.prediction_timestamp_ms,
+                    value=src.value, confidence=src.confidence, match_delta_ms=src.match_delta_ms,
+                    outcome=src.outcome,
+                )
+                for src in s.sources
+            ],
+        )
+        for s in samples
+    ]
 
 
 TimelineEventKind = Literal['correct', 'incorrect', 'missing_prediction', 'unmatched_prediction']

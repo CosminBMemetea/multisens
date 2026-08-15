@@ -5,6 +5,51 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [Unreleased]
+
+### Added
+
+- **Evidence Playback: per-sample GT/prediction inspection with
+  multi-source overlap, agreement & disagreement** (issue #120) - the
+  first real recorded-data experiment (front/rear 70mai footage) exposed
+  a genuine gap: `match_by_timestamp` already computes per-sample
+  GT/prediction matches internally, but `/evaluate` only ever returned
+  aggregated metrics, discarding the per-sample detail. New
+  `GET /sessions/{id}/evidence` endpoint joins `match_by_timestamp`'s
+  results across every `(configuration_id, source_id)` pair active in a
+  session for a task - one row per ground-truth sample, one column per
+  source - and classifies the relationship between sources
+  (`AGREE_POSITIVE`/`AGREE_NEGATIVE`/`DISAGREE`/`ONLY_ONE_SOURCE_AVAILABLE`/
+  `NO_COMMON_GT_SAMPLE`) server-side, matching `/compare`'s own
+  `validity: {status, reasons}` precedent - never inferred client-side.
+  Never infers a combined/fused prediction: a "source" is always exactly
+  one already-ingested `Prediction` stream: MultiSens evaluates a
+  combined/union source when one was explicitly produced, it never
+  manufactures one. `positive_label` is a required parameter, not
+  defaulted - which label counts as "the event of interest" is a
+  modeling decision this layer must never guess (no default, same
+  posture `confidence_threshold`/`iou_threshold` already have for
+  object_detection). New `SessionDetail.tsx` "Evidence Playback" section
+  renders it, sources side by side per sample, with a `positive_label`
+  picker that starts genuinely unselected - a real bug was caught during
+  live verification where an earlier draft silently defaulted the picker
+  to the alphabetically-first observed label ('absent' before
+  'present'), inverting every outcome; fixed by requiring an explicit
+  choice before any evidence loads, exactly the same "never guess"
+  discipline the backend parameter already had, now actually held to on
+  the frontend too.
+
+Backend: 26 new tests (1039 total) - domain-layer relationship
+classification plus a full API-layer suite, including a test shaped
+exactly like the real recorded experiment (disjoint front/rear windows
+plus an explicit union source) proving the endpoint never invents
+overlap that isn't there. Frontend: `tsc`/`oxlint` clean, 53/53 vitest
+unchanged. Full `docker compose build` (backend + frontend) and live
+verification against the real `ridesafe-recorded-001` session: the
+known front-clip false positive (frame `f_006`, confidence 0.40) is
+directly visible and correctly badged FP once `positive_label=present`
+is explicitly chosen, zero console errors.
+
 ## [0.9.1] — Adversarial bug hunt & live resource collection
 
 Three confirmed bugs found by a live adversarial audit of the released

@@ -9,6 +9,7 @@ import type {
   DecisionPolicy,
   EvaluationProfile,
   EvaluationResult,
+  EvidenceSample,
   Facet,
   GroundTruthEvent,
   PairwiseComparison,
@@ -124,6 +125,23 @@ export function runEvaluation(
   input: { task: string; tolerance_ms?: number },
 ): Promise<EvaluationResult[]> {
   return postJson(`/api/sessions/${sessionId}/evaluate`, input);
+}
+
+// v0.9.1, issue #120 - Evidence Playback. positive_label is required
+// (no default) - the caller must state which label is "the event of
+// interest," matching the backend's own no-guessing posture.
+export function fetchSessionEvidence(
+  sessionId: string,
+  params: { task: string; positive_label: string; tolerance_ms?: number; configuration_ids?: string[] },
+): Promise<EvidenceSample[]> {
+  const query = new URLSearchParams({ task: params.task, positive_label: params.positive_label });
+  if (params.tolerance_ms !== undefined) {
+    query.set("tolerance_ms", String(params.tolerance_ms));
+  }
+  for (const id of params.configuration_ids ?? []) {
+    query.append("configuration_ids", id);
+  }
+  return getJson(`/api/sessions/${sessionId}/evidence?${query}`);
 }
 
 export function fetchSessionTimeline(

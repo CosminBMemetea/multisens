@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { TopBar } from "../components/TopBar";
 import { SessionStatusBadge, SourceTypeBadge } from "../components/Badge";
 import { EvaluationPanel } from "../components/EvaluationPanel";
+import { EvidencePlayback } from "../components/EvidencePlayback";
 import {
   ApiError,
   fetchProfile,
@@ -251,6 +252,8 @@ export function SessionDetail() {
                 </ul>
               )}
             </section>
+
+            <EvidencePlayback sessionId={session.id} tasks={tasks} groundTruth={groundTruth} />
 
             <EvaluationPanel sessionId={session.id} tasks={tasks} />
           </>

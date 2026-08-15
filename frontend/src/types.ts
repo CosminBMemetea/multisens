@@ -107,6 +107,42 @@ export interface PredictionEvent {
   metadata: Record<string, unknown>;
 }
 
+// v0.9.1, issue #120 - Evidence Playback. One row per ground-truth
+// sample, one column per (configuration_id, source_id) pair active in
+// the session for the task - joined server-side from the same
+// match_by_timestamp results /evaluate itself computes, never
+// re-matched or re-classified client-side (see domain/evidence_playback.py's
+// own module docstring for why). A source with no matching prediction
+// for this sample still appears as a column (prediction_id: null) -
+// "no evidence here" is a real, displayable fact, never an absent row.
+export interface SourceEvidence {
+  configuration_id: string;
+  source_id: string;
+  sensor_ids: string[];
+  prediction_id: string | null;
+  prediction_timestamp_ms: number | null;
+  value: Record<string, unknown> | null;
+  confidence: number | null;
+  match_delta_ms: number | null;
+  outcome: "TP" | "FP" | "FN" | "TN" | null;
+}
+
+export type EvidenceRelationship =
+  | "AGREE_POSITIVE"
+  | "AGREE_NEGATIVE"
+  | "DISAGREE"
+  | "ONLY_ONE_SOURCE_AVAILABLE"
+  | "NO_COMMON_GT_SAMPLE";
+
+export interface EvidenceSample {
+  gt_sample_id: string;
+  gt_timestamp_ms: number;
+  task: string;
+  gt_value: Record<string, unknown>;
+  sources: SourceEvidence[];
+  relationship: EvidenceRelationship;
+}
+
 // Metric values are null (not 0) when they can't be calculated - e.g. a
 // class that was never predicted has undefined precision. Always render
 // null as "N/A", never as "0" - see docs/evaluation.md.
