@@ -5,7 +5,7 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
-## [Unreleased]
+## [0.9.1] — Adversarial bug hunt & live resource collection
 
 Three confirmed bugs found by a live adversarial audit of the released
 v0.9.0 (issues #108-#110), fixed same-night with regression tests and a
