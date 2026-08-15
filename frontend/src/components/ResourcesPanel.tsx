@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchSessionResourceObservations, fetchSessions, runTradeoffs } from "../api";
+import { fetchResourceMetrics, fetchSessionResourceObservations, fetchSessions, runTradeoffs } from "../api";
 import { formatFractionPercent, formatResourceValue } from "../format";
 import { PolicyStatusBadge } from "./PolicyStatusBadge";
 import { QualificationBadge } from "./QualificationBadge";
@@ -79,6 +79,30 @@ function useSessions() {
   return sessions;
 }
 
+// The backend's current resource-metric vocabulary (v0.9 bug hunt, issue
+// #116) - starts from the original six built-in metrics (never a broken
+// empty tab before the fetch resolves, and a safe fallback if the
+// backend is unreachable or predates this route), replaced with the
+// real list once fetched - so a RESOURCE_COLLECTOR plugin's own metrics
+// become requestable/selectable without a frontend rebuild.
+function useResourceMetrics(): string[] {
+  const [metrics, setMetrics] = useState<string[]>([...SUPPORTED_RESOURCE_METRICS]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchResourceMetrics()
+      .then((m) => {
+        if (!cancelled) setMetrics(m);
+      })
+      .catch(() => {
+        // Leave the built-in fallback in place - never an empty/broken tab.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return metrics;
+}
+
 interface ResourceConstraintInput {
   metric: string;
   operator: AcceptanceOperator;
@@ -98,13 +122,14 @@ interface ResourceComparisonInput {
 function useTradeoffs(
   profileId: string,
   sessionId: string,
+  resourceMetrics: string[],
   resourceConstraints: ResourceConstraintInput[],
   paretoDimensions: Record<string, ParetoDirection>,
   resourceComparison: ResourceComparisonInput | null,
 ) {
   const [result, setResult] = useState<TradeoffResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const key = JSON.stringify({ resourceConstraints, paretoDimensions, resourceComparison });
+  const key = JSON.stringify({ resourceMetrics, resourceConstraints, paretoDimensions, resourceComparison });
 
   useEffect(() => {
     if (!sessionId) {
@@ -117,7 +142,7 @@ function useTradeoffs(
     runTradeoffs(profileId, {
       policy: DEMO_POLICY,
       session_id: sessionId,
-      resource_metrics: [...SUPPORTED_RESOURCE_METRICS],
+      resource_metrics: resourceMetrics,
       resource_constraints: resourceConstraints,
       pareto_dimensions: paretoDimensions,
       resource_comparison: resourceComparison ?? undefined,
@@ -381,7 +406,11 @@ function ResourceConstraintForm({
 }: {
   constraints: ResourceConstraintInput[];
   onChange: (next: ResourceConstraintInput[]) => void;
-  availableMetrics: ResourceMetric[];
+  // A plain string, not the closed ResourceMetric union (v0.9 bug hunt,
+  // issue #116) - the available list is now whatever the backend
+  // actually supports at runtime, which can include a plugin-declared
+  // metric this frontend build has never heard of.
+  availableMetrics: string[];
 }) {
   function updateAt(index: number, patch: Partial<ResourceConstraintInput>) {
     onChange(constraints.map((c, i) => (i === index ? { ...c, ...patch } : c)));
@@ -406,7 +435,7 @@ function ResourceConstraintForm({
           <select value={c.metric} onChange={(e) => updateAt(i, { metric: e.target.value })} className={inputClass}>
             {availableMetrics.map((m) => (
               <option key={m} value={m}>
-                {RESOURCE_METRIC_LABELS[m]}
+                {RESOURCE_METRIC_LABELS[m as ResourceMetric] ?? m}
               </option>
             ))}
           </select>
@@ -695,6 +724,7 @@ function ResourceParetoSection({
 
 export function ResourcesPanel({ profileId, synthetic }: ResourcesPanelProps) {
   const sessions = useSessions();
+  const resourceMetrics = useResourceMetrics();
   const [sessionId, setSessionId] = useState("");
   const [drillDown, setDrillDown] = useState<DrillDownTarget | null>(null);
   const [constraints, setConstraints] = useState<ResourceConstraintInput[]>([]);
@@ -706,7 +736,9 @@ export function ResourcesPanel({ profileId, synthetic }: ResourcesPanelProps) {
     [dimensions],
   );
 
-  const { result, error } = useTradeoffs(profileId, sessionId, constraints, paretoDimensions, resourceComparison);
+  const { result, error } = useTradeoffs(
+    profileId, sessionId, resourceMetrics, constraints, paretoDimensions, resourceComparison,
+  );
 
   useEffect(() => {
     if (sessions && sessions.length > 0 && sessionId === "") setSessionId(sessions[0].id);
@@ -721,9 +753,13 @@ export function ResourcesPanel({ profileId, synthetic }: ResourcesPanelProps) {
     return [...dims];
   }, [result]);
 
+  // Filtered against the backend's own live-fetched vocabulary (v0.9 bug
+  // hunt, issue #116), not the frontend's hardcoded fallback constant -
+  // a plugin-declared metric that actually came back with real evidence
+  // in `result` is now offered in the constraint-builder dropdown too.
   const availableConstraintMetrics = useMemo(
-    () => availableDims.filter((d): d is ResourceMetric => (SUPPORTED_RESOURCE_METRICS as readonly string[]).includes(d)),
-    [availableDims],
+    () => availableDims.filter((d) => resourceMetrics.includes(d)),
+    [availableDims, resourceMetrics],
   );
 
   return (

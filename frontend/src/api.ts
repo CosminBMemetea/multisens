@@ -78,6 +78,14 @@ export function fetchSensors(): Promise<SensorConfig[]> {
   return getJson("/api/sensors");
 }
 
+// The backend's current SUPPORTED_RESOURCE_METRICS vocabulary, possibly
+// extended by an installed ResourceCollector plugin (v0.9 bug hunt, issue
+// #116) - request this instead of assuming the original six built-in
+// metrics, which would silently exclude anything a plugin adds.
+export function fetchResourceMetrics(): Promise<string[]> {
+  return getJson("/api/resource-metrics");
+}
+
 export function fetchScenarios(): Promise<Scenario[]> {
   return getJson("/api/scenarios");
 }

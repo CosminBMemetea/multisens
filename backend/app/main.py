@@ -20,6 +20,7 @@ from app.api.profiles import router as profiles_router
 from app.api.scenarios import router as scenarios_router
 from app.api.sessions import router as sessions_router
 from app.config import load_disabled_plugin_ids, load_poll_connectors, load_sensors
+from app.domain.resources import SUPPORTED_RESOURCE_METRICS
 from app.persistence import db as db_module
 from app.plugins import state as plugin_state
 from app.plugins.manager import (
@@ -120,6 +121,18 @@ def health() -> dict[str, str]:
 @app.get('/api/sensors')
 def sensors() -> list[dict]:
     return load_sensors()
+
+
+@app.get('/api/resource-metrics')
+def resource_metrics() -> list[str]:
+    """The current, possibly plugin-extended, `SUPPORTED_RESOURCE_METRICS`
+    vocabulary (v0.9 bug hunt, issue #116) - read-only, matching
+    /api/plugins's own registry-visibility pattern. Lets the frontend
+    request whatever this running backend actually supports instead of
+    hardcoding the original six built-in metrics, which would silently
+    exclude anything a `RESOURCE_COLLECTOR` plugin adds at discovery
+    time (app/domain/resources.py's own register_resource_metrics())."""
+    return sorted(SUPPORTED_RESOURCE_METRICS)
 
 
 @app.get('/api/status')
