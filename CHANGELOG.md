@@ -5,6 +5,53 @@ Every entry below was verified against a running system, not just a passing
 build — that's a project-wide rule, not editorial flourish; see
 [docs/development.md](docs/development.md) for how.
 
+## [Unreleased]
+
+Three confirmed bugs found by a live adversarial audit of the released
+v0.9.0 (issues #108-#110), fixed same-night with regression tests and a
+full docker rebuild + live re-verification against the fixed release.
+A fourth, related finding (issue #111 - `ResourceCollector` plugins and
+the pre-existing v0.7 built-in collector are likewise never wired into
+any live collection trigger) was deliberately deferred, not fixed: it
+needs a real design decision about when/how collection is triggered,
+not a same-night smallest-fix patch.
+
+### Fixed
+
+- **Sessions page showed a fabricated, ever-growing duration for
+  sessions that were never started** (BUG-001, #108) -
+  `formatDuration()` fell back to `Date.now()` whenever `ended_at` was
+  `null` regardless of session status; every one of the 26 demo
+  sessions shipped with v0.9.0 (all `status: created`) displayed a
+  large, fabricated, wall-clock-derived duration instead of "no elapsed
+  time to report." Now gated on `status === 'running'`; `created`/
+  `failed` sessions render `—`.
+- **`/sessions/{id}/start` and `/complete` had no state-transition
+  guard** (BUG-002, #109) - any transition from any state silently
+  succeeded, including a second `/complete` call silently re-stamping
+  `ended_at` with a new, later timestamp, destroying the true
+  completion time. Now an explicit state machine: `created -> running`/
+  `running -> completed` are the only real transitions; same-state
+  re-calls are idempotent no-ops (never re-stamping `ended_at`);
+  `completed -> *` and `created -> complete` are a clean `409`.
+- **`PollRunner` was never instantiated - installed Prediction/
+  GroundTruth connector plugins never actually polled** (BUG-003, #110)
+  - Phase 97 built and tested `PollRunner`/`PredictionConnectorInstance`/
+  `GroundTruthConnectorInstance` in isolation, but nothing in the
+  running application ever called them; a plugin of either type would
+  discover as `AVAILABLE` and sit inert forever. Fixed with a new
+  `poll_connectors:` config section and
+  `build_poll_runners()`/`stop_poll_runners()`
+  (`app/plugins/manager.py`), the same config-driven wiring discipline
+  `build_connector_instances()` already established. Directly falsified
+  the v0.9.0 README's own extensibility claim for 2 of 5 plugin types -
+  claim now true.
+
+Backend: 24 new tests (930 → 950). Frontend: 6 new tests (47 → 53),
+`tsc`/`oxlint` clean throughout. Full `docker compose build` (backend +
+frontend) + live re-verification of all three fixes against the
+rebuilt containers.
+
 ## [0.9.0] — Plugin SDK & external integration framework
 
 Built phase by phase (Phase 92 through Phase 106), same discipline as
