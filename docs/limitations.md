@@ -408,7 +408,7 @@ to either.
     design, not a persistent flapping bug (confirmed stable for the rest
     of a multi-minute outage). Bounded and understood, not filed as a
     tracked issue.
-  - **Nuance 2 - the inference connector's `state` field doesn't reflect
+  - **Nuance 2 - the inference connector's `state` field didn't reflect
     a stale-but-still-responding input.** While the RTSP source was
     down, the worker's own `/latest` HTTP endpoint kept responding
     successfully (just serving its last-known frame's unchanged
@@ -418,11 +418,15 @@ to either.
     throughout the entire outage. `total_predictions` correctly stopped
     climbing (the honest signal), but an operator glancing only at the
     top-level `ACTIVE`/`NONE`/`ERROR` badge would see `ACTIVE` for a
-    feed that had been silently stale for minutes. Not fixed here -
-    genuinely needs a design decision (should `last_sample_age_s` track
-    "since last poll attempt" or "since last *new* item"? should a
-    prolonged stale-input window itself become a `DEGRADED` signal?) -
-    tracked as issue #127, not rushed as a drive-by fix.
+    feed that had been silently stale for minutes. **Fixed in issue
+    #127**: the bridge now tracks time since the last frame that
+    genuinely *advanced* (not time since the last poll attempt) and
+    reports `DEGRADED` once that exceeds a configurable `stale_after_s`
+    (default 5s) - live-verified with the same kill-the-RTSP-source
+    procedure: the dashboard correctly showed `Inference: ERROR` with a
+    real, growing staleness age (confirmed past 80s in one run) once the
+    threshold was crossed, and recovered to `Inference: ACTIVE` the
+    moment the source came back and a genuinely new frame arrived.
 
 **Multi-sensor test matrix**: all four combinations passed, through the
 same generic, unmodified `SensorCard`/`Dashboard`/ingestion code - no
