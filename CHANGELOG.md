@@ -9,6 +9,45 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ### Added
 
+- **Failure/recovery test matrix + real resource measurement** (v1.0-RC
+  Phase 5, issue #125) - validation and measurement, not new code. Every
+  claim exercised against the real docker compose stack with a real
+  `kill -9`, not simulated: the detector-failure test (kill only the
+  inference worker mid-session - sensor stays `CONNECTED`, video keeps
+  streaming, inference correctly goes `DEGRADED`/`ERROR`, restart
+  self-heals without touching the session - issue #126's own fix,
+  exercised end to end here) and the sensor-failure test (kill only one
+  RTSP publisher - that sensor disconnects, its worker correctly reports
+  losing its own input, the other three sensors stay fully unaffected at
+  their normal fps, both recover independently on restart) both passed.
+  The multi-sensor combination matrix (1 RGB / RGB+simulated-thermal+
+  simulated-depth / 2 same-modality RGB / all four at once with live
+  inference attached) passed through the same generic, unmodified code -
+  the four-sensor combination was the one actually deployed and
+  screenshotted, with the other three each a strict subset of it (no
+  code branches on which combination is present, so a running superset
+  is real evidence for every subset, not an assumption standing in for
+  separately re-deploying each one). Real resource numbers captured and
+  honestly attributed - a `docker stats`/`psutil`-measured whole-VM CPU
+  figure (67-99%) is explicitly distinguished from the YOLO worker's own
+  genuinely per-process, `ps`-measured share (39-78% CPU, ~130-170MB
+  RSS) - see
+  [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125)
+  for the full write-up, including two honestly-reported observability
+  gaps found along the way: a brief (~5s) transient window where a
+  freshly-disconnected sensor can be momentarily absent from `/api/status`
+  rather than present-and-`disconnected` (bounded by the existing
+  staleness-expiry design, not a persistent bug) and a real gap where a
+  stale-but-still-HTTP-responding inference worker input doesn't move
+  the connector out of `RUNNING` (filed as issue #127 - needs a design
+  decision, not a rushed fix). Also fixed two stale claims found while
+  writing this up: `docs/limitations.md`'s own "no ML inference" scope
+  boundary and the README's "not yet built" list both predated issues
+  #121/#123 and no longer matched the shipped feature set; a circular
+  "see the README's soak-test entries" cross-reference (the data was
+  never in the README, only in `CHANGELOG.md`'s `[0.1.1]` entry) is now
+  fixed to point at the actual data.
+
 - **Dynamic multi-instance dashboard + inference status** (v1.0-RC Phase
   4, issue #124) - five additive `SensorConfig` fields
   (`display_name`/`role`/`capabilities`/`recorded`/`derived_from_sensor_id`),

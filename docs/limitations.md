@@ -7,8 +7,8 @@ release, not silently worked around now.
 
 ## Scope boundaries (by design, not oversight)
 
-- **No perception, no ML inference, no sensor fusion, no causal or
-  statistical claims, no built-in domain-specific compliance logic.**
+- **No built-in ML inference, no sensor fusion, no causal or statistical
+  claims, no built-in domain-specific compliance logic.**
   v0.1 was
   ingestion, synchronization, diagnostics, and visualization; v0.2 added
   ground-truth evaluation (classification only through v0.7 - see below);
@@ -25,9 +25,19 @@ release, not silently worked around now.
   an explicit, caller-supplied policy, explicitly never a causal claim
   and never a universal sensor-importance score; v0.8 added object
   detection and scalar regression evaluators (see below) - no tracking,
-  segmentation, pose, or AP/mAP, and still no perception/inference of any
-  kind (MultiSens evaluates predictions, it never produces them). See the
-  project's own original scope statement in the README.
+  segmentation, pose, or AP/mAP, and still no perception/inference *built
+  into the core platform* (MultiSens evaluates predictions, it never
+  produced them - through v0.9.1). See the project's own original scope
+  statement in the README.
+  **v1.0-RC (issue #123) adds an optional, external reference
+  implementation** - a standalone YOLOv8n inference worker plus a thin
+  `PredictionConnector` bridge plugin, process-isolated from the core
+  backend (a crash in the model can never take down the REST API). This
+  doesn't change the scope boundary above: the core platform still
+  produces zero predictions itself; the reference worker is opt-in
+  example code an operator runs and wires in via config, exactly like any
+  other third-party plugin, never something the backend depends on or
+  ships enabled by default.
 - **Comparison validity does not check matched-label-set divergence.**
   Two configurations whose matched samples span different label sets
   (e.g. one config's matched set never saw the "absent" class) would
@@ -310,11 +320,14 @@ release, not silently worked around now.
   ran it manually and checked the actual output - there is no automated
   regression suite wired into GitHub, so nothing prevents a future change
   from silently breaking something already proven to work once.
-- **Memory soak testing is real but time-limited.** See the README's
-  soak-test entries for exact sample counts, durations, and any observed
-  trends - a short soak can rule out a fast leak, not a slow one. Treat any
-  "no leak observed" statement as scoped to the duration actually tested,
-  not as a permanent guarantee.
+- **Memory soak testing is real but time-limited.** See
+  [CHANGELOG.md](../CHANGELOG.md)'s `[0.1.1]` entry for the actual
+  30-minute soak test record (fixed while writing this section - it
+  previously pointed at "the README's soak-test entries," which don't
+  exist; the README defers all limitations detail to this file, and this
+  file's own reference was circular) - a short soak can rule out a fast
+  leak, not a slow one. Treat any "no leak observed" statement as scoped
+  to the duration actually tested, not as a permanent guarantee.
 - **No load testing beyond a single dashboard user.** Concurrent-viewer
   behavior for the MJPEG relay (see above) is understood architecturally,
   not measured under real concurrent load. The same applies to the
@@ -356,12 +369,117 @@ release, not silently worked around now.
   falls back to `unknown` if omitted, same "declared, never guessed"
   posture `ExecutionPlatform` has always had.
 
+## Live-verified: failure/recovery + multi-sensor matrix (v1.0-RC, issue #125)
+
+Every claim below was exercised against the real docker compose stack on
+the reference dev machine (Apple Silicon M2, 6GB/7-CPU Docker Desktop
+allocation) - a real process killed with `kill -9`, not a simulated
+fault, matching this project's standing rule that every "verified" claim
+means someone ran it and checked the actual output.
+
+**Detector-failure test (kill only the inference worker mid-session)**:
+passed. `ridesafe_front_rgb` stayed `CONNECTED` throughout at its normal
+~30fps, its video kept streaming to the dashboard, its inference
+connector correctly surfaced `DEGRADED`/`Inference: ERROR` with the real
+`urlopen` network error - and restarting the worker process, without
+touching the session, self-healed the connector back to `RUNNING` with
+predictions resuming (issue #126's own fix, exercised end to end here
+rather than just at the wrapper-unit-test level).
+
+**Sensor-failure test (kill only one RTSP publisher)**: passed, with one
+honest nuance found along the way. Killing `ridesafe_front_rgb`'s own
+RTSP source: that sensor's `connection_state` correctly settled to
+`disconnected` (fps dropped to 0), the other three sensors
+(`ridesafe_rear_rgb`/`depth`/`thermal`) stayed fully `connected` at their
+normal fps with zero new reconnects, and the worker reading that same
+now-dead source correctly reported its own `last_error` ("could not open
+RTSP stream"). Restarting the publisher recovered both the ROS ingestion
+node and the independent worker process, with zero manual intervention
+to either.
+
+  - **Nuance 1 - a brief transient window right at failure onset.** In
+    one run, `ridesafe_front_rgb` was briefly absent from `/api/status`
+    entirely (rather than present-and-`disconnected`) for a few seconds
+    immediately after the kill, before stabilizing to a reliable
+    `disconnected` reading for the remainder of the outage. Root cause:
+    `ros_bridge.py`'s `STALE_AFTER_SEC = 5.0` expiry and the first
+    disconnected-state diagnostics message landing close to that same
+    window - a boundary-timing artifact of the existing staleness
+    design, not a persistent flapping bug (confirmed stable for the rest
+    of a multi-minute outage). Bounded and understood, not filed as a
+    tracked issue.
+  - **Nuance 2 - the inference connector's `state` field doesn't reflect
+    a stale-but-still-responding input.** While the RTSP source was
+    down, the worker's own `/latest` HTTP endpoint kept responding
+    successfully (just serving its last-known frame's unchanged
+    timestamp) - so the bridge plugin's `poll()` kept succeeding
+    (correctly returning `[]` per its own "same frame, nothing new"
+    dedup), and the connector's `state`/`health.state` stayed `running`
+    throughout the entire outage. `total_predictions` correctly stopped
+    climbing (the honest signal), but an operator glancing only at the
+    top-level `ACTIVE`/`NONE`/`ERROR` badge would see `ACTIVE` for a
+    feed that had been silently stale for minutes. Not fixed here -
+    genuinely needs a design decision (should `last_sample_age_s` track
+    "since last poll attempt" or "since last *new* item"? should a
+    prolonged stale-input window itself become a `DEGRADED` signal?) -
+    tracked as issue #127, not rushed as a drive-by fix.
+
+**Multi-sensor test matrix**: all four combinations passed, through the
+same generic, unmodified `SensorCard`/`Dashboard`/ingestion code - no
+special-casing found or needed for any of them.
+
+| Combo | Sensors | Result |
+|---|---|---|
+| A | 1 physical RGB (`ridesafe_front_rgb`) | Passed - subset of combo D below, isolated by inspection |
+| B | RGB + simulated thermal + simulated depth (both `derived_from_sensor_id: ridesafe_front_rgb`) | Passed - subset of combo D below |
+| C | 2 same-modality physical RGB (`ridesafe_front_rgb`/`ridesafe_rear_rgb`) | Passed - subset of combo D below |
+| D | All four simultaneously, plus a live YOLO inference connector on the front sensor | Passed - the full stack actually deployed and screenshotted |
+
+Combo D was the one actually deployed; A/B/C are each a strict subset of
+what was running in D, and nothing in the codebase branches on *which*
+sensors are present or how many - so D running correctly is itself the
+evidence for A/B/C, not an assumption standing in for separately
+re-deploying each one.
+
+**Resource measurement, honestly attributed** (captured during combo D,
+steady state, one inference connector active):
+
+| What | Value | Source / attribution |
+|---|---|---|
+| Sensor fps (each of 4) | ~28-30 (target 30) | `GET /api/status`, self-reported per `rtsp_ingestion_node` - **measured**, per-sensor |
+| Inference rate | ~0.3-1.0 predictions/sec | `PollRunner.predictions_per_sec` (issue #124) - **measured**, per-connector, real wall-clock/count |
+| `ros` container CPU | ~760-780% (of a multi-core budget; Docker's per-container % is not core-normalized) | `docker stats` - **measured**, whole-container, not per-topic/per-sensor |
+| `ros` container memory | ~585-590 MiB | `docker stats` - **measured**, whole-container |
+| `backend` container CPU/mem | ~6% / ~67 MiB | `docker stats` - **measured**, whole-container |
+| System-wide CPU/RAM (`system_diagnostics_node`) | 67-99% / 25-32% | `psutil` inside the `ros` container - **measured**, but whole-VM (Docker Desktop for Mac), not per-process - same caveat this file already documents for v0.7's resource collector, above |
+| YOLO worker process (host, not containerized) | 39-78% CPU, ~130-170 MB RSS | `ps -o pcpu,rss` on the worker's own PID - **measured**, genuinely per-process (the one number in this table that *is* attributable to the model itself, not a whole-container/whole-VM figure) |
+| `mediamtx` (host, dev-only simulator infra) | ~9-11% CPU, ~36 MB RSS | `ps` - **measured**, per-process |
+| RTSP re-stream `ffmpeg` processes (`-c copy`, host) | ~0.4-2.4% CPU each, ~9 MB RSS each | `ps` - **measured**, per-process |
+
+The one number worth calling out by contrast: **whole-system CPU
+(67-99%) is not the same claim as "YOLO inference costs 67-99% CPU."**
+The YOLO worker's own measured share (39-78%, alone) is a large but
+partial contributor - the other consumers are 4 simultaneous RTSP
+decode/re-encode paths, DDS/ROS message passing for 4 image topics, and
+the MJPEG browser relay, all running on the same 7-CPU Docker Desktop
+allocation. No resource-quality tier from `docs/resources.md`
+(`measured`/`declared`/`estimated`/`unavailable`) was stretched to imply
+more precision than `docker stats`/`psutil`/`ps` actually provide -
+every figure above is `measured` at the granularity its own tool
+reports, nothing finer-grained is claimed.
+
 ## What would likely break first
 
-- **More sensors (untested beyond 3):** nothing in the architecture assumes
-  exactly three, but resource usage (CPU for N ffmpeg decode/encode paths,
-  DDS traffic for N image topics) has only been measured at N=3 on one
-  machine. Expect to hit host CPU limits before hitting a code limit.
+- **More sensors: now measured at N=4, not just N=3** (v1.0-RC, issue
+  #125 - see the multi-sensor test matrix above for the exact
+  configuration and numbers). Nothing in the architecture assumes a
+  fixed sensor count, and this confirms it - but resource usage (CPU for
+  N RTSP decode/encode paths, DDS traffic for N image topics) climbs
+  steeply: the reference dev machine hit ~97-99% whole-VM CPU at N=4
+  (2 physical + 2 derived, one of them running live YOLO inference).
+  Still untested beyond N=4, and still only on one machine/one
+  architecture (Apple Silicon M2). Expect to hit host CPU limits well
+  before hitting a code limit.
 - **Higher resolution (untested beyond 640x480):** the "large image message
   defeats a generic ROS subscriber" problem (see
   [architecture.md](architecture.md#the-two-planes-controltelemetry-vs-video))

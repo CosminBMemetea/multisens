@@ -496,10 +496,26 @@ sensor, prediction/ground-truth source, evaluator, or resource-telemetry
 integration is now an installable Python package, never a MultiSens core
 edit. Plugins are trusted local software (no sandboxing, stated
 explicitly and repeatedly, never implied otherwise) — see
-[docs/plugin-sdk.md](docs/plugin-sdk.md).
+[docs/plugin-sdk.md](docs/plugin-sdk.md). v1.0-RC closed the two
+remaining gaps that same plugin architecture surfaced: sensor identity
+was keyed by `modality` (two same-modality live cameras, e.g. two RGB
+dashcams, collided on one topic) — sensor topics are now keyed by a
+required-unique `sensor_id`, live-verified with two simultaneous RTSP-
+replayed RGB feeds; and MultiSens itself still produces zero predictions,
+but a reference YOLOv8n inference worker plus a thin, process-isolated
+bridge plugin now demonstrate the whole background-inference path end to
+end — session-bound wiring, live dashboard status
+(`ACTIVE`/`NONE`/`ERROR`, real measured predictions/sec), and a
+self-healing connector state machine that survives a worker restart mid-
+session without restarting the session itself. A four-sensor
+configuration (2 live cameras + 2 derived feeds, one with live inference
+attached) and both a detector-only and a sensor-only failure were each
+killed and independently recovered on the real stack, not simulated —
+see [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125)
+for the exact numbers, matrix, and two honestly-reported observability
+gaps found along the way (tracked, not silently absorbed).
 
-Not yet built, deliberately: perception/ML inference (MultiSens evaluates
-predictions, it does not produce them), sensor fusion, causal/statistical
+Not yet built, deliberately: sensor fusion, causal/statistical
 claims (no p-values, no confidence intervals, no "sensor X caused Y"),
 object tracking/segmentation/pose/localization evaluators (v0.8 added
 detection and regression only — see
@@ -509,9 +525,6 @@ regression, per-requirement
 weighted/mandatory-scoped aggregation (v0.6's mandatory flag is an
 all-or-nothing population setting, not a per-requirement list), cost/
 power/latency decision objectives (only `minimize_sensor_count` exists),
-sensor-identity/ROS migration for simultaneous live dual-camera viewing
-(decision support itself needed none of this — see
-[docs/decision-support.md](docs/decision-support.md#sensor-instance-identity-not-modality)),
 a simultaneous 3+-dimension cross-tab, saved/named filter presets, real
 depth/thermal sensor conversion, a file-import API endpoint, GPU/power/
 temperature/storage-write resource metrics (no discrete GPU or Jetson
