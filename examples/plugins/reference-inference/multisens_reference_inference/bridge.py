@@ -14,6 +14,21 @@ deliberately not caught here. `PredictionConnectorInstance._poll_raw()`
 `poll()` exception into an empty list plus a recorded health message;
 duplicating that handling here would just be a second copy of the same
 guard.
+
+**Staleness, not just errors (v1.0-RC, issue #127)**: a worker whose own
+video input has died can keep responding to `GET /latest` successfully
+forever, just with an unchanging `frame_timestamp_ms` - `poll()` itself
+already handles that correctly (dedup, returns `[]`, no exception), but
+naively that leaves `health()` reporting `RUNNING` indefinitely for a
+feed that's actually been dead for minutes. `last_sample_age_s` here
+tracks time since the last frame that genuinely *advanced*, not time
+since the last poll *attempt* - a poll that succeeds but sees the same
+timestamp again doesn't reset it. Once that staleness exceeds
+`stale_after_s`, `health()` reports `DEGRADED` on its own, via a normal
+non-raising return - `PredictionConnectorInstance.health()`'s own
+adoption logic (issue #126) picks this up exactly the same way it picks
+up a plugin's other non-raising `DEGRADED` self-reports, no core-wrapper
+change needed.
 """
 from __future__ import annotations
 
@@ -41,6 +56,12 @@ HOMEPAGE = 'https://github.com/CosminBMemetea/multisens/tree/main/examples/plugi
 SUPPORTED_MODALITIES = ('rgb',)
 DEFAULT_TASK = 'vehicle_detection'
 DEFAULT_TIMEOUT_S = 2.0
+# How long a frame timestamp may go without advancing before a
+# technically-successful poll stream counts as stale rather than
+# healthy (issue #127) - same order of magnitude as ros_bridge.py's own
+# STALE_AFTER_SEC for live sensor diagnostics, not a coincidence: both
+# answer "how old is too old to still call this RUNNING."
+DEFAULT_STALE_AFTER_S = 5.0
 
 
 class YoloBridgeConnector:
@@ -50,9 +71,13 @@ class YoloBridgeConnector:
         self._worker_url: str | None = None
         self._task = DEFAULT_TASK
         self._timeout_s = DEFAULT_TIMEOUT_S
+        self._stale_after_s = DEFAULT_STALE_AFTER_S
         self._active = False
         self._last_seen_frame_timestamp_ms: float | None = None
-        self._last_poll_monotonic: float | None = None
+        # Wall-clock time this connector last saw frame_timestamp_ms
+        # actually change - not the same as "last successful poll()
+        # call" (issue #127's own distinction; see module docstring).
+        self._last_advance_monotonic: float | None = None
         self._last_error: str | None = None
 
     def descriptor(self) -> PluginDescriptor:
@@ -102,13 +127,18 @@ class YoloBridgeConnector:
         timeout_s = config.get('timeout_s', DEFAULT_TIMEOUT_S)
         if not isinstance(timeout_s, (int, float)) or isinstance(timeout_s, bool) or timeout_s <= 0:
             raise ConnectorConfigError(f"'timeout_s' must be a positive number, got {timeout_s!r}")
+        stale_after_s = config.get('stale_after_s', DEFAULT_STALE_AFTER_S)
+        if not isinstance(stale_after_s, (int, float)) or isinstance(stale_after_s, bool) or stale_after_s <= 0:
+            raise ConnectorConfigError(f"'stale_after_s' must be a positive number, got {stale_after_s!r}")
 
         self._session_id = session_id
         self._sensor_id = sensor_id
         self._worker_url = worker_url.rstrip('/')
         self._task = task
         self._timeout_s = float(timeout_s)
+        self._stale_after_s = float(stale_after_s)
         self._last_seen_frame_timestamp_ms = None
+        self._last_advance_monotonic = None
         self._last_error = None
 
     def start(self) -> None:
@@ -122,13 +152,25 @@ class YoloBridgeConnector:
             return ConnectorHealth(state=ConnectorState.STOPPED)
         if self._last_error is not None:
             return ConnectorHealth(state=ConnectorState.DEGRADED, message=self._last_error)
-        age_s = None
-        if self._last_poll_monotonic is not None:
-            age_s = max(0.0, time.monotonic() - self._last_poll_monotonic)
-        return ConnectorHealth(
-            state=ConnectorState.RUNNING, last_sample_age_s=age_s,
-            details={'worker_url': self._worker_url or ''},
-        )
+        details = {'worker_url': self._worker_url or ''}
+        if self._last_advance_monotonic is None:
+            # Never seen a real frame yet - genuinely unknown, not "0s old."
+            return ConnectorHealth(state=ConnectorState.RUNNING, last_sample_age_s=None, details=details)
+        age_s = max(0.0, time.monotonic() - self._last_advance_monotonic)
+        if age_s > self._stale_after_s:
+            # issue #127: poll() has kept succeeding (no exception ever
+            # reached _poll_raw()), but frame_timestamp_ms hasn't moved -
+            # a real, distinguishable-from-"currently seeing nothing"
+            # staleness, not a fabricated RUNNING.
+            return ConnectorHealth(
+                state=ConnectorState.DEGRADED, last_sample_age_s=age_s, details=details,
+                message=(
+                    f'no new frame from the worker in {age_s:.1f}s '
+                    f'(stale_after_s={self._stale_after_s}) - the worker is reachable but its own '
+                    f'video input may have stopped advancing'
+                ),
+            )
+        return ConnectorHealth(state=ConnectorState.RUNNING, last_sample_age_s=age_s, details=details)
 
     def poll(self) -> list[Prediction]:
         if not self._active or self._sensor_id is None or self._worker_url is None:
@@ -145,7 +187,6 @@ class YoloBridgeConnector:
             # correctly-DEGRADED state the next time health() happened to be called.
             self._last_error = str(e)
             raise
-        self._last_poll_monotonic = time.monotonic()
         self._last_error = None
 
         frame_timestamp_ms = response.get('frame_timestamp_ms')
@@ -157,8 +198,11 @@ class YoloBridgeConnector:
             )
             return []
         if frame_timestamp_ms == self._last_seen_frame_timestamp_ms:
-            return []  # same frame as last poll - nothing new to emit
+            # Same frame as last poll - nothing new to emit. Deliberately does NOT touch
+            # _last_advance_monotonic (issue #127): a run of these is exactly what staleness means.
+            return []
         self._last_seen_frame_timestamp_ms = frame_timestamp_ms
+        self._last_advance_monotonic = time.monotonic()
 
         return [Prediction(
             # Includes session_id, not just sensor_id/source_id/timestamp_ms (issue #123's own

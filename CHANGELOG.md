@@ -258,6 +258,33 @@ is explicitly chosen, zero console errors.
 
 ### Fixed
 
+- **The reference YOLO bridge plugin's inference status never reflected
+  a stale-but-still-responding worker input** (v1.0-RC, issue #127,
+  found live-verifying issue #125's own sensor-failure test). When a
+  worker's video input died but its `/latest` HTTP endpoint kept
+  answering successfully with an unchanging `frame_timestamp_ms`,
+  `poll()` correctly kept succeeding (its own dedup returns `[]`, no
+  exception) - so the connector's `state`/`health.state` stayed
+  `running` and the dashboard kept showing `Inference: ACTIVE`
+  indefinitely, even though the feed had genuinely been dead for
+  minutes. Fixed by having `YoloBridgeConnector` track wall-clock time
+  since the last frame that actually *advanced* (not time since the
+  last poll *attempt* - a poll that succeeds against an unchanged
+  timestamp doesn't reset it) and report `DEGRADED` with a clear
+  message once that exceeds a new, configurable `stale_after_s`
+  (default `5.0`, same order of magnitude as `ros_bridge.py`'s own
+  `STALE_AFTER_SEC`) - via a normal, non-raising `health()` return that
+  issue #126's own state-adoption logic already picks up correctly, no
+  core-wrapper change needed. 5 new bridge-plugin tests (27 total in
+  that package). Live-verified through the real docker compose stack,
+  reproducing issue #125's own exact scenario: killed only the RTSP
+  source under a live worker, watched the dashboard's `Inference:
+  ACTIVE` badge correctly turn to `ERROR` once `stale_after_s` elapsed
+  with an honest, growing staleness figure (`last pred. 51.0s`, up from
+  a falsely-fresh reading before this fix), then confirmed restarting
+  the source recovered the connector to `RUNNING` again without
+  touching the session.
+
 - **Connector wrappers never self-healed after a `poll()`/`sample()`/
   `health()` exception, within one continuous session** (v1.0-RC issue
   #126, found live-verifying issue #123's own "restarting the worker

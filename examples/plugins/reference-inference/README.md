@@ -65,8 +65,24 @@ inference_connectors:
       modality: rgb           # must match this sensor's own declared modality
       worker_url: http://localhost:9100
       task: vehicle_detection # optional - defaults to 'vehicle_detection'
+      timeout_s: 2.0           # optional - per-request HTTP timeout to the worker
+      stale_after_s: 5.0       # optional - see "Staleness vs. errors" below
     poll_interval_s: 1.0
 ```
+
+### Staleness vs. errors (issue #127)
+
+A worker whose own video input has died can keep answering `GET
+/latest` successfully forever - just with a `frame_timestamp_ms` that's
+stopped advancing. That's not a `poll()` error (nothing raises), so it
+doesn't trip the isolation issue #126 already provides; left alone, the
+connector would report `RUNNING` indefinitely for a feed that's actually
+been dead for minutes. This plugin tracks time since the last frame that
+genuinely *advanced* (not time since the last poll attempt) and reports
+`DEGRADED` once that exceeds `stale_after_s` - via a normal, non-raising
+`health()` return that the core wrapper's own state-adoption logic
+(issue #126) picks up the same way it picks up any other plugin-reported
+`DEGRADED`.
 
 Restart the backend (`docker compose restart backend`, or rebuild if
 installing into the image) - starting a session now starts this

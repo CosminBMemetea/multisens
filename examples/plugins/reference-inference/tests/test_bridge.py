@@ -6,6 +6,7 @@ over a mock" discipline other MultiSens test suites already follow
 """
 import json
 import threading
+import time
 import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -95,6 +96,13 @@ def test_configure_rejects_invalid_timeout():
     for bad_timeout in (-1, 0, 'not-a-number'):
         with pytest.raises(ConnectorConfigError, match='timeout_s'):
             connector.configure(_valid_config('http://localhost:9100', timeout_s=bad_timeout))
+
+
+def test_configure_rejects_invalid_stale_after_s():
+    connector = YoloBridgeConnector()
+    for bad_value in (-1, 0, 'not-a-number'):
+        with pytest.raises(ConnectorConfigError, match='stale_after_s'):
+            connector.configure(_valid_config('http://localhost:9100', stale_after_s=bad_value))
 
 
 # --- lifecycle -------------------------------------------------------------
@@ -272,3 +280,83 @@ def test_health_reflects_last_sample_age_after_a_successful_poll(fake_worker):
     assert_health_contract(health)
     assert health.state == ConnectorState.RUNNING
     assert health.last_sample_age_s is not None
+
+
+# --- staleness (v1.0-RC, issue #127) ------------------------------------------
+
+def test_health_stays_running_while_the_frame_keeps_advancing_within_the_threshold(fake_worker):
+    worker_url, responses = fake_worker
+    connector = YoloBridgeConnector()
+    connector.configure(_valid_config(worker_url, stale_after_s=5.0))
+    connector.start()
+
+    responses['/latest'] = (200, {'frame_timestamp_ms': 1.0, 'detections': []})
+    connector.poll()
+    responses['/latest'] = (200, {'frame_timestamp_ms': 2.0, 'detections': []})
+    connector.poll()
+
+    assert connector.health().state == ConnectorState.RUNNING
+
+
+def test_health_reports_degraded_once_the_frame_stops_advancing_past_stale_after_s(fake_worker):
+    # The core of issue #127: the worker keeps responding successfully
+    # (poll() never raises, no exception ever reaches _poll_raw()), but
+    # frame_timestamp_ms is stuck - a real, distinguishable-from-healthy
+    # staleness that must surface as DEGRADED, not a silently-stale RUNNING.
+    worker_url, responses = fake_worker
+    connector = YoloBridgeConnector()
+    connector.configure(_valid_config(worker_url, stale_after_s=0.05))
+    connector.start()
+
+    responses['/latest'] = (200, {'frame_timestamp_ms': 1.0, 'detections': []})
+    first = connector.poll()
+    assert len(first) == 1
+    assert connector.health().state == ConnectorState.RUNNING  # not stale yet
+
+    time.sleep(0.1)
+    second = connector.poll()  # same frame_timestamp_ms - poll() itself still succeeds, returns []
+    assert second == []
+
+    health = connector.health()
+    assert_health_contract(health)
+    assert health.state == ConnectorState.DEGRADED
+    assert health.last_sample_age_s is not None and health.last_sample_age_s > 0.05
+    assert 'no new frame' in health.message
+
+
+def test_health_last_sample_age_s_tracks_frame_advance_not_poll_attempts(fake_worker):
+    # Repeated poll() *attempts* against an unchanging frame must not
+    # reset the staleness clock - only a genuine new frame_timestamp_ms
+    # does. Otherwise a fast poll_interval_s could mask real staleness
+    # indefinitely just by attempting often.
+    worker_url, responses = fake_worker
+    connector = YoloBridgeConnector()
+    connector.configure(_valid_config(worker_url, stale_after_s=0.05))
+    connector.start()
+
+    responses['/latest'] = (200, {'frame_timestamp_ms': 1.0, 'detections': []})
+    connector.poll()
+    time.sleep(0.03)
+    connector.poll()  # same frame again - an attempt, not an advance
+    time.sleep(0.03)
+    connector.poll()  # still the same frame - total elapsed since the real advance now > 0.05s
+
+    assert connector.health().state == ConnectorState.DEGRADED
+
+
+def test_health_recovers_from_degraded_once_a_genuinely_new_frame_arrives(fake_worker):
+    worker_url, responses = fake_worker
+    connector = YoloBridgeConnector()
+    connector.configure(_valid_config(worker_url, stale_after_s=0.05))
+    connector.start()
+
+    responses['/latest'] = (200, {'frame_timestamp_ms': 1.0, 'detections': []})
+    connector.poll()
+    time.sleep(0.1)
+    connector.poll()
+    assert connector.health().state == ConnectorState.DEGRADED
+
+    responses['/latest'] = (200, {'frame_timestamp_ms': 2.0, 'detections': []})  # a genuine advance
+    connector.poll()
+
+    assert connector.health().state == ConnectorState.RUNNING
