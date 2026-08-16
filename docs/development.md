@@ -35,6 +35,107 @@ Needs an RTSP source at the URLs in `config/sensors.yaml` - see the
 [reference simulator](https://github.com/CosminBMemetea/multirtsp) or point
 config at real sensors.
 
+## Trying the v1.0.0 live-inference path end to end
+
+Everything below was run and verified exactly like this while cutting
+the v1.0.0 release - a real YOLOv8n worker process, a real killed RTSP
+source, a real killed worker process, watched recovering on the real
+dashboard. Needs `mediamtx` on the host (`brew install mediamtx` on
+macOS) and a real recorded video file to loop as an RTSP source - any
+short `.mp4` works, referenced here as `<video>.mp4`.
+
+**1. Bring up the core stack and a video source:**
+```bash
+docker compose up -d
+mediamtx                                        # separate terminal
+ffmpeg -re -stream_loop -1 -i <video>.mp4 \
+  -c copy -f rtsp rtsp://localhost:8554/ridesafe_front_rgb   # separate terminal
+```
+
+**2. Install the reference plugin into a temporary backend layer and
+point config at the live source** (three throwaway files, never
+committed):
+```bash
+cat > config/sensors.live-verify.yaml <<'EOF'
+sensors:
+  - id: ridesafe_front_rgb
+    modality: rgb
+    source_type: physical
+    transport: rtsp
+    url: rtsp://host.docker.internal:8554/ridesafe_front_rgb
+    expected_fps: 30
+inference_connectors:
+  - id: vehicles_front
+    plugin: multisens.reference.inference.yolo_bridge
+    config:
+      sensor_id: ridesafe_front_rgb
+      modality: rgb
+      worker_url: http://host.docker.internal:9100
+      stale_after_s: 8.0
+    poll_interval_s: 1.0
+EOF
+
+cat > backend/Dockerfile.live-verify <<'EOF'
+FROM multisense-backend
+COPY examples/plugins/reference-inference /tmp/reference-inference
+RUN pip3 install --no-cache-dir /tmp/reference-inference
+EOF
+
+cat > docker-compose.override.yml <<'EOF'
+services:
+  ros:
+    volumes:
+      - ./config/sensors.live-verify.yaml:/config/sensors.yaml:ro
+  backend:
+    build:
+      dockerfile: backend/Dockerfile.live-verify
+    volumes:
+      - ./config/sensors.live-verify.yaml:/config/sensors.yaml:ro
+EOF
+
+docker compose up -d --build
+```
+
+**3. Run the worker itself** (first run downloads torch/ultralytics -
+a few minutes, ~2GB):
+```bash
+cd examples/plugins/reference-inference/worker
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python3 -m yolo_worker --rtsp-url rtsp://localhost:8554/ridesafe_front_rgb \
+  --sensor-id ridesafe_front_rgb --port 9100
+```
+
+**4. Start a session so the connector attaches:**
+```bash
+curl -X POST http://localhost:8000/api/scenarios -H 'Content-Type: application/json' -d '{"id":"try-it","name":"Try it"}'
+curl -X POST http://localhost:8000/api/sessions -H 'Content-Type: application/json' -d '{"id":"try-it-session","name":"s","scenario_id":"try-it"}'
+curl -X POST http://localhost:8000/api/sessions/try-it-session/start
+```
+
+Refresh http://localhost:8080 - the sensor card shows `Inference: ACTIVE`
+with a real model id, FPS, and last-prediction age.
+
+**5. Watch it fail and recover, live:**
+- Kill the worker (`Ctrl+C`) - video keeps streaming, badge flips to
+  `Inference: ERROR`. Restart the same command - badge self-heals to
+  `ACTIVE`, no session restart needed (issue #126).
+- Kill the `ffmpeg` feeding the RTSP source instead - sensor goes
+  `DISCONNECTED`, the worker keeps running but starves; after
+  `stale_after_s` (8s here) the badge honestly turns `ERROR` with a
+  growing staleness age even though the worker is still technically
+  reachable (issue #127). Restart the `ffmpeg` stream - everything
+  recovers on its own.
+
+**Cleanup:**
+```bash
+curl -X POST http://localhost:8000/api/sessions/try-it-session/complete
+# Ctrl+C every ffmpeg/mediamtx/worker terminal
+rm -f docker-compose.override.yml backend/Dockerfile.live-verify config/sensors.live-verify.yaml
+rm -rf examples/plugins/reference-inference/worker/.venv
+docker compose up -d --build   # rebuilds back to the clean, released image
+```
+
 ## Iterating on one component
 
 **Frontend** - fastest loop, no Docker needed:

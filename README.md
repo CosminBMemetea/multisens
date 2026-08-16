@@ -1,12 +1,81 @@
 # MultiSens
 
-[![v1.0.0](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v1.0.0)
+**An open-source, vendor-neutral platform for ingesting, synchronizing,
+diagnosing, evaluating, and visualizing multi-sensor streams** — RGB,
+depth, thermal, and whatever else speaks RTSP.
 
-An open-source, vendor-neutral platform for ingesting, synchronizing,
-diagnosing, and visualizing multi-sensor streams — RGB, depth, thermal, and
-whatever else speaks RTSP.
+[![release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v1.0.0)
+[![license](https://img.shields.io/badge/license-Apache--2.0-informational)](LICENSE)
+[![backend tests](https://img.shields.io/badge/backend%20tests-1082%20passing-brightgreen)](docs/development.md)
+[![ROS](https://img.shields.io/badge/ROS%202-Humble-22314E)](ros2_ws)
+[![Python](https://img.shields.io/badge/Python-FastAPI-009688)](backend)
+[![React](https://img.shields.io/badge/React-19-61DAFB)](frontend)
+
+Every number MultiSens shows you is either a genuine measurement or an
+explicit `unavailable`/`N/A` — never a fabricated one. That rule is not
+a tagline; it is enforced end to end, from the ROS diagnostics layer up
+through the dashboard, and it's why this README leans on real,
+freshly-captured screenshots and verified test counts instead of prose
+claims.
+
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="MultiSens live dashboard — three real RTSP sensors connected, sync and system health both OK" width="820">
+  <br>
+  <sub>The live dashboard, connected to three real RTSP streams — one physical camera plus two feeds it truthfully declares as <code>derived_from_sensor_id</code>.</sub>
+</p>
+
+## Contents
+
+- [Quick start](#quick-start)
+- [What MultiSens is](#what-multisens-is)
+- [What MultiSens is NOT](#what-multisens-is-not)
+- [Architecture](#architecture)
+- [Getting live video in](#getting-live-video-in)
+- [Demos](#demos)
+- [Docker requirements](#docker-requirements)
+- [URLs & API surface](#urls--api-surface)
+- [ROS topics](#ros-topics)
+- [Known limitations](#known-limitations)
+- [Roadmap](#roadmap)
+- [Documentation](#documentation)
+- [License](#license)
+
+## Quick start
+
+```bash
+git clone https://github.com/CosminBMemetea/multisens.git
+cd multisens
+docker compose up -d
+docker compose ps          # ros, backend, frontend should all show "healthy"
+open http://localhost:8080 # the dashboard
+```
+
+This alone gets the ROS graph, the backend, and the dashboard running —
+sensor cards will show `NO SIGNAL` until an RTSP source is pointed at
+them (see [Getting live video in](#getting-live-video-in)), and the
+evaluation side of the app works immediately without one at all (see
+[Demos](#demos)).
 
 ## What MultiSens is
+
+| | |
+|---|---|
+| **Ingestion** | Config-driven RTSP → ROS 2 pipeline. One node type, N sensors, no per-sensor code — add a sensor by editing YAML, not by writing code. |
+| **Synchronization** | Real cross-sensor timestamp alignment, with an evidence-based tolerance, not a guessed one. |
+| **Diagnostics** | Every field is a genuine measurement or explicit `"unavailable"` — connection state, FPS, sync skew, resource use. |
+| **Dashboard** | React dark-UI, live video + full health state, backed by a REST/WebSocket API that never leaks a ROS type to the browser. |
+| **Evaluation** (v0.2) | Sessions, scenarios, ground-truth/prediction ingestion from anywhere, timestamp matching, classification metrics — unavailable metrics render `N/A`, never a fabricated zero. |
+| **Comparison** (v0.3) | What changed when a sensor was added/removed, reported two ways, with a non-causal validity verdict — *measured differently*, never *caused*. |
+| **Requirement profiles & coverage** (v0.4) | Generic hierarchical requirements with open-ended conditions and acceptance criteria against any metric — `PASS`/`FAIL`/`N/A`, every result traceable to its evidence. |
+| **Condition exploration** (v0.5) | Filter, group, and cross-tabulate coverage by declared condition — never re-decides `PASS`/`FAIL`/`N/A`, only slices what v0.4 already decided. |
+| **Decision support** (v0.6) | Given an explicit caller-supplied policy, which configurations are `SUFFICIENT` — minimum sufficient sets, Pareto/dominance trade-offs, requirement-gap closure. |
+| **Resource & deployment trade-offs** (v0.7) | CPU/memory/network/latency/FPS per configuration, every value provenance-tagged `measured`/`declared`/`estimated`/`unavailable`. |
+| **Multi-task evaluation** (v0.8) | Object detection (IoU/greedy matching, per-class P/R/F1) and scalar regression (MAE/RMSE/bias) evaluators, evaluator-blind comparison/coverage/decision layers. |
+| **Plugin SDK** (v0.9) | Extend with a new sensor, prediction source, evaluator, or resource collector by `pip install`ing an ordinary Python package — no core edits. Verified, not aspirational: a real reference plugin, discovered and running. |
+| **Background inference** (v1.0) | A reference YOLOv8n worker + process-isolated bridge plugin demonstrate live, session-bound inference end to end — self-healing connector state, honest staleness detection, zero fabricated `ACTIVE` badges. |
+
+<details>
+<summary><b>Full detail per layer, with the exact honesty caveats each one holds itself to</b> (click to expand)</summary>
 
 - A generic, **configuration-driven** RTSP ingestion pipeline on ROS 2
   Humble: one node type, N sensors, no per-sensor code.
@@ -101,8 +170,48 @@ whatever else speaks RTSP.
   permissions of the backend process - see
   [What MultiSens is NOT](#what-multisens-is-not) and
   [docs/plugin-sdk.md](docs/plugin-sdk.md).
+- **Live, process-isolated background inference** (v1.0.0): MultiSens
+  still produces zero predictions itself by design, but a reference
+  YOLOv8n inference worker plus a thin, process-isolated bridge plugin
+  now demonstrate the whole background-inference path end to end —
+  session-bound wiring, live dashboard status (`ACTIVE`/`NONE`/`ERROR`
+  with real measured predictions/sec and honest staleness detection), and
+  a self-healing connector state machine that survives a worker restart,
+  a sensor disconnect, or a stale-but-still-responding input, all without
+  restarting the session itself. See [Roadmap](#roadmap) and
+  [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125)
+  for the exact live-verification evidence.
+
+</details>
 
 ## What MultiSens is NOT
+
+- **Not a perception or ML platform.** No inference, no object
+  detection, no "compliant"/"certified"/"safety score" claim anywhere
+  in the core UI. MultiSens evaluates predictions; it does not produce
+  them (the v1.0.0 reference inference worker is an optional, external,
+  opt-in example, never something the core depends on). A prediction may
+  come from ROS, REST, an imported file, another computer, or
+  proprietary software, and MultiSens doesn't need to know which.
+- **Not a sensor-fusion tool, and not a causal-attribution tool.**
+  Comparisons, condition exploration, decision support, and resource
+  deltas all report what was *measured*, never what *caused* it — no
+  universal sensor-importance score anywhere.
+- **Evaluation is classification + object detection + regression only**
+  (v0.2/v0.8) — no tracking, segmentation, pose, or AP/mAP.
+- **Not tied to any vendor, OEM, or dataset.** No proprietary
+  integration, no hardcoded sensor brand.
+- **Not a production-hardened, multi-user, authenticated service.**
+  CORS is wide open, there's no auth, single local dashboard user —
+  deliberate scope, not oversights.
+- **Not RViz or Foxglove.** Those remain valid developer tools for the
+  raw ROS graph; MultiSens's dashboard is the product UI.
+- **Not a sandboxed plugin platform (v0.9).** A plugin runs with the
+  full permissions of the backend process — no seccomp, no per-plugin
+  isolation. Only install plugins you trust as much as MultiSens itself.
+
+<details>
+<summary><b>Full detail, with exact doc references</b> (click to expand)</summary>
 
 - **Not a perception or ML platform.** No inference, no object
   detection, no "compliant"/"certified"/"safety score" claim anywhere
@@ -128,10 +237,10 @@ whatever else speaks RTSP.
   never "the added sensor cost 5.1 Mbps" — and there is no combined
   decision+resource score anywhere either. See
   [docs/comparison.md](docs/comparison.md#non-causal-by-design).
-- **Evaluation is classification-only** (v0.2) — the domain model is
-  deliberately generic (see
+- **Evaluation is classification/detection/regression only** (v0.2/v0.8)
+  — the domain model is deliberately generic (see
   [docs/evaluation.md](docs/evaluation.md#task-values-generic-by-design)),
-  but detection/regression metric engines don't exist yet.
+  but no tracking, segmentation, pose, or AP/mAP engine exists.
 - **Not tied to any vendor, OEM, or dataset.** No proprietary integration,
   no hardcoded sensor brand, no code specific to the reference simulator
   anywhere outside its own config entry.
@@ -150,6 +259,8 @@ whatever else speaks RTSP.
   environment: only install plugins you trust as much as you trust
   MultiSens itself. See
   [docs/plugin-sdk.md#trust-model](docs/plugin-sdk.md#trust-model).
+
+</details>
 
 ## Architecture
 
@@ -171,20 +282,7 @@ metadata never share a transport, and ROS/DDS never talks to the browser
 directly. Full diagram, container topology rationale, and the measured
 evidence behind each major decision: [docs/architecture.md](docs/architecture.md).
 
-## Quick start
-
-```bash
-git clone https://github.com/CosminBMemetea/multisens.git
-cd multisens
-docker compose up -d
-docker compose ps          # ros, backend, frontend should all show "healthy"
-open http://localhost:8080 # the dashboard
-```
-
-This alone gets you the ROS graph, the backend, and the dashboard running —
-you still need an RTSP source for it to show anything (see next section).
-
-## Simulator dependency
+## Getting live video in
 
 MultiSens ingests from RTSP; it does not produce sensor data itself. For
 local development, the reference simulator is a separate repository:
@@ -203,178 +301,49 @@ references this simulator — the only place it appears is as URLs in
 `config/sensors.yaml`. Point that file at real sensors and the simulator is
 never needed.
 
-## Physical vs. simulated — a hard distinction
+**Physical vs. simulated — a hard distinction.** Every sensor in
+`config/sensors.yaml` declares `source_type: physical` or `simulated`,
+and that value flows untouched through diagnostics, the ROS graph, and
+the dashboard's badges (visible in the screenshot above). In the
+reference setup, `depth`/`thermal` are FFmpeg `pseudocolor` transforms
+of the `rgb` feed — visually similar to real output, but never claimed
+to be a physical measurement, and truthfully linked back via
+`derived_from_sensor_id` (v1.0.0). See
+[docs/connector-api.md](docs/connector-api.md) for the full config
+schema.
 
-Every sensor in `config/sensors.yaml` declares `source_type: physical` or
-`source_type: simulated`, and that value flows untouched through
-diagnostics, the ROS graph, and the dashboard's badges. In the reference
-setup: `rgb` is a real webcam feed (`physical`); `depth` and `thermal` are
-FFmpeg `pseudocolor` transforms of that same feed (`simulated`) — visually
-similar to real depth/thermal output, but never claimed to be a physical
-measurement anywhere in the system. This distinction exists specifically so
-a consumer of MultiSens's data can never mistake synthetic data for real
-sensor output. See [docs/connector-api.md](docs/connector-api.md) for the
-full config schema and what happens automatically once a sensor is added.
+## Demos
 
-## Evaluation quick start (v0.2)
+Every demo loads a deterministic, clearly-labeled **synthetic** dataset
+through the ordinary REST API — none of these represent real sensor
+performance, and each script prints the exact URL to open when it
+finishes. Run `docker compose up -d` once, then any subset of:
 
-Independent of the live dashboard above — works with or without an RTSP
-source connected. Loads a deterministic, clearly-labeled **synthetic**
-dataset (100 ground-truth samples, seven prediction configurations —
-every non-empty subset of `{rgb, depth, thermal}` — at exact-by-
-construction accuracies forming a clean lattice) through the ordinary
-REST API:
+| Demo | Shows | Load script |
+|---|---|---|
+| Classification (v0.2) | Accuracy/precision/recall/F1, confusion matrix, timeline — 7 configurations forming a clean lattice | `scripts/load_demo_data.py` |
+| Comparison (v0.3) | Sensor addition/removal deltas, ablation, non-causal validity verdicts — open [`/comparison`](http://localhost:8080/comparison) after loading the demo above | *(same dataset)* |
+| Requirement coverage + exploration (v0.4/v0.5) | 8 requirements × 6 sessions across illumination/occlusion/weather, 25–100% coverage by construction | `scripts/load_profile_demo_data.py` |
+| Decision support (v0.6) | 8 configurations, minimum sufficient set, 4-point Pareto front, gap analysis | `scripts/load_decision_demo_data.py` |
+| RideSafe / PropertyWatch trade-offs (v0.7) | Resource cost vs. coverage — front/rear dashcam and a 3-camera Pareto staircase | `scripts/load_ridesafe_demo_data.py`, `scripts/load_propertywatch_demo_data.py` |
+| Object detection (v0.8) | Per-class precision/recall/F1/IoU on RideSafe front/rear and PropertyWatch's 3 cameras | `scripts/load_ridesafe_detection_demo_data.py`, `scripts/load_propertywatch_detection_demo_data.py` |
+| Robot/Drone (v0.8) | Detection + regression evaluators on a synthetic mobile-robot platform | `scripts/load_robot_drone_demo_data.py` |
 
-```bash
-docker compose up -d
-python3 scripts/load_demo_data.py
-open http://localhost:8080/sessions
-```
+<p align="center">
+  <img src="docs/images/evaluation.png" alt="MultiSens evaluation panel — per-configuration metrics table, confusion matrix, and per-sample timeline" width="820">
+  <br>
+  <sub>One session, seven configurations, one confusion matrix, one per-sample timeline — every number traceable back to the raw ground-truth/prediction pair that produced it.</sub>
+</p>
 
-See [examples/evaluation/README.md](examples/evaluation/README.md) for
-exactly what the dataset is (and isn't — it does not represent real
-sensor performance) and [docs/evaluation.md](docs/evaluation.md) for the
-full domain model, matching algorithm, metric semantics, and API surface.
+Full derivation for every synthetic dataset above (exactly how each
+number was constructed, not measured):
+[examples/profiles/README.md](examples/profiles/README.md) /
+[examples/evaluation/README.md](examples/evaluation/README.md).
 
-## Comparison quick start (v0.3)
-
-Uses the same demo session as above — evaluate at least two
-configurations first, then:
-
-```bash
-open http://localhost:8080/comparison
-```
-
-Pick a session, task, and baseline configuration, hit **Compare**. The
-seven-configuration demo above is deliberately built so every comparison
-between two of its configurations is `VALID` and no sensor removal ever
-shows an improvement — a clean first look at the Sensor Addition,
-Ablation, and General Comparison sections. Full contract:
-[docs/comparison.md](docs/comparison.md).
-
-## Requirement profile / coverage / exploration quick start (v0.4 + v0.5)
-
-A separate, deliberately generic demo — "Generic Sensor Evaluation Lab" —
-six sessions across `illumination`/`occlusion`/`weather` conditions, eight
-requirements, exact-by-construction accuracies:
-
-```bash
-docker compose up -d
-python3 scripts/load_profile_demo_data.py
-open http://localhost:8080/profiles
-```
-
-Open "Generic Sensor Evaluation Lab," hit **Compute coverage**. Every
-configuration passes a genuinely different subset of the eight
-requirements (25%/50%/38%/75%/100% coverage) — click any cell to see
-exactly which evidence produced it. The **Explorer**, **Failures**, and
-**Evidence** tabs (v0.5) filter, group, and cross-tabulate the same
-requirements by condition, using the same three dimensions. See
-[examples/profiles/README.md](examples/profiles/README.md) for the full
-derivation and [docs/profiles.md](docs/profiles.md) /
-[docs/coverage.md](docs/coverage.md) for the domain model and API.
-
-## Decision support quick start (v0.6)
-
-A third, genuinely different synthetic profile/dataset — "Generic
-Exterior Sensing Decision Demo," front/rear camera positions plus
-simulated thermal/depth, not a variant of the sensor-lab demo above:
-
-```bash
-docker compose up -d
-python3 scripts/load_decision_demo_data.py
-open http://localhost:8080/profiles
-```
-
-Open "Generic Exterior Sensing Decision Demo," open its **Decision**
-tab. Eight configurations against four accuracy bars produce exactly one
-minimum sufficient set and a four-point Pareto trade-off curve — pick a
-baseline/candidate pair in the gap-analysis section to see which
-requirements newly pass, and try the sensor-removal sweep to see
-"removable" vs. "policy-critical" reported explicitly. See
-[examples/profiles/README.md](examples/profiles/README.md) for the full
-derivation and [docs/decision-support.md](docs/decision-support.md) for
-the domain model and API.
-
-## Deployment trade-offs quick start (v0.7)
-
-Two independent, non-cabin demo families — reference personal camera
-hardware, not any employer or professional evaluation project:
-
-```bash
-docker compose up -d
-python3 scripts/load_ridesafe_demo_data.py
-python3 scripts/load_propertywatch_demo_data.py
-open http://localhost:8080/profiles
-```
-
-Open **"RideSafe — Ride Monitoring Demo"** and its **Resources** tab: a
-two-configuration (front-only / front+rear) trade-off around 70mai
-dashcams, ride monitoring and incident evidence only — never a safety-
-certification or driver-monitoring claim. Open **"PropertyWatch —
-Property Monitoring Demo"** for the flagship "is the third camera worth
-its resource load" example: three nested configurations
-(entrance-only → +storage → +storage+indoor) produce a genuine 3-point
-Pareto staircase, more sensors always costing more but also always
-reaching more requirement coverage. Try the resource-constraint form
-(e.g. `cpu_percent <= 30`) to see `QUALIFIES`/`DOES_NOT_QUALIFY`/
-`UNDETERMINED` reported directly from the backend, and the baseline/
-candidate comparison section for an observed (never causal) resource
-delta. See [examples/profiles/README.md](examples/profiles/README.md)
-for the full derivation and
-[docs/resources.md](docs/resources.md) /
-[docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) for the
-domain model and API.
-
-## Multi-task evaluation quick start (v0.8)
-
-A first standalone exercise of the v0.8 object-detection evaluator,
-extending the RideSafe reference story above with two detection tasks -
-no new demo family, same personal dashcam framing:
-
-```bash
-docker compose up -d
-python3 scripts/load_ridesafe_detection_demo_data.py
-open http://localhost:8080/sessions/ridesafe-detection-demo-session
-```
-
-Select `front_scene_object_detection` or `rear_scene_object_detection` in
-the session's Evaluation panel to see per-class precision/recall/F1 and
-mean matched IoU - front-camera detection is deliberately built stronger
-than rear (0.80 vs. 0.57 F1), the same "genuinely different pattern per
-configuration" story every other demo in this project tells. See
-[examples/profiles/README.md](examples/profiles/README.md) for the full
-by-construction derivation.
-
-A second detection demo (Phase 88) extends PropertyWatch the same way,
-across all three camera positions:
-
-```bash
-docker compose up -d
-python3 scripts/load_propertywatch_detection_demo_data.py
-open http://localhost:8080/sessions/propertywatch-detection-demo-session
-```
-
-Entrance detects best (F1 0.821), indoor worst (F1 0.529) - by
-construction, see [examples/profiles/README.md](examples/profiles/README.md).
-
-A third demo (Phase 89) introduces the first generic robotics-ready
-reference example - a mobile robot/small drone platform, entirely
-synthetic, never an autonomous navigation, drone control, or flight
-safety system:
-
-```bash
-docker compose up -d
-python3 scripts/load_robot_drone_demo_data.py
-open http://localhost:8080/sessions/robot-drone-demo-session
-```
-
-Select `obstacle_detection` (camera vs. depth-derived detection) or
-`distance_estimation` (a dedicated range sensor vs. a depth-camera
-estimate, regression evaluator) - both task profiles over the same
-generic v0.8 evaluators, no new evaluator logic. See
-[examples/profiles/README.md](examples/profiles/README.md) for the full
-by-construction derivation.
+Want to see the v1.0.0 live-inference path (a real YOLOv8n worker,
+process-isolated, self-healing on failure) running end to end on your
+own machine? Full copy-pasteable walkthrough in
+[docs/development.md](docs/development.md).
 
 ## Docker requirements
 
@@ -388,7 +357,7 @@ by-construction derivation.
 - See [docs/configuration.md](docs/configuration.md) for every environment
   variable, port, and volume mount `docker-compose.yml` uses.
 
-## URLs
+## URLs & API surface
 
 | What | URL |
 |---|---|
@@ -396,17 +365,20 @@ by-construction derivation.
 | Sessions / Evaluation (v0.2) | http://localhost:8080/sessions |
 | Comparison (v0.3) | http://localhost:8080/comparison |
 | Profiles / Coverage (v0.4) | http://localhost:8080/profiles |
+| Integrations (v0.9) | http://localhost:8080/integrations |
 | Backend REST | http://localhost:8000/api/* |
 | Backend WebSocket | ws://localhost:8000/ws/status |
 | MJPEG video (per sensor) | http://localhost:8000/api/sensors/{id}/stream.mjpeg |
 
-Full v0.1 API surface: [docs/connector-api.md](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting).
-Full evaluation API surface: [docs/evaluation.md](docs/evaluation.md#api-surface).
-Full comparison API surface: [docs/comparison.md](docs/comparison.md#api-surface).
-Full profile/coverage API surface: [docs/profiles.md](docs/profiles.md#api-surface) / [docs/coverage.md](docs/coverage.md#api-surface).
-Full decision-support API surface: [docs/decision-support.md](docs/decision-support.md#api-surface).
-Full resource-observation API surface: [docs/resources.md](docs/resources.md#api-surface).
-Full deployment-trade-off API surface: [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md#api-surface).
+Full API surface, one link per layer:
+[ingestion](docs/connector-api.md#backend-api-surface-for-building-an-alternative-frontend-or-scripting) ·
+[evaluation](docs/evaluation.md#api-surface) ·
+[comparison](docs/comparison.md#api-surface) ·
+[profiles](docs/profiles.md#api-surface) /
+[coverage](docs/coverage.md#api-surface) ·
+[decision support](docs/decision-support.md#api-surface) ·
+[resources](docs/resources.md#api-surface) ·
+[trade-offs](docs/deployment-tradeoffs.md#api-surface).
 
 ## ROS topics
 
@@ -430,154 +402,67 @@ changes independently of this README.
 
 ## Roadmap
 
-v0.1 delivered ingestion, synchronization, diagnostics, and visualization.
-v0.2 added the evaluation layer on top: sessions, scenarios, ground-truth/
-prediction ingestion from any source, timestamp matching, and
-classification metrics (comparison table, confusion matrix, timeline) —
-see [docs/evaluation.md](docs/evaluation.md). v0.3 added configuration
-comparison on top of that: metric/coverage deltas reported two ways
-(as-persisted and over a common matched population), sensor addition/
-removal relationships, ablation as a comparison view, a non-causal
-evidence-quality validity verdict, and deterministic multi-source
-ambiguity handling — see [docs/comparison.md](docs/comparison.md). v0.4
-added requirement profiles and coverage on top of that: generic
-hierarchical requirement groups with open-ended conditions, deterministic
-evidence selection (never ambiguous, never guessed), acceptance criteria
-against any existing metric, `PASS`/`FAIL`/`N/A` per requirement, and
-recursive coverage/completeness aggregation that never averages
-percentages or hides N/A behind a flattering number — see
-[docs/profiles.md](docs/profiles.md) / [docs/coverage.md](docs/coverage.md).
-v0.5 added condition exploration on top of that: dynamic condition
-filtering/faceting, 1D breakdown and 2D cross-tabulation, a failure
-explorer, an N/A breakdown that distinguishes a missing experiment from
-an evaluation gap, and full requirement-to-evidence traceability — never
-re-deciding `PASS`/`FAIL`/`N/A`, never a causal claim — see
-[docs/condition-explorer.md](docs/condition-explorer.md). v0.6 added
-decision support on top of that: an explicit, caller-supplied
-`DecisionPolicy` (never a default) judges each configuration
-`SUFFICIENT`/`INSUFFICIENT`/`UNDETERMINED`, minimum sufficient sensor
-sets by strict set-inclusion minimality (never sensor-count sorting,
-never narrowed to one when several tie), a Pareto/dominance trade-off
-front, and requirement-gap closure across four separately-exposed
-transition categories — never re-deciding `PASS`/`FAIL`/`N/A`, never a
-causal claim, and never a universal sensor-importance score — see
-[docs/decision-support.md](docs/decision-support.md). v0.7 added a
-resource-observation and deployment-trade-off layer on top of that:
-`ResourceObservation` evidence with explicit provenance
-(`measured`/`declared`/`estimated`/`unavailable`), per-configuration
-resource summaries, comparability rules gating cross-platform/
-cross-resolution comparison, resource constraints reusing the same
-acceptance-criterion grammar v0.4 already established, a resource-aware
-generalized Pareto front, and observed-only resource deltas — never
-merged with decision evidence into one score — see
-[docs/resources.md](docs/resources.md) /
-[docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md). Two
-independent personal-camera demo families (RideSafe, PropertyWatch)
-replace cabin/occupant-style examples going forward — see
-[docs/provenance.md](docs/provenance.md) for the cross-cutting evidence-
-honesty discipline both build on. v0.8 generalized the evaluation layer
-beyond classification: a small, closed `Evaluator` interface plus a
-static registry, two new evaluators (object detection — bounding-box
-IoU/greedy matching, precision/recall/F1/mean-IoU, per-class breakdown;
-scalar regression — MAE/RMSE/bias/median, unit-aware), full backward
-compatibility for every pre-v0.8 classification workflow, and a first
-robotics-flavored reference demo (Robot/Drone Sensing) built entirely as
-task profiles over the same two generic evaluators — no new
-evaluator-specific logic per task name. Every other layer (comparison,
-coverage, decision, trade-offs) is evaluator-blind by construction and
-needed zero engine changes to support the new evaluators — see
-[docs/evaluators.md](docs/evaluators.md). v0.9 added a plugin SDK for
-external integration: a small, independently-installable
-`multisens_sdk` package (canonical wire-shape models plus five typed
-connector/evaluator/resource-collector `Protocol` contracts), Python
-entry-point discovery, per-sensor connector lifecycle wrapping with
-strict failure isolation, and a read-only `/integrations` page — a new
-sensor, prediction/ground-truth source, evaluator, or resource-telemetry
-integration is now an installable Python package, never a MultiSens core
-edit. Plugins are trusted local software (no sandboxing, stated
-explicitly and repeatedly, never implied otherwise) — see
-[docs/plugin-sdk.md](docs/plugin-sdk.md). v1.0-RC closed the two
-remaining gaps that same plugin architecture surfaced: sensor identity
-was keyed by `modality` (two same-modality live cameras, e.g. two RGB
-dashcams, collided on one topic) — sensor topics are now keyed by a
-required-unique `sensor_id`, live-verified with two simultaneous RTSP-
-replayed RGB feeds; and MultiSens itself still produces zero predictions,
-but a reference YOLOv8n inference worker plus a thin, process-isolated
-bridge plugin now demonstrate the whole background-inference path end to
-end — session-bound wiring, live dashboard status
-(`ACTIVE`/`NONE`/`ERROR`, real measured predictions/sec), and a
-self-healing connector state machine that survives a worker restart mid-
-session without restarting the session itself. A four-sensor
-configuration (2 live cameras + 2 derived feeds, one with live inference
-attached) and both a detector-only and a sensor-only failure were each
-killed and independently recovered on the real stack, not simulated —
-see [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125)
-for the exact numbers, matrix, and two honestly-reported observability
-gaps found along the way (tracked, not silently absorbed).
+Each release built directly on the last; nothing here was re-architected
+away in a later version.
 
-Not yet built, deliberately: sensor fusion, causal/statistical
-claims (no p-values, no confidence intervals, no "sensor X caused Y"),
-object tracking/segmentation/pose/localization evaluators (v0.8 added
-detection and regression only — see
-[docs/limitations.md](docs/limitations.md)), AP/mAP or any other
-combined detection score, relative/percentage regression error, vector
-regression, per-requirement
-weighted/mandatory-scoped aggregation (v0.6's mandatory flag is an
-all-or-nothing population setting, not a per-requirement list), cost/
-power/latency decision objectives (only `minimize_sensor_count` exists),
-a simultaneous 3+-dimension cross-tab, saved/named filter presets, real
-depth/thermal sensor conversion, a file-import API endpoint, GPU/power/
-temperature/storage-write resource metrics (no discrete GPU or Jetson
-reachable in this release's environment — see
-[docs/limitations.md](docs/limitations.md)), cross-platform resource
-comparison exercised against a genuine second machine, authentication,
-cloud deployment. See
-[CHANGELOG.md](CHANGELOG.md) for how each release was built and verified.
+| Version | Headline | Full detail |
+|---|---|---|
+| v0.1 | Ingestion, synchronization, diagnostics, visualization | [docs/topics.md](docs/topics.md) |
+| v0.2 | Evaluation core — sessions, matching, classification metrics | [docs/evaluation.md](docs/evaluation.md) |
+| v0.3 | Configuration comparison, non-causal validity verdicts | [docs/comparison.md](docs/comparison.md) |
+| v0.4 | Requirement profiles & coverage | [docs/profiles.md](docs/profiles.md) / [docs/coverage.md](docs/coverage.md) |
+| v0.5 | Condition exploration, failure/N/A analysis | [docs/condition-explorer.md](docs/condition-explorer.md) |
+| v0.6 | Decision support — sufficiency, minimum sets, Pareto | [docs/decision-support.md](docs/decision-support.md) |
+| v0.7 | Resource observation & deployment trade-offs | [docs/resources.md](docs/resources.md) / [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) |
+| v0.8 | Object detection & regression evaluators | [docs/evaluators.md](docs/evaluators.md) |
+| v0.9 | Plugin SDK — external integration via `pip install` | [docs/plugin-sdk.md](docs/plugin-sdk.md) |
+| **v1.0.0** | **`sensor_id`-keyed topics + live, self-healing background inference** | [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125) |
+
+v1.0.0 closed the two gaps the v0.9 architecture surfaced: sensor
+identity was keyed by `modality` (two same-modality live cameras
+collided on one topic) — topics are now keyed by a required-unique
+`sensor_id`, live-verified with two simultaneous RTSP-replayed RGB
+feeds. And a reference YOLOv8n inference worker plus a thin,
+process-isolated bridge plugin demonstrate the whole background-
+inference path end to end — session-bound wiring, live dashboard status
+with real measured predictions/sec, and a connector state machine that
+self-heals from a worker restart, a sensor disconnect, or a
+stale-but-still-responding input, all without restarting the session.
+A four-sensor configuration and both failure modes were killed and
+independently recovered on the real stack, not simulated.
+
+Not yet built, deliberately: sensor fusion, causal/statistical claims,
+tracking/segmentation/pose evaluators, AP/mAP, per-requirement weighted
+aggregation, cost/power/latency decision objectives, GPU resource
+metrics, cross-platform resource comparison, authentication, cloud
+deployment. Full list with reasoning:
+[docs/limitations.md](docs/limitations.md). Everything that shipped,
+how it was verified: [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — system design and the
-  reasoning behind it
-- [docs/evaluation.md](docs/evaluation.md) — evaluation domain model,
-  matching, metrics, API surface (v0.2)
-- [docs/comparison.md](docs/comparison.md) — comparison domain model,
-  validity semantics, ambiguity handling, API surface (v0.3)
-- [docs/profiles.md](docs/profiles.md) — requirement profile domain
-  model, validation, storage, API surface (v0.4)
-- [docs/coverage.md](docs/coverage.md) — evidence selection, acceptance
-  engine, coverage aggregation, API surface, frontend (v0.4)
-- [docs/condition-explorer.md](docs/condition-explorer.md) — filtering,
-  faceting, grouping/cross-tabs, failure/N/A exploration, evidence
-  traceability, API surface, frontend (v0.5)
-- [docs/decision-support.md](docs/decision-support.md) — policy model,
-  sufficiency semantics, minimum sufficient sets, Pareto/dominance,
-  requirement gap closure, API surface, frontend (v0.6)
-- [docs/resources.md](docs/resources.md) — resource-observation model,
-  provenance/quality vocabulary, metric vocabulary, collection,
-  persistence, API surface, frontend (v0.7)
-- [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) —
-  trade-off engine, comparability, resource constraints, generalized
-  Pareto, RideSafe/PropertyWatch worked examples, API surface, frontend
-  (v0.7)
-- [docs/provenance.md](docs/provenance.md) — cross-cutting data
-  provenance and evidence-honesty discipline across every layer
-- [docs/evaluators.md](docs/evaluators.md) — generic `Evaluator`
-  interface, registry, `evaluator_type` persistence, backward
-  compatibility (v0.8)
-- [docs/detection-evaluation.md](docs/detection-evaluation.md) — bbox
-  convention, IoU, greedy matching, thresholds, per-class metrics, no
-  AP/mAP (v0.8)
-- [docs/regression-evaluation.md](docs/regression-evaluation.md) —
-  scalar value/unit schema, MAE/RMSE/bias/median, unit-mismatch rules
-  (v0.8)
-- [docs/plugin-sdk.md](docs/plugin-sdk.md) — v0.9 Plugin SDK & External
-  Integration Framework: the `multisens_sdk` package, discovery/registry,
-  connector lifecycle, trust model, and the read-only integrations API/UI
+**Core**
+- [docs/architecture.md](docs/architecture.md) — system design and the reasoning behind it
 - [docs/topics.md](docs/topics.md) — ROS topic/message contract
 - [docs/configuration.md](docs/configuration.md) — every config surface
 - [docs/diagnostics.md](docs/diagnostics.md) — how to read the health model
 - [docs/connector-api.md](docs/connector-api.md) — adding a sensor, backend API
-- [docs/development.md](docs/development.md) — repo layout, tests, dev workflow
+- [docs/development.md](docs/development.md) — repo layout, tests, dev workflow, the full v1.0.0 live-inference walkthrough
+
+**Evaluation layers**
+- [docs/evaluation.md](docs/evaluation.md) — domain model, matching, metrics, API (v0.2)
+- [docs/comparison.md](docs/comparison.md) — validity semantics, ambiguity handling, API (v0.3)
+- [docs/profiles.md](docs/profiles.md) / [docs/coverage.md](docs/coverage.md) — requirements, evidence selection, coverage aggregation (v0.4)
+- [docs/condition-explorer.md](docs/condition-explorer.md) — filtering, faceting, failure/N/A exploration (v0.5)
+- [docs/decision-support.md](docs/decision-support.md) — policy model, sufficiency, Pareto/dominance (v0.6)
+- [docs/resources.md](docs/resources.md) / [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) — resource provenance, trade-off engine (v0.7)
+- [docs/evaluators.md](docs/evaluators.md) — generic `Evaluator` interface & registry (v0.8)
+- [docs/detection-evaluation.md](docs/detection-evaluation.md) — bbox convention, IoU, greedy matching (v0.8)
+- [docs/regression-evaluation.md](docs/regression-evaluation.md) — scalar value/unit schema, MAE/RMSE (v0.8)
+- [docs/provenance.md](docs/provenance.md) — the evidence-honesty discipline every layer above shares
+
+**Extensibility & release history**
+- [docs/plugin-sdk.md](docs/plugin-sdk.md) — the `multisens_sdk` package, discovery, connector lifecycle, trust model, v1.0.0's live-inference reference plugin
 - [docs/limitations.md](docs/limitations.md) — what MultiSens doesn't do, and why
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, what was fixed, verified how
 
