@@ -431,6 +431,12 @@ stale-but-still-responding input, all without restarting the session.
 A four-sensor configuration and both failure modes were killed and
 independently recovered on the real stack, not simulated.
 
+<p align="center">
+  <img src="docs/images/dual_rgb_cameras.png" alt="MultiSens dashboard showing two independent same-modality RGB dashcams (front and rear) connected simultaneously, sync health OK" width="820">
+  <br>
+  <sub>The exact fix in one screenshot: two independent physical RGB cameras (front + rear dashcams), both <code>modality: rgb</code>, live simultaneously — impossible before v1.0.0's <code>sensor_id</code>-keyed topics, since both would have collided on <code>/multisens/sensors/rgb/image_raw</code>.</sub>
+</p>
+
 Not yet built, deliberately: sensor fusion, causal/statistical claims,
 tracking/segmentation/pose evaluators, AP/mAP, per-requirement weighted
 aggregation, cost/power/latency decision objectives, GPU resource
