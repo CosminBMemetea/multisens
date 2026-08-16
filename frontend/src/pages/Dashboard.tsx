@@ -76,7 +76,7 @@ export function Dashboard() {
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
         <span className="self-start rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-400">
-          v0.2-dev · dev simulator session
+          v1.0.0 · live sensor session
         </span>
 
         {configError && (

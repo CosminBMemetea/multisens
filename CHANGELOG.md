@@ -7,6 +7,35 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ## [Unreleased]
 
+## [1.0.0] — Live background inference & multi-sensor identity
+
+Closes the two gaps the v0.9.0/v0.9.1 roadmap left open, both under the
+same "v1.0-RC" architecture review (issues #121-#127): sensor identity
+was keyed by `modality` (two same-modality live cameras collided on one
+topic) - sensor topics are now keyed by a required-unique `sensor_id`,
+live-verified with two simultaneous RTSP-replayed RGB feeds. And
+MultiSens itself still produces zero predictions by design, but a
+reference YOLOv8n inference worker plus a thin, process-isolated bridge
+plugin now demonstrate the whole background-inference path end to end -
+session-bound wiring, live dashboard status (`ACTIVE`/`NONE`/`ERROR`
+with real measured predictions/sec and honest staleness detection), and
+a self-healing connector state machine that survives a worker restart,
+a sensor disconnect, or a stale-but-still-responding input, all without
+restarting the session itself. Every claim in this release was
+exercised against the real docker compose stack with real killed
+processes, not simulated - including a four-sensor combination (2 live
+cameras + 2 derived feeds, one with live inference attached) and real,
+honestly-attributed resource measurements. Two gaps found along the way
+during live verification were fixed in the same arc (issue #126's
+connector self-healing, issue #127's staleness detection); nothing was
+left half-fixed or silently absorbed.
+
+See [docs/limitations.md](docs/limitations.md) for the full,
+authoritative list of what's still a deliberate scope boundary versus
+an honestly-reported gap, and the release-preparation regression pass
+below for what was re-verified from a completely clean rebuild before
+shipping.
+
 ### Added
 
 - **Failure/recovery test matrix + real resource measurement** (v1.0-RC
@@ -329,6 +358,23 @@ is explicitly chosen, zero console errors.
   restarted *without touching the session* - the connector self-healed
   to `RUNNING` and predictions resumed, `total_predictions` climbing
   within the same, uninterrupted session throughout.
+
+### Release preparation
+
+Full `docker compose down && docker compose build --no-cache && docker
+compose up` regression pass, same discipline v0.9.0's own Phase 106
+established: all three images rebuilt from scratch, all three
+containers healthy. The full 1082-test backend suite, the 65-test
+frontend suite (plus a clean `tsc --noEmit`), and the 18 ROS pure-logic
+tests all re-run and passing against the fresh containers. All three
+example/reference plugin packages' own test suites re-run standalone in
+clean virtualenvs (27 + 17 + 14 tests). All eight demo datasets
+(classification, profiles, decision, RideSafe/PropertyWatch ×2 each,
+Robot/Drone) reloaded through the ordinary REST API and re-evaluated,
+matching their own by-construction expected numbers. A live cross-page
+browser pass (Dashboard, Sessions, a session detail page, Comparison,
+Profiles, a profile detail page, Integrations) with zero console errors
+on every page. Release badge bumped to v1.0.0.
 
 ## [0.9.1] — Adversarial bug hunt & live resource collection
 
