@@ -19,9 +19,9 @@ freshly-captured screenshots and verified test counts instead of prose
 claims.
 
 <p align="center">
-  <img src="docs/images/dashboard.png" alt="MultiSens live dashboard — three real RTSP sensors connected, sync and system health both OK" width="820">
+  <img src="docs/images/demodashboardv1.png" alt="MultiSens live dashboard — reference webcam simulator, one physical RGB feed plus two simulated depth/thermal transforms, sync and system health both OK" width="820">
   <br>
-  <sub>The live dashboard, connected to three real RTSP streams — one physical camera plus two feeds it truthfully declares as <code>derived_from_sensor_id</code>.</sub>
+  <sub>The live dashboard, connected to the reference simulator — one physical webcam feed plus two <code>SIMULATED</code> pseudocolor transforms of it, each truthfully declared as <code>derived_from_sensor_id: rgb</code>, never mistaken for real depth/thermal measurement.</sub>
 </p>
 
 ## Contents
