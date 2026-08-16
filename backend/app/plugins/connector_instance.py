@@ -17,6 +17,19 @@ be polled safely on a loop, so they always return a value describing
 current reality (including a `FAILED` state), never another way to
 crash a poller.
 
+**v1.0-RC, issue #126**: a `sample()`/`health()` exception moves state
+to `DEGRADED`, not `FAILED` - and both keep calling the underlying
+plugin every cycle while `DEGRADED`, flipping back to `RUNNING` the
+moment a call succeeds. Same fix, same reasoning, as
+`poll_connector_instance.py`'s own docstring - found there first, then
+recognized this file has the identical latching pattern (a transient
+RTSP hiccup used to permanently end that sensor's connector-level
+`sample()`/`health()` reporting for the rest of the session, requiring
+a full `stop()`+`configure()`+`start()` cycle to recover, when the ROS
+ingestion side of the exact same sensor already reconnects on its own).
+`FAILED` is unchanged for `configure()`/`start()`/`stop()` failures -
+those stay terminal until an explicit fresh `start()`.
+
 ## One `ConnectorInstance` per sensor_id, never a shared object
 
 Two sensor ids using the same plugin (`ridesafe_front_rgb`/
@@ -116,31 +129,45 @@ class ConnectorInstance:
         self._last_error = None
 
     def health(self) -> ConnectorHealth:
-        if self._state != ConnectorState.RUNNING:
+        if self._state not in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
             return ConnectorHealth(state=self._state, message=self._last_error)
         try:
-            return self._connector.health()
+            result = self._connector.health()
         except Exception as e:  # noqa: BLE001 - untrusted plugin code
-            self._state = ConnectorState.FAILED
+            self._state = ConnectorState.DEGRADED
             self._last_error = str(e)
-            return ConnectorHealth(state=ConnectorState.FAILED, message=str(e))
+            return ConnectorHealth(state=ConnectorState.DEGRADED, message=str(e))
+        # Adopt whatever the plugin itself reports rather than blindly
+        # forcing RUNNING just because the call didn't raise (found live-
+        # verifying issue #126's own fix) - a plugin can legitimately
+        # self-report DEGRADED without raising at all (e.g.
+        # builtin_rtsp.py's own connectivity check). Anything other than
+        # RUNNING/DEGRADED is left alone - health() is observational, it
+        # shouldn't push this wrapper into a lifecycle-terminal state.
+        if result.state in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
+            self._state = result.state
+            self._last_error = result.message
+        return result
 
     def sample(self) -> SensorSample | None:
-        """Never raises. `None` if not `RUNNING`, if the plugin's own
-        `sample()` call failed (connector moves to `FAILED`), or if a
-        sample arrived but violated the small-payload contract - that
-        last case leaves the connector `RUNNING`: an oversized sample is
-        a data-quality problem with one reading, not a connectivity
-        failure, and must not take down an otherwise-healthy
-        connector."""
-        if self._state != ConnectorState.RUNNING:
+        """Never raises. `None` if not `RUNNING`/`DEGRADED`, if the
+        plugin's own `sample()` call failed (connector moves to
+        `DEGRADED` - issue #126, kept eligible to keep trying, unlike
+        `FAILED`), or if a sample arrived but violated the small-payload
+        contract - that last case leaves the connector `RUNNING`: an
+        oversized sample is a data-quality problem with one reading, not
+        a connectivity failure, and must not take down an otherwise-
+        healthy connector."""
+        if self._state not in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
             return None
         try:
             result = self._connector.sample()
         except Exception as e:  # noqa: BLE001 - untrusted plugin code
-            self._state = ConnectorState.FAILED
+            self._state = ConnectorState.DEGRADED
             self._last_error = str(e)
             return None
+        self._state = ConnectorState.RUNNING
+        self._last_error = None
         if result is None:
             return None
         if not _payload_within_limit(result.payload):

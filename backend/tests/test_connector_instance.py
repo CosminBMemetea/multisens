@@ -30,6 +30,7 @@ class _FakeConnector:
         self.fail_start = False
         self.fail_stop = False
         self.fail_sample = False
+        self.fail_health = False
         self.next_sample: SensorSample | None = None
         self._running = False
 
@@ -56,6 +57,8 @@ class _FakeConnector:
 
     def health(self) -> ConnectorHealth:
         self.health_calls += 1
+        if self.fail_health:
+            raise RuntimeError('deliberately broken health()')
         return ConnectorHealth(state=ConnectorState.RUNNING if self._running else ConnectorState.STOPPED)
 
     def sample(self) -> SensorSample | None:
@@ -158,7 +161,7 @@ def test_health_while_running_delegates_to_the_plugin():
     assert health.state == ConnectorState.RUNNING
 
 
-def test_health_call_that_raises_moves_the_connector_to_failed_never_propagates():
+def test_health_call_that_raises_moves_the_connector_to_degraded_never_propagates():
     class _HealthExplodes(_FakeConnector):
         def health(self):
             raise RuntimeError('health() itself is broken')
@@ -169,9 +172,44 @@ def test_health_call_that_raises_moves_the_connector_to_failed_never_propagates(
     instance.start()
 
     health = instance.health()  # must not raise
-    assert health.state == ConnectorState.FAILED
+    assert health.state == ConnectorState.DEGRADED
     assert 'health() itself is broken' in health.message
-    assert instance.state == ConnectorState.FAILED
+    assert instance.state == ConnectorState.DEGRADED
+
+
+def test_health_self_heals_back_to_running_once_the_plugin_recovers():
+    # v1.0-RC issue #126: a transient RTSP hiccup must not permanently end
+    # this connector's own health()/sample() reporting for the rest of
+    # the session - the ROS ingestion side of the same sensor already
+    # reconnects on its own; this wrapper must keep pace, not require a
+    # full stop()+configure()+start() cycle to notice recovery.
+    instance, fake = _configured_instance()
+    instance.start()
+    fake.fail_health = True
+    instance.health()
+    assert instance.state == ConnectorState.DEGRADED
+
+    fake.fail_health = False
+    health = instance.health()
+
+    assert health.state == ConnectorState.RUNNING
+    assert instance.state == ConnectorState.RUNNING
+
+
+def test_health_adopts_a_plugin_reported_degraded_state_without_the_call_raising():
+    # v1.0-RC issue #126 (found live-verifying its own fix): a plugin can
+    # legitimately self-report DEGRADED via a normal, non-raising
+    # ConnectorHealth return (e.g. builtin_rtsp.py's own connectivity
+    # check) - the wrapper must not blindly force RUNNING just because
+    # the health() call itself didn't raise.
+    instance, fake = _configured_instance()
+    instance.start()
+    fake.health = lambda: ConnectorHealth(state=ConnectorState.DEGRADED, message='RTSP source unreachable')
+
+    health = instance.health()
+
+    assert health.state == ConnectorState.DEGRADED
+    assert instance.state == ConnectorState.DEGRADED
 
 
 # --- sample ------------------------------------------------------------------
@@ -192,12 +230,28 @@ def test_sample_while_running_returns_the_plugins_own_sample():
     assert result.payload == {'value': 42}
 
 
-def test_sample_that_raises_moves_to_failed_and_returns_none_not_a_crash():
+def test_sample_that_raises_moves_to_degraded_and_returns_none_not_a_crash():
     instance, fake = _configured_instance()
     instance.start()
     fake.fail_sample = True
     assert instance.sample() is None
-    assert instance.state == ConnectorState.FAILED
+    assert instance.state == ConnectorState.DEGRADED
+
+
+def test_sample_self_heals_back_to_running_once_the_plugin_recovers():
+    instance, fake = _configured_instance()
+    instance.start()
+    fake.fail_sample = True
+    instance.sample()
+    assert instance.state == ConnectorState.DEGRADED
+
+    fake.fail_sample = False
+    fake.next_sample = SensorSample(sensor_id='robot_front_rgb', timestamp_ms=1.0, sequence_id=1,
+                                     data_type='scalar', payload={'value': 1})
+    result = instance.sample()
+
+    assert result is not None
+    assert instance.state == ConnectorState.RUNNING
 
 
 def test_oversized_sample_payload_is_discarded_but_connector_stays_running():

@@ -1113,6 +1113,35 @@ blocking until actually stopped or raising** - no limbo state to poll.
 - `stop()` on `STOPPED` -> no-op, never raises.
 - `configure()` while `RUNNING` -> raises; must stop first.
 
+**`DEGRADED` self-heals; `FAILED` doesn't** (v1.0-RC, issue #126). A
+`poll()`/`sample()`/`health()` exception moves the connector to
+`DEGRADED`, not `FAILED` - and unlike `FAILED`, a `DEGRADED` connector
+keeps being called every cycle, flipping straight back to `RUNNING` the
+moment a call succeeds again. Found live-verifying the reference YOLO
+worker (issue #123): the pre-#126 behavior moved to `FAILED` on any such
+exception, and `FAILED` was excluded from ever being called again -
+meaning a worker restarting for a routine deploy, or any other transient
+outage, permanently and silently ended that connector's contribution to
+the *current* session; only a brand new session's `configure()`+`start()`
+(a mutating call, unaffected by this) ever re-armed it. `FAILED` is
+unchanged for a `configure()`/`start()`/`stop()` failure - those really
+are terminal until an explicit fresh `start()`, since there's no
+"try again next cycle" for a call that isn't on a schedule to begin
+with.
+
+A plugin's own `health()` can self-report `DEGRADED` too, via a normal
+non-raising `ConnectorHealth` return (`builtin_rtsp.py`'s own
+connectivity check does this) - the host adopts whatever `RUNNING`/
+`DEGRADED` the plugin reports rather than assuming a non-raising call
+means `RUNNING`. A plugin author whose `poll()`/`sample()` can fail
+independently of `health()` (a common shape: `poll()` does real I/O,
+`health()` just checks locally-cached state) should record that failure
+somewhere `health()` will see it too - otherwise `health()` may
+optimistically report `RUNNING` again on the very next call, masking an
+outage `poll()` is still actually experiencing (found the same way,
+fixing the reference bridge plugin's own `poll()` to record its error
+before re-raising, alongside this same issue).
+
 ## Data plane vs. control plane
 
 Extends [architecture.md](architecture.md#the-two-planes-controltelemetry-vs-video)'s

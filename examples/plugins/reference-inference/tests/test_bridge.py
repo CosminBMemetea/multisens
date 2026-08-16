@@ -218,6 +218,28 @@ def test_poll_propagates_a_worker_down_error_deliberately_uncaught(fake_worker):
         connector.poll()
 
 
+def test_poll_failure_is_reflected_in_this_plugins_own_health(fake_worker):
+    # v1.0-RC issue #126 (found live-verifying its own self-healing fix):
+    # this plugin's own health() must independently reflect a poll()
+    # failure, not just the core wrapper's tracked state - health() can
+    # be called on a completely separate schedule from poll(), and
+    # without this, a poll() failure followed by an unrelated health()
+    # call used to silently report RUNNING again (this plugin's own
+    # _last_error was never touched by a propagated exception), masking
+    # the real, still-ongoing outage.
+    worker_url, _responses = fake_worker
+    connector = YoloBridgeConnector()
+    connector.configure(_valid_config('http://127.0.0.1:1'))  # nothing listens here
+    connector.start()
+
+    with pytest.raises(urllib.error.URLError):
+        connector.poll()
+
+    health = connector.health()
+    assert health.state == ConnectorState.DEGRADED
+    assert health.message is not None
+
+
 def test_poll_handles_a_malformed_worker_response_without_raising(fake_worker):
     worker_url, responses = fake_worker
     responses['/latest'] = (200, {'detections': 'not-a-list'})  # missing frame_timestamp_ms, wrong detections type

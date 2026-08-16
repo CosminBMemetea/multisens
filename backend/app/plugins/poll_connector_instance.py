@@ -18,6 +18,24 @@ misbehaving plugin) is dropped with a recorded reason, the rest of the
 same `poll()` batch still returned - the same "one bad item never
 rejects the rest of an otherwise-valid batch" discipline
 `insert_batch_with_partial_failure` already applies one layer down.
+
+**v1.0-RC, issue #126**: a `poll()`/`health()` exception moves tracked
+state to `DEGRADED`, not `FAILED` - and `_poll_raw()`/`health()` both
+keep calling the underlying plugin every cycle while `DEGRADED`,
+flipping back to `RUNNING` the moment a call succeeds (genuine
+self-healing, not just "stop erroring louder"). Found live-verifying
+issue #123's own "restarting the worker recovers independently"
+acceptance bar: the previous behavior (`FAILED`, and `FAILED` excluded
+from ever calling the plugin again) meant a transient outage - a worker
+restarting for a routine deploy, an OOM-kill-and-supervisor-restart -
+permanently and silently ended that connector's contribution to the
+*current* session; only a brand new session's `configure()`+`start()`
+(which don't special-case `DEGRADED`/`FAILED`) ever re-armed it. `FAILED`
+itself is unchanged and still used exactly as before, for a
+`configure()`/`start()`/`stop()` failure - those really are terminal
+until an explicit fresh `start()`, unlike a `poll()`/`health()` call,
+which is just as likely to be transient as permanent and there's no way
+to tell the two apart except by trying again.
 """
 from __future__ import annotations
 
@@ -78,28 +96,44 @@ class _PollConnectorInstance:
         self._last_error = None
 
     def health(self) -> ConnectorHealth:
-        if self._state != ConnectorState.RUNNING:
+        if self._state not in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
             return ConnectorHealth(state=self._state, message=self._last_error)
         try:
-            return self._plugin.health()
+            result = self._plugin.health()
         except Exception as e:  # noqa: BLE001 - untrusted plugin code
-            self._state = ConnectorState.FAILED
+            self._state = ConnectorState.DEGRADED
             self._last_error = str(e)
-            return ConnectorHealth(state=ConnectorState.FAILED, message=str(e))
+            return ConnectorHealth(state=ConnectorState.DEGRADED, message=str(e))
+        # Adopt whatever the plugin itself reports rather than blindly
+        # forcing RUNNING just because the call didn't raise (found live-
+        # verifying issue #126's own fix) - a plugin can legitimately
+        # self-report DEGRADED without raising at all (e.g. this
+        # bridge's own poll()-failure tracking). Anything other than
+        # RUNNING/DEGRADED is left alone - health() is observational, it
+        # shouldn't push this wrapper into a lifecycle-terminal state.
+        if result.state in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
+            self._state = result.state
+            self._last_error = result.message
+        return result
 
     def _poll_raw(self) -> list[Any]:
-        """Shared `poll()` guard - not RUNNING or the plugin's own call
-        failing both return an empty list, never raising. Type-checking
-        of individual items is the concrete subclass's job (it knows
-        which canonical type to expect)."""
-        if self._state != ConnectorState.RUNNING:
+        """Shared `poll()` guard - not RUNNING/DEGRADED returns an empty
+        list, never raising. A `DEGRADED` connector (issue #126) keeps
+        being polled every cycle rather than excluded forever like
+        `FAILED`; a successful call flips it straight back to `RUNNING`.
+        Type-checking of individual items is the concrete subclass's job
+        (it knows which canonical type to expect)."""
+        if self._state not in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
             return []
         try:
-            return self._plugin.poll()
+            items = self._plugin.poll()
         except Exception as e:  # noqa: BLE001 - untrusted plugin code
-            self._state = ConnectorState.FAILED
+            self._state = ConnectorState.DEGRADED
             self._last_error = str(e)
             return []
+        self._state = ConnectorState.RUNNING
+        self._last_error = None
+        return items
 
 
 class PredictionConnectorInstance(_PollConnectorInstance):

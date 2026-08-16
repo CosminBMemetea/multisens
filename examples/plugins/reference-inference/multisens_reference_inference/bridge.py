@@ -133,7 +133,18 @@ class YoloBridgeConnector:
     def poll(self) -> list[Prediction]:
         if not self._active or self._sensor_id is None or self._worker_url is None:
             return []
-        response = self._fetch_latest()  # a worker-down error propagates - see module docstring
+        try:
+            response = self._fetch_latest()
+        except Exception as e:
+            # Still re-raised - see module docstring, _poll_raw() isolation is unchanged - but
+            # self._last_error is set first so this plugin's *own* health() (called independently
+            # of poll(), possibly on a completely different schedule) also reflects the failure.
+            # Found live-verifying issue #126's core-wrapper self-healing fix: without this, this
+            # plugin's health() kept reporting RUNNING after a poll() failure (its own _last_error
+            # was never touched by a propagated exception), silently overwriting the wrapper's own
+            # correctly-DEGRADED state the next time health() happened to be called.
+            self._last_error = str(e)
+            raise
         self._last_poll_monotonic = time.monotonic()
         self._last_error = None
 

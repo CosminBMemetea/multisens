@@ -6,6 +6,12 @@ observational calls (`health`/`sample`) never raise. `sample()` filters
 out anything that isn't actually a `ResourceObservation` (a misbehaving
 plugin), the same "one bad item never rejects the rest of a batch"
 discipline `poll_connector_instance.py` already applies.
+
+**v1.0-RC, issue #126**: same fix as `poll_connector_instance.py`'s own
+docstring - a `sample()`/`health()` exception moves state to `DEGRADED`,
+not `FAILED`, and both keep calling the plugin every cycle while
+`DEGRADED`, flipping back to `RUNNING` the moment a call succeeds.
+`FAILED` is unchanged for `configure()`/`start()`/`stop()` failures.
 """
 from __future__ import annotations
 
@@ -66,29 +72,43 @@ class ResourceCollectorInstance:
         self._last_error = None
 
     def health(self) -> ConnectorHealth:
-        if self._state != ConnectorState.RUNNING:
+        if self._state not in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
             return ConnectorHealth(state=self._state, message=self._last_error)
         try:
-            return self._plugin.health()
+            result = self._plugin.health()
         except Exception as e:  # noqa: BLE001 - untrusted plugin code
-            self._state = ConnectorState.FAILED
+            self._state = ConnectorState.DEGRADED
             self._last_error = str(e)
-            return ConnectorHealth(state=ConnectorState.FAILED, message=str(e))
+            return ConnectorHealth(state=ConnectorState.DEGRADED, message=str(e))
+        # Adopt whatever the plugin itself reports rather than blindly
+        # forcing RUNNING just because the call didn't raise (found live-
+        # verifying issue #126's own fix) - a plugin can legitimately
+        # self-report DEGRADED without raising at all. Anything other
+        # than RUNNING/DEGRADED is left alone - health() is
+        # observational, it shouldn't push this wrapper into a
+        # lifecycle-terminal state.
+        if result.state in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
+            self._state = result.state
+            self._last_error = result.message
+        return result
 
     def sample(self) -> list[ResourceObservation]:
-        """Never raises. `[]` if not `RUNNING` or the plugin's own
-        `sample()` call failed (connector moves to `FAILED`); a
+        """Never raises. `[]` if not `RUNNING`/`DEGRADED` or the plugin's
+        own `sample()` call failed (connector moves to `DEGRADED` - issue
+        #126, kept eligible to keep trying, unlike `FAILED`); a
         non-`ResourceObservation` item in the returned list is dropped
         with a recorded reason, the rest of the same batch still
         returned."""
-        if self._state != ConnectorState.RUNNING:
+        if self._state not in (ConnectorState.RUNNING, ConnectorState.DEGRADED):
             return []
         try:
             results = self._plugin.sample()
         except Exception as e:  # noqa: BLE001 - untrusted plugin code
-            self._state = ConnectorState.FAILED
+            self._state = ConnectorState.DEGRADED
             self._last_error = str(e)
             return []
+        self._state = ConnectorState.RUNNING
+        self._last_error = None
         valid: list[ResourceObservation] = []
         for item in results:
             if isinstance(item, ResourceObservation):

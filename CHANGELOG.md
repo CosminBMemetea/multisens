@@ -217,6 +217,53 @@ known front-clip false positive (frame `f_006`, confidence 0.40) is
 directly visible and correctly badged FP once `positive_label=present`
 is explicitly chosen, zero console errors.
 
+### Fixed
+
+- **Connector wrappers never self-healed after a `poll()`/`sample()`/
+  `health()` exception, within one continuous session** (v1.0-RC issue
+  #126, found live-verifying issue #123's own "restarting the worker
+  recovers independently" acceptance bar). `_PollConnectorInstance`
+  (`poll_connectors:`/`inference_connectors:`), `ResourceCollectorInstance`
+  (`resource_collectors:`), and `ConnectorInstance` (`SensorConnector`,
+  `/api/connectors`) all shared the identical pattern: any exception from
+  `poll()`/`sample()`/`health()` moved the connector to `FAILED`, and
+  `FAILED` was then permanently excluded from ever calling the plugin
+  again - a worker restarting for a routine deploy, an
+  OOM-kill-and-supervisor-restart, or any other transient outage
+  silently and permanently ended that connector's contribution to the
+  *current* session. Only a brand new session's `configure()`+`start()`
+  ever re-armed it (confirmed working, live, before this fix - the gap
+  was specifically mid-session recovery).
+
+  Fixed by introducing `DEGRADED` as a genuinely retryable state,
+  distinct from `FAILED`: a `poll()`/`sample()`/`health()` exception now
+  moves to `DEGRADED`, and a `DEGRADED` connector keeps being called
+  every cycle, flipping back to `RUNNING` the instant a call succeeds.
+  `FAILED` is unchanged for `configure()`/`start()`/`stop()` failures -
+  those remain terminal until an explicit fresh `start()`. A second,
+  related bug surfaced by the very first live-verification attempt of
+  this fix: `health()`'s success path blindly forced `RUNNING` just
+  because the call itself didn't raise, discarding a plugin's own
+  legitimate non-raising `DEGRADED` self-report (e.g. the reference YOLO
+  bridge plugin's own `poll()`-failure tracking) - fixed to adopt
+  whichever of `RUNNING`/`DEGRADED` the plugin actually reports. Also
+  fixed the reference bridge plugin itself (issue #123): its `poll()`
+  let a worker-down exception propagate without first recording it into
+  its own `_last_error`, so its *own* `health()` never learned about the
+  failure and kept reporting `RUNNING` right up until the wrapper fix
+  above would otherwise have adopted that stale, over-optimistic report.
+
+  15 new/updated backend tests across the three wrapper test files
+  (self-heal round-trips, plus a dedicated test proving a plugin's own
+  non-raising `DEGRADED` report is adopted rather than overridden), one
+  new bridge-plugin test. Live-verified through the real docker compose
+  stack exactly the way issue #123 itself was: a real session, a real
+  YOLO worker process killed mid-session (connector correctly showed
+  `DEGRADED` with the real `urlopen` error, predictions stopped), then
+  restarted *without touching the session* - the connector self-healed
+  to `RUNNING` and predictions resumed, `total_predictions` climbing
+  within the same, uninterrupted session throughout.
+
 ## [0.9.1] — Adversarial bug hunt & live resource collection
 
 Three confirmed bugs found by a live adversarial audit of the released

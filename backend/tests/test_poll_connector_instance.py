@@ -126,7 +126,7 @@ def test_poll_filters_out_malformed_non_prediction_items_keeping_the_valid_ones(
     assert [p.id for p in result] == ['pred-good']
 
 
-def test_poll_that_raises_moves_to_failed_and_returns_empty_not_a_crash():
+def test_poll_that_raises_moves_to_degraded_and_returns_empty_not_a_crash():
     instance, plugin = _running_prediction_instance()
 
     def _explode():
@@ -134,7 +134,27 @@ def test_poll_that_raises_moves_to_failed_and_returns_empty_not_a_crash():
     plugin.poll = _explode
 
     assert instance.poll() == []
-    assert instance.state == ConnectorState.FAILED
+    assert instance.state == ConnectorState.DEGRADED
+
+
+def test_poll_self_heals_back_to_running_once_the_plugin_recovers():
+    # v1.0-RC issue #126: a poll() exception must not permanently end
+    # this connector's contribution to the current session - the next
+    # poll cycle must keep trying, and a successful call must flip
+    # straight back to RUNNING, not stay stuck reporting the old error.
+    instance, plugin = _running_prediction_instance()
+
+    def _explode():
+        raise RuntimeError('worker is down')
+    plugin.poll = _explode
+    assert instance.poll() == []
+    assert instance.state == ConnectorState.DEGRADED
+
+    plugin.poll = lambda: [_prediction(id='pred-recovered')]
+    result = instance.poll()
+
+    assert [p.id for p in result] == ['pred-recovered']  # the plugin was actually called again
+    assert instance.state == ConnectorState.RUNNING
 
 
 # --- start()/stop()/health() failure (v0.9, Phase 105 robustness review -
@@ -164,7 +184,7 @@ def test_prediction_connector_stop_failure_raises_and_moves_to_failed():
     assert instance.state == ConnectorState.FAILED
 
 
-def test_prediction_connector_health_call_that_raises_moves_to_failed_never_propagates():
+def test_prediction_connector_health_call_that_raises_moves_to_degraded_never_propagates():
     instance, plugin = _running_prediction_instance()
 
     def _explode():
@@ -172,9 +192,40 @@ def test_prediction_connector_health_call_that_raises_moves_to_failed_never_prop
     plugin.health = _explode
 
     health = instance.health()  # must not raise
-    assert health.state == ConnectorState.FAILED
+    assert health.state == ConnectorState.DEGRADED
     assert 'deliberately broken health()' in health.message
-    assert instance.state == ConnectorState.FAILED
+    assert instance.state == ConnectorState.DEGRADED
+
+
+def test_prediction_connector_health_self_heals_once_the_plugin_recovers():
+    instance, plugin = _running_prediction_instance()
+
+    def _explode():
+        raise RuntimeError('deliberately broken health()')
+    plugin.health = _explode
+    instance.health()
+    assert instance.state == ConnectorState.DEGRADED
+
+    plugin.health = lambda: ConnectorHealth(state=ConnectorState.RUNNING)
+    health = instance.health()
+
+    assert health.state == ConnectorState.RUNNING
+    assert instance.state == ConnectorState.RUNNING  # the wrapper's own tracked state, not just the returned value
+
+
+def test_health_adopts_a_plugin_reported_degraded_state_without_the_call_raising():
+    # v1.0-RC issue #126 (found live-verifying its own fix): a plugin can
+    # legitimately self-report DEGRADED via a normal, non-raising
+    # ConnectorHealth return (e.g. a poll() failure it tracked itself) -
+    # the wrapper must not blindly force RUNNING just because the
+    # health() call itself didn't raise.
+    instance, plugin = _running_prediction_instance()
+    plugin.health = lambda: ConnectorHealth(state=ConnectorState.DEGRADED, message='worker unreachable')
+
+    health = instance.health()
+
+    assert health.state == ConnectorState.DEGRADED
+    assert instance.state == ConnectorState.DEGRADED
 
 
 def test_ground_truth_poll_filters_non_ground_truth_items():

@@ -97,7 +97,7 @@ def test_sample_filters_out_malformed_non_observation_items():
     assert [o.id for o in result] == ['obs-good']
 
 
-def test_sample_that_raises_moves_to_failed_and_returns_empty_not_a_crash():
+def test_sample_that_raises_moves_to_degraded_and_returns_empty_not_a_crash():
     instance, plugin = _running_instance()
 
     def _explode():
@@ -105,7 +105,27 @@ def test_sample_that_raises_moves_to_failed_and_returns_empty_not_a_crash():
     plugin.sample = _explode
 
     assert instance.sample() == []
-    assert instance.state == ConnectorState.FAILED
+    assert instance.state == ConnectorState.DEGRADED
+
+
+def test_sample_self_heals_back_to_running_once_the_plugin_recovers():
+    # v1.0-RC issue #126: a transient collector failure must not
+    # permanently end this session's resource observations - the next
+    # poll cycle must keep trying, and a successful call must flip
+    # straight back to RUNNING.
+    instance, plugin = _running_instance()
+
+    def _explode():
+        raise RuntimeError('sample() itself is broken')
+    plugin.sample = _explode
+    instance.sample()
+    assert instance.state == ConnectorState.DEGRADED
+
+    plugin.sample = lambda: [_observation(id='obs-recovered')]
+    result = instance.sample()
+
+    assert [o.id for o in result] == ['obs-recovered']
+    assert instance.state == ConnectorState.RUNNING
 
 
 def test_stop_then_repeated_stop_is_a_no_op():
@@ -142,7 +162,7 @@ def test_stop_failure_raises_and_moves_to_failed():
     assert instance.state == ConnectorState.FAILED
 
 
-def test_health_call_that_raises_moves_to_failed_never_propagates():
+def test_health_call_that_raises_moves_to_degraded_never_propagates():
     instance, plugin = _running_instance()
 
     def _explode():
@@ -150,6 +170,36 @@ def test_health_call_that_raises_moves_to_failed_never_propagates():
     plugin.health = _explode
 
     health = instance.health()  # must not raise
-    assert health.state == ConnectorState.FAILED
+    assert health.state == ConnectorState.DEGRADED
     assert 'deliberately broken health()' in health.message
-    assert instance.state == ConnectorState.FAILED
+    assert instance.state == ConnectorState.DEGRADED
+
+
+def test_health_self_heals_back_to_running_once_the_plugin_recovers():
+    instance, plugin = _running_instance()
+
+    def _explode():
+        raise RuntimeError('deliberately broken health()')
+    plugin.health = _explode
+    instance.health()
+    assert instance.state == ConnectorState.DEGRADED
+
+    plugin.health = lambda: ConnectorHealth(state=ConnectorState.RUNNING)
+    health = instance.health()
+
+    assert health.state == ConnectorState.RUNNING
+    assert instance.state == ConnectorState.RUNNING  # the wrapper's own tracked state, not just the returned value
+
+
+def test_health_adopts_a_plugin_reported_degraded_state_without_the_call_raising():
+    # v1.0-RC issue #126 (found live-verifying its own fix): a plugin can
+    # legitimately self-report DEGRADED via a normal, non-raising
+    # ConnectorHealth return - the wrapper must not blindly force
+    # RUNNING just because the health() call itself didn't raise.
+    instance, plugin = _running_instance()
+    plugin.health = lambda: ConnectorHealth(state=ConnectorState.DEGRADED, message='collector degraded')
+
+    health = instance.health()
+
+    assert health.state == ConnectorState.DEGRADED
+    assert instance.state == ConnectorState.DEGRADED
