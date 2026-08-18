@@ -361,3 +361,44 @@ def _row_to_resource_observation(row: sqlite3.Row) -> ResourceObservation:
         started_at=datetime.fromisoformat(row['started_at']), ended_at=datetime.fromisoformat(row['ended_at']),
         sample_count=row['sample_count'], metadata=json.loads(row['metadata']),
     )
+
+
+# --- cleanup (RideSafe bring-up, Phase 1) ----------------------------------
+#
+# No delete path existed anywhere in this file before this - every prior
+# release only ever added data (see insert_batch_with_partial_failure's own
+# docstring). Migration 0001 declares every child table's session_id as
+# `REFERENCES sessions(id)` and db.py sets `PRAGMA foreign_keys=ON`
+# (db.py:34), but that only enforces inserts - there is no `ON DELETE
+# CASCADE`, so a bare `DELETE FROM sessions` would raise
+# `sqlite3.IntegrityError` against any session with rows in a child table,
+# not silently orphan them. `delete_session` below deletes every child
+# table first, in the one order that's always safe regardless of which
+# tables happen to have rows for a given session.
+
+def delete_session(conn: sqlite3.Connection, session_id: str) -> None:
+    conn.execute('DELETE FROM resource_observations WHERE session_id = ?', (session_id,))
+    conn.execute('DELETE FROM evaluation_results WHERE session_id = ?', (session_id,))
+    conn.execute('DELETE FROM predictions WHERE session_id = ?', (session_id,))
+    conn.execute('DELETE FROM ground_truth WHERE session_id = ?', (session_id,))
+    conn.execute('DELETE FROM sessions WHERE id = ?', (session_id,))
+    conn.commit()
+
+
+def delete_scenario(conn: sqlite3.Connection, scenario_id: str) -> None:
+    """Fails with `sqlite3.IntegrityError` if any session still references
+    this scenario - delete those sessions first (`delete_session` above).
+    Deliberately not cascaded automatically: a scenario can outlive any one
+    session that used it, so silently deleting still-referenced scenarios
+    would be a real, surprising data loss rather than cleanup."""
+    conn.execute('DELETE FROM scenarios WHERE id = ?', (scenario_id,))
+    conn.commit()
+
+
+def delete_profile(conn: sqlite3.Connection, profile_id: str) -> None:
+    """`evaluation_profiles` has no foreign key to/from any other table
+    (profiles are evaluated against already-persisted session evidence on
+    demand, never joined at the schema level) - a plain delete, no cascade
+    needed."""
+    conn.execute('DELETE FROM evaluation_profiles WHERE id = ?', (profile_id,))
+    conn.commit()

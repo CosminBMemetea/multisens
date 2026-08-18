@@ -13,6 +13,10 @@ __pycache__/
 # Claude Code session-local state, not project content
 .claude/
 
+# Local SQLite DB backups (e.g. pre-reset snapshots) - never committed
+/backups/
+*.db
+
 # Recorded/downloaded video source material - large binaries, and some
 # sources carry licensing that doesn't permit redistribution. Never
 # committed; see docs/development.md for how recorded replay sources are
