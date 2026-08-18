@@ -30,6 +30,13 @@ export function SensorCard({ config, diagnostics, inference }: SensorCardProps) 
   const level = diagnostics?.level ?? "unknown";
   const status = inferenceStatus(inference);
   const predictionsPerSec = inference?.health.details["predictions_per_sec"];
+  // RideSafe bring-up, Phase 12 - plugin-specific (bridge.py's own
+  // derived summary of its last genuinely new frame), not a generic
+  // MultiSens concept, so read straight out of the open `details` bag
+  // rather than adding a typed field any other connector would have to
+  // populate too.
+  const vehiclePresent = inference?.health.details["vehicle_present"];
+  const topConfidence = inference?.health.details["top_confidence"];
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-950/60">
@@ -127,6 +134,20 @@ export function SensorCard({ config, diagnostics, inference }: SensorCardProps) 
                 <dt>last pred.</dt>
                 <dd className="text-slate-200">{formatAgeSeconds(inference.health.last_sample_age_s)}</dd>
               </div>
+              {typeof vehiclePresent === "boolean" && (
+                <div className="flex justify-between">
+                  <dt>vehicle</dt>
+                  <dd className={vehiclePresent ? "text-emerald-400" : "text-slate-200"}>
+                    {vehiclePresent ? "present" : "absent"}
+                  </dd>
+                </div>
+              )}
+              {typeof topConfidence === "number" && (
+                <div className="flex justify-between">
+                  <dt>confidence</dt>
+                  <dd className="text-slate-200">{topConfidence.toFixed(2)}</dd>
+                </div>
+              )}
             </dl>
           )}
         </div>

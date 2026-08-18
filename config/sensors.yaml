@@ -79,3 +79,45 @@ resource_collectors:
   - id: system-metrics
     plugin: multisens.builtin.resource.system-metrics
     poll_interval_s: 5.0
+
+# inference_connectors: session-bound background inference (v1.0-RC issue
+# #122) - discovered/constructed at backend boot, but only actually
+# configure()d/start()ed between a session's start and complete (see
+# app/plugins/manager.py's build_inference_connector_instances()/
+# start_inference_connectors() docstrings). One entry per sensor, matching
+# the Phase 8 decision (one yolo_worker process per sensor) - each names
+# exactly one sensor_id, never a fusion of both.
+#
+# task: vehicle_detection, not vehicle_presence - this bridge's poll()
+# genuinely emits value: {detections: [...]} (raw class/confidence/bbox
+# list, see examples/plugins/reference-inference/README.md), so labeling
+# it vehicle_presence would claim a value shape it doesn't carry and
+# silently break evaluate_classification. The present/absent judgement
+# (>=1 configured vehicle class >= confidence_threshold) is a derived
+# summary computed at controlled-sampling time, not the live task itself
+# - see the RideSafe bring-up notes for where that derivation lives.
+#
+# worker_url: host.docker.internal because the reference yolo_worker
+# processes run on the host (outside docker compose, one per sensor - see
+# examples/plugins/reference-inference/worker/README.md), same reachability
+# pattern as each sensor's own url above.
+inference_connectors:
+  - id: ridesafe_front_vehicle_detector
+    plugin: multisens.reference.inference.yolo_bridge
+    config:
+      sensor_id: ridesafe_front_rgb
+      modality: rgb
+      task: vehicle_detection
+      worker_url: http://host.docker.internal:9100
+      stale_after_s: 8.0
+    poll_interval_s: 1.0
+
+  - id: ridesafe_rear_vehicle_detector
+    plugin: multisens.reference.inference.yolo_bridge
+    config:
+      sensor_id: ridesafe_rear_rgb
+      modality: rgb
+      task: vehicle_detection
+      worker_url: http://host.docker.internal:9101
+      stale_after_s: 8.0
+    poll_interval_s: 1.0

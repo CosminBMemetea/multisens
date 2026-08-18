@@ -79,6 +79,15 @@ class YoloBridgeConnector:
         # call" (issue #127's own distinction; see module docstring).
         self._last_advance_monotonic: float | None = None
         self._last_error: str | None = None
+        # Dashboard-facing summary of the last genuinely new frame's
+        # detections (RideSafe bring-up, Phase 12) - deliberately derived
+        # from the SAME already class/confidence-filtered list poll()
+        # already emits as Prediction.value['detections'] (capture.py's
+        # own model.predict(classes=..., conf=...) call already applied
+        # both filters), not a second copy of the presence rule. "present"
+        # is exactly "the worker returned at least one detection" - no
+        # new threshold logic here.
+        self._last_detections: list[dict[str, Any]] = []
 
     def descriptor(self) -> PluginDescriptor:
         return PluginDescriptor(
@@ -140,6 +149,7 @@ class YoloBridgeConnector:
         self._last_seen_frame_timestamp_ms = None
         self._last_advance_monotonic = None
         self._last_error = None
+        self._last_detections = []
 
     def start(self) -> None:
         self._active = True
@@ -152,7 +162,11 @@ class YoloBridgeConnector:
             return ConnectorHealth(state=ConnectorState.STOPPED)
         if self._last_error is not None:
             return ConnectorHealth(state=ConnectorState.DEGRADED, message=self._last_error)
-        details = {'worker_url': self._worker_url or ''}
+        details: dict[str, Any] = {
+            'worker_url': self._worker_url or '',
+            'vehicle_present': len(self._last_detections) > 0,
+            'top_confidence': max((d.get('confidence', 0.0) for d in self._last_detections), default=None),
+        }
         if self._last_advance_monotonic is None:
             # Never seen a real frame yet - genuinely unknown, not "0s old."
             return ConnectorHealth(state=ConnectorState.RUNNING, last_sample_age_s=None, details=details)
@@ -203,6 +217,7 @@ class YoloBridgeConnector:
             return []
         self._last_seen_frame_timestamp_ms = frame_timestamp_ms
         self._last_advance_monotonic = time.monotonic()
+        self._last_detections = detections
 
         return [Prediction(
             # Includes session_id, not just sensor_id/source_id/timestamp_ms (issue #123's own
