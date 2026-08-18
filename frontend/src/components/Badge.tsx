@@ -19,13 +19,18 @@ export function LevelBadge({ level, text }: { level: Level; text: string }) {
   );
 }
 
-export function SourceTypeBadge({ sourceType }: { sourceType: "physical" | "simulated" }) {
+// recorded (v1.0-RC issue #124's config field, first actually populated by
+// the RideSafe demo): a physical camera replaying a prior recording in real
+// time, not live acquisition - source_type alone can't express this
+// distinction, so it's a prefix on the same badge, never a separate claim.
+export function SourceTypeBadge({ sourceType, recorded }: { sourceType: "physical" | "simulated"; recorded?: boolean }) {
   const styles =
     sourceType === "physical"
       ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
       : "bg-cyan-500/15 text-cyan-400 border-cyan-500/30";
   return (
     <span className={`rounded border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${styles}`}>
+      {recorded ? "recorded " : ""}
       {sourceType}
     </span>
   );

@@ -52,7 +52,7 @@ export function SensorCard({ config, diagnostics, inference }: SensorCardProps) 
           </div>
         )}
         <div className="absolute left-2 top-2 flex gap-2">
-          <SourceTypeBadge sourceType={config.source_type} />
+          <SourceTypeBadge sourceType={config.source_type} recorded={config.recorded} />
         </div>
         <div className="absolute right-2 top-2">
           <LevelBadge level={level} text={diagnostics?.connection_state ?? "unknown"} />
@@ -61,11 +61,14 @@ export function SensorCard({ config, diagnostics, inference }: SensorCardProps) 
 
       <div className="flex flex-col gap-2 p-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-semibold uppercase tracking-wide text-slate-200">
-            {config.id}
+          <span className="text-sm font-semibold text-slate-200">
+            {config.display_name ?? config.id}
           </span>
           <span className="text-xs text-slate-500">{config.modality}</span>
         </div>
+        {config.display_name && (
+          <span className="-mt-2 font-mono-data text-[11px] text-slate-500">{config.id}</span>
+        )}
 
         {config.derived_from_sensor_id && (
           <span className="text-xs text-slate-500">

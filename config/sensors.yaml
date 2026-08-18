@@ -22,42 +22,45 @@
 #               source_type: simulated alone can't express *which* real sensor
 #               a simulated feed is standing in for - this can. Must name a
 #               sensor id declared in this same file (validated at launch).
+# display_name, role, recorded: optional, additive passthrough fields already
+#               declared in frontend/src/types.ts (v1.0-RC issue #124) but
+#               never actually populated by any shipped config until now.
+#               display_name is a human label (dashboard only, never part of
+#               topic/node identity). role is a free-text position label
+#               (e.g. "front"/"rear") - not validated/enumerated anywhere,
+#               same open-vocabulary posture as modality. recorded: true
+#               truthfully distinguishes "physical camera, but replaying a
+#               prior recording in real time" from true live acquisition -
+#               source_type alone only says physical vs simulated, it can't
+#               express this; see docs/development.md for how the replay
+#               itself works (ffmpeg -re -stream_loop -1 into mediamtx).
+#
+# The RideSafe reference webcam-simulator demo config (rgb/depth/thermal)
+# this replaced is preserved at HEAD - restore it with
+# `git show HEAD:config/sensors.yaml` if the regression test in a later
+# phase needs it back; not duplicated here in-repo per "smallest correct
+# configuration."
 
 sensors:
-  - id: rgb
+  - id: ridesafe_front_rgb
     modality: rgb
     source_type: physical
     transport: rtsp
-    url: rtsp://host.docker.internal:8554/rgb
+    url: rtsp://host.docker.internal:8554/ridesafe_front
     expected_fps: 30
-    # v0.9, Phase 102: wires this sensor's existing ingestion up to the
-    # built-in RTSP SensorConnector plugin too, purely for /api/connectors
-    # visibility (docs/connector-api.md) - the actual video stream is
-    # still started independently by ROS launch off `url` above,
-    # completely unchanged; `connector.config.uri` intentionally repeats
-    # the same URL rather than deriving it, since the connector plugin
-    # and the ROS ingestion node are two independent consumers of this
-    # file, not one reading the other's config.
-    connector:
-      plugin: multisens.builtin.sensor.rtsp
-      config:
-        uri: rtsp://host.docker.internal:8554/rgb
+    display_name: 70mai Front
+    role: front
+    recorded: true
 
-  - id: depth
-    modality: depth
-    source_type: simulated
+  - id: ridesafe_rear_rgb
+    modality: rgb
+    source_type: physical
     transport: rtsp
-    url: rtsp://host.docker.internal:8554/depth
+    url: rtsp://host.docker.internal:8554/ridesafe_rear
     expected_fps: 30
-    derived_from_sensor_id: rgb
-
-  - id: thermal
-    modality: thermal
-    source_type: simulated
-    transport: rtsp
-    url: rtsp://host.docker.internal:8554/thermal
-    expected_fps: 30
-    derived_from_sensor_id: rgb
+    display_name: 70mai Rear
+    role: rear
+    recorded: true
 
 # platform_id: this machine's declared identity for live resource
 # observations (v0.9.1, issue #111) - ExecutionPlatform's own docstring
