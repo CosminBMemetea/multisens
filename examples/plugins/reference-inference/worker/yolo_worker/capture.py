@@ -11,12 +11,33 @@ wall-clock reading at frame-read time - not a true RTSP/source capture
 timestamp. Documented at the same honesty tier `docs/topics.md`
 already holds `frame_stamp` to (issue #123, point 5) - no better
 timestamp exists anywhere in this pipeline to inherit.
+
+Decoder log noise: looping a recorded file through RTSP with
+`ffmpeg -stream_loop -1 -c copy` (the reference replay technique this
+project's own docs use for testing without a live camera) produces a
+genuinely discontinuous H.264 bitstream at each loop boundary - no
+re-encode means no clean keyframe at the seam, so libavcodec logs
+`error while decoding MB...`/`co located POCs unavailable`/`mmco:
+unref short failure` for a frame or two before recovering on its own.
+Harmless (confirmed: FPS and detections both keep flowing across the
+seam) but was drowning out this worker's own log output. Quieted by
+default via `OPENCV_FFMPEG_LOGLEVEL` below - set that env var yourself
+before running this worker to see the raw decoder output again (e.g.
+while debugging an actual RTSP source, not a looped demo file).
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from typing import Any
+
+# Must be set before `import cv2` - OpenCV's FFmpeg backend reads this at
+# capture-open time, not lazily. `setdefault` so a value already set in
+# the environment (e.g. by an operator who wants the raw decoder output)
+# is never overridden. '8' = FFmpeg's own AV_LOG_FATAL - quiet enough to
+# hide the loop-boundary noise above without hiding a decoder crash.
+os.environ.setdefault('OPENCV_FFMPEG_LOGLEVEL', '8')
 
 import cv2
 from ultralytics import YOLO
