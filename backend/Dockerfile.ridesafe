@@ -1,0 +1,44 @@
+# Opt-in overlay that installs the reference YOLO bridge plugin on top of
+# the ordinary backend image - the core backend/Dockerfile deliberately
+# never installs this by default (docs/limitations.md: "the reference
+# worker is opt-in example code an operator runs and wires in via config,
+# exactly like any other third-party plugin, never something the backend
+# depends on or ships enabled by default"). This is that opt-in step, made
+# a stable file instead of the throwaway docs/development.md recipe, since
+# the RideSafe demo runs this way every time, not just for one-off manual
+# verification.
+#
+# Deliberately NOT `FROM multisense-backend` (a real bug found live -
+# docker compose tags this overlay's own build output as that exact same
+# name, so a `FROM multisense-backend` here silently chains off whatever
+# the *previous* ridesafe build produced after the first build, not the
+# real backend/Dockerfile - `backend/app` changes stopped propagating
+# without any error). Self-contained instead: mirrors backend/Dockerfile's
+# own steps line for line, plus the plugin install. Keep both in sync if
+# backend/Dockerfile changes.
+FROM ros:humble-ros-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ros-humble-rmw-cyclonedds-cpp \
+        python3-pip \
+        ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir --upgrade pip
+
+COPY sdk /sdk
+RUN pip3 install --no-cache-dir /sdk
+
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY backend/app ./app
+
+COPY examples/plugins/reference-inference /tmp/reference-inference
+RUN pip3 install --no-cache-dir /tmp/reference-inference
+
+COPY backend/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

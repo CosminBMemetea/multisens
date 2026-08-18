@@ -1,0 +1,10 @@
+# Opt-in overlay for the RideSafe demo: layers the reference YOLO bridge
+# plugin onto the backend image (see backend/Dockerfile.ridesafe). The
+# base docker-compose.yml/backend/Dockerfile stay untouched and installs
+# nothing extra on their own - this file is what turns that opt-in on.
+#
+#     docker compose -f docker-compose.yml -f docker-compose.ridesafe.yml up -d --build
+services:
+  backend:
+    build:
+      dockerfile: backend/Dockerfile.ridesafe

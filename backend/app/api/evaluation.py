@@ -138,6 +138,7 @@ class SourceEvidenceResponse(BaseModel):
     confidence: float | None
     match_delta_ms: float | None
     outcome: Literal['TP', 'FP', 'FN', 'TN'] | None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class EvidenceSampleResponse(BaseModel):
@@ -202,7 +203,7 @@ def session_evidence(
                     configuration_id=src.configuration_id, source_id=src.source_id, sensor_ids=src.sensor_ids,
                     prediction_id=src.prediction_id, prediction_timestamp_ms=src.prediction_timestamp_ms,
                     value=src.value, confidence=src.confidence, match_delta_ms=src.match_delta_ms,
-                    outcome=src.outcome,
+                    outcome=src.outcome, metadata=src.metadata,
                 )
                 for src in s.sources
             ],

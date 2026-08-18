@@ -67,6 +67,13 @@ class SourceEvidence:
     # `label_key` field (not a classification-shaped task) - never a
     # guessed TP/FP/FN/TN for data this module can't actually classify.
     outcome: Outcome | None = None
+    # RideSafe bring-up, Phase 24 - the matched Prediction's own metadata,
+    # passed through verbatim (same posture as `value`/`confidence`
+    # above - this module never interprets it). Lets a caller reach
+    # whatever provenance a connector chose to attach - e.g. the
+    # RideSafe sampler's `snapshot_path`, for "inspect frame" - without
+    # this module needing to know that concept exists.
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -144,7 +151,7 @@ def build_evidence_samples(
                 configuration_id=configuration_id, source_id=source_id, sensor_ids=prediction.sensor_ids,
                 prediction_id=prediction.id, prediction_timestamp_ms=prediction.timestamp_ms,
                 value=prediction.value, confidence=prediction.confidence, match_delta_ms=delta_ms,
-                outcome=outcome,
+                outcome=outcome, metadata=prediction.metadata,
             ))
 
         matched_count = sum(1 for s in source_evidences if s.prediction_id is not None)

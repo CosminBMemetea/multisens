@@ -50,6 +50,13 @@ services:
     volumes:
       - ./config/sensors.yaml:/config/sensors.yaml:ro
       - backend-data:/data
+      # Read-only access to locally recorded evidence media (RideSafe
+      # bring-up, Phase 24) - e.g. data/recorded/ridesafe/samples/, the
+      # frame snapshots Evidence Playback's "inspect frame" serves via
+      # GET /api/sessions/{id}/predictions/{id}/frame. Mounted at
+      # /media, not /data, since /data is already the SQLite volume
+      # above - two different container paths, never merged.
+      - ./data:/media:ro
     ports:
       - "8000:8000"
     extra_hosts:

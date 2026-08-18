@@ -137,6 +137,11 @@ export interface SourceEvidence {
   confidence: number | null;
   match_delta_ms: number | null;
   outcome: "TP" | "FP" | "FN" | "TN" | null;
+  // RideSafe bring-up, Phase 24 - the matched Prediction's own metadata,
+  // passed through verbatim (see backend/app/domain/evidence_playback.py's
+  // own SourceEvidence.metadata docstring). Whatever a connector chose to
+  // attach - e.g. `snapshot_path` for "inspect frame" - not a fixed shape.
+  metadata: Record<string, unknown>;
 }
 
 export type EvidenceRelationship =

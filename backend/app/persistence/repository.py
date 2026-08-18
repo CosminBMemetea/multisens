@@ -162,6 +162,18 @@ def insert_predictions_batch(conn: sqlite3.Connection, items: list[Prediction]) 
     conn.commit()
 
 
+def get_prediction(conn: sqlite3.Connection, session_id: str, prediction_id: str) -> Prediction | None:
+    """Scoped by session_id, not just prediction_id - a caller (e.g. the
+    Phase 24 frame-evidence endpoint) should never be able to reach a
+    prediction belonging to a different session just by guessing/reusing
+    an id, even though ids are already globally unique (see bridge.py's
+    own id-collision-avoidance docstring)."""
+    row = conn.execute(
+        'SELECT * FROM predictions WHERE session_id = ? AND id = ?', (session_id, prediction_id),
+    ).fetchone()
+    return _row_to_prediction(row) if row else None
+
+
 def list_predictions(
     conn: sqlite3.Connection, session_id: str,
     configuration_id: str | None = None, task: str | None = None, source_id: str | None = None,

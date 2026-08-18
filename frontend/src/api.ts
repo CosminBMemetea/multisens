@@ -44,6 +44,15 @@ export function sensorStreamUrl(sensorId: string): string {
   return `${API_BASE_URL}/api/sensors/${sensorId}/stream.mjpeg`;
 }
 
+// RideSafe bring-up, Phase 24 - Evidence Playback's "inspect frame".
+// 404s (no snapshot for this prediction) if the connector never attached
+// one - callers only render this when SourceEvidence.metadata.snapshot_path
+// is actually present, so a 404 here would mean the two disagree, not an
+// expected path.
+export function predictionFrameUrl(sessionId: string, predictionId: string): string {
+  return `${API_BASE_URL}/api/sessions/${sessionId}/predictions/${predictionId}/frame`;
+}
+
 // Callers that need to distinguish "not found" from "backend unreachable"
 // (e.g. session detail rendering a 404 state instead of a generic error)
 // check `.status` rather than string-matching the message.

@@ -19,10 +19,12 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, ValidationError
 
 from app.api.deps import get_db, require_session
@@ -291,6 +293,38 @@ def list_session_predictions(
 ) -> list[Prediction]:
     require_session(conn, session_id)
     return repo.list_predictions(conn, session_id, configuration_id=configuration_id, task=task)
+
+
+# RideSafe bring-up, Phase 24 - Evidence Playback's "inspect frame":
+# serves the exact snapshot file a prediction's own metadata already
+# names (e.g. the RideSafe sampler's `snapshot_path`), never an
+# arbitrary caller-supplied path. `MEDIA_ROOT` is the read-only host
+# bind mount (docker-compose.yml) - same "hardcoded container-internal
+# path, mount controls what's actually there" convention as
+# config.py's own DEFAULT_CONFIG_PATH.
+MEDIA_ROOT = Path('/media')
+
+
+@router.get('/{session_id}/predictions/{prediction_id}/frame')
+def get_prediction_frame(session_id: str, prediction_id: str, conn: sqlite3.Connection = Depends(get_db)):
+    require_session(conn, session_id)
+    prediction = repo.get_prediction(conn, session_id, prediction_id)
+    if prediction is None:
+        raise HTTPException(status_code=404, detail=f"no prediction '{prediction_id}' in session '{session_id}'")
+
+    snapshot_path = prediction.metadata.get('snapshot_path')
+    if not snapshot_path or not isinstance(snapshot_path, str):
+        raise HTTPException(status_code=404, detail='this prediction has no associated frame snapshot')
+
+    # Resolve and re-check containment under MEDIA_ROOT - defends against
+    # a `../../etc/passwd`-style path ever having been persisted into
+    # metadata (from a misbehaving or malicious connector), not just
+    # against a caller-supplied path (there is none here).
+    resolved = (MEDIA_ROOT / snapshot_path).resolve()
+    if MEDIA_ROOT.resolve() not in resolved.parents or not resolved.is_file():
+        raise HTTPException(status_code=404, detail='snapshot file not found')
+
+    return FileResponse(resolved, media_type='image/jpeg')
 
 
 class ProfileUsageEntry(BaseModel):

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchSessionEvidence } from "../api";
+import { fetchSessionEvidence, predictionFrameUrl } from "../api";
 import { OutcomeBadge, RelationshipBadge } from "./Badge";
-import type { EvidenceSample, GroundTruthEvent } from "../types";
+import type { EvidenceSample, GroundTruthEvent, SourceEvidence } from "../types";
 
 interface EvidencePlaybackProps {
   sessionId: string;
@@ -36,6 +36,10 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
   const [positiveLabel, setPositiveLabel] = useState<string>("");
   const [evidence, setEvidence] = useState<EvidenceSample[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // RideSafe bring-up, Phase 24 - "inspect frame" lightbox. Only ever
+  // populated from a real EvidenceSample/SourceEvidence pair already in
+  // `evidence` state - never a synthesized path.
+  const [inspecting, setInspecting] = useState<{ sample: EvidenceSample; src: SourceEvidence } | null>(null);
 
   useEffect(() => {
     setSelectedTask((current) => (tasks.includes(current) ? current : (tasks[0] ?? "")));
@@ -193,9 +197,18 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
                           <span className="font-mono-data text-slate-200">{rawValueLabel(src.value)}</span>
                           <OutcomeBadge outcome={src.outcome} />
                         </div>
-                        <div className="mt-0.5 flex gap-2 text-[10px] text-slate-600">
+                        <div className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-600">
                           {src.confidence !== null && <span>conf {src.confidence.toFixed(2)}</span>}
                           {src.match_delta_ms !== null && <span>Δt {src.match_delta_ms}ms</span>}
+                          {typeof src.metadata.snapshot_path === "string" && (
+                            <button
+                              type="button"
+                              onClick={() => setInspecting({ sample, src })}
+                              className="rounded border border-slate-700 px-1.5 py-0.5 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                            >
+                              inspect frame
+                            </button>
+                          )}
                         </div>
                       </td>
                     );
@@ -207,6 +220,57 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {inspecting && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          onClick={() => setInspecting(null)}
+        >
+          <div
+            className="flex max-h-full max-w-3xl flex-col gap-3 overflow-auto rounded border border-slate-700 bg-slate-950 p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="font-mono-data text-xs text-slate-400">
+                <div className="text-slate-200">{inspecting.src.source_id}</div>
+                <div>t = {inspecting.sample.gt_timestamp_ms} ms</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspecting(null)}
+                className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:border-slate-500 hover:text-slate-200"
+              >
+                close
+              </button>
+            </div>
+            <img
+              src={predictionFrameUrl(sessionId, inspecting.src.prediction_id!)}
+              alt={`${inspecting.src.source_id} frame at t=${inspecting.sample.gt_timestamp_ms}ms`}
+              className="max-h-[70vh] rounded border border-slate-800 object-contain"
+            />
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono-data text-xs text-slate-400">
+              <div className="flex justify-between">
+                <dt>GT</dt>
+                <dd className="text-slate-200">{rawValueLabel(inspecting.sample.gt_value)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>prediction</dt>
+                <dd className="text-slate-200">{rawValueLabel(inspecting.src.value)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>confidence</dt>
+                <dd className="text-slate-200">{inspecting.src.confidence?.toFixed(2) ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>outcome</dt>
+                <dd>
+                  <OutcomeBadge outcome={inspecting.src.outcome} />
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
       )}
     </section>

@@ -14,20 +14,25 @@ document loaded through the real `app.config.load_sensors()` +
 monkeypatched `MULTISENS_SENSORS_CONFIG` - the same convention
 test_config.py already uses).
 
-**This is configuration/discovery validation only, explicitly not a new
-live-video claim**: the repo's real `config/sensors.yaml` - the one that
-actually drives the live Dashboard (`/api/sensors`) and ROS ingestion -
-is never touched by this phase (see the last test below, which checks
-this directly) and still lists only `rgb`/`depth`/`thermal`. Adding these
-five ids there would do two things out of this phase's scope: (1)
-silently surface them on the Dashboard's own sensor list (an explicit
-"out of scope: no new live dashboard visualization" item), and (2) very
-likely collide on ROS ingestion's own single-topic-per-modality
-constraint - `sensor_config.py`'s `select_usable_sensors` raises on two
-`rgb`-modality entries, exactly the shape RideSafe's two cameras and
-PropertyWatch's three would be (docs/limitations.md's own "one sensor
-per modality, for live ingestion only" limitation - still completely
-unchanged by this phase).
+**This was configuration/discovery validation only when written, explicitly
+not a live-video claim at the time**: as of Phase 103 (v0.9), the repo's
+real `config/sensors.yaml` never listed these ids. The RideSafe bring-up
+(after v1.0-RC's issue #121) deliberately changed that for RideSafe only -
+`ridesafe_front_rgb`/`ridesafe_rear_rgb` are now live in the real config,
+on the real Dashboard - see `config/sensors.yaml` and docs/development.md.
+PropertyWatch was never given that treatment and still isn't - the test
+below now checks only that half. Back when this docstring was written,
+adding any of these five ids there would have done two things out of
+Phase 103's own scope: (1) silently surfaced them on the Dashboard's own
+sensor list (an explicit "out of scope: no new live dashboard
+visualization" item at the time), and (2) very likely collided on ROS
+ingestion's own single-topic-per-modality constraint - `sensor_config.py`'s
+`select_usable_sensors` used to raise on two `rgb`-modality entries,
+exactly the shape RideSafe's two cameras and PropertyWatch's three would
+be (docs/limitations.md's own "one sensor per modality, for live
+ingestion only" limitation - since fixed for good by issue #121's
+sensor_id-keyed topic migration, which is exactly what let the RideSafe
+bring-up wire two live `rgb` cameras into the real config at all).
 
 What v0.9 actually changes: the connector *plugin* layer has no modality
 concept and no single-topic constraint at all. `RtspSensorConnector`
@@ -132,14 +137,21 @@ def test_all_five_identities_together_share_one_plugin_but_stay_fully_independen
         assert instances[sensor_id].health().state == ConnectorState.DEGRADED
 
 
-def test_this_phase_never_touches_the_repos_real_live_dashboard_config():
-    # The real config/sensors.yaml that drives the live Dashboard
-    # (/api/sensors) and ROS ingestion is untouched by this phase - still
-    # exactly rgb/depth/thermal, never a RideSafe/PropertyWatch id. This
-    # is the "not a new live-video claim, no new Dashboard visualization"
-    # acceptance bar, checked directly rather than only asserted in prose.
+def test_propertywatch_still_never_touches_the_repos_real_live_dashboard_config():
+    # Removed (RideSafe bring-up, superseding Phase 103's scope boundary):
+    # this used to also assert `ridesafe_front_rgb`/`ridesafe_rear_rgb`
+    # were absent from the real config/sensors.yaml - true when Phase 103
+    # wrote it (v0.9, before issue #121's sensor_id-keyed topic migration
+    # made two same-modality live cameras legal, and before any phase
+    # actually wired RideSafe onto the live Dashboard on purpose). Both
+    # reasons this test cited no longer hold: the real config now
+    # deliberately lists ridesafe_front_rgb/ridesafe_rear_rgb, live, on
+    # the real Dashboard - see config/sensors.yaml's own comments and
+    # docs/development.md. PropertyWatch was never given that same
+    # treatment, so that half of the original assertion still holds and
+    # is kept here.
     import pathlib
     real_config = pathlib.Path(__file__).resolve().parents[2] / 'config' / 'sensors.yaml'
     text = real_config.read_text()
-    for sensor_id in RIDESAFE_SENSOR_IDS + PROPERTYWATCH_SENSOR_IDS:
+    for sensor_id in PROPERTYWATCH_SENSOR_IDS:
         assert sensor_id not in text
