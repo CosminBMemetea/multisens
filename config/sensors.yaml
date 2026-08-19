@@ -29,8 +29,16 @@
 # a claim that the RGB-trained model "works" on a pseudocolor transform.
 # The whole point is to let Evidence Playback show what actually happens
 # (AGREE/DISAGREE per source) rather than asserting it in a doc comment.
-# Thermal stays inference-free for now - two live workers is already a
-# real CPU/swap cost on this machine; a third is a follow-up, not free.
+# Thermal stays inference-free for now - three live workers is already a
+# real CPU/swap cost on this machine; a fourth is a follow-up, not free.
+#
+# emotion_demo_face_rgb also now runs a SECOND, independent producer
+# (issue #142's own v1.x multi-model architecture work): MediaPipe face
+# detection, alongside the FER+ emotion connector already there - two
+# completely separate worker processes, two completely separate
+# PollRunner threads, neither aware the other exists, both polling the
+# exact same sensor. This is the concrete proof that "N inference
+# producers per sensor" needed no core code change - only this file.
 #
 # The RideSafe demo config (ridesafe_front_rgb/ridesafe_rear_rgb) this
 # replaced is preserved in git history - `git log --oneline -- config/
@@ -119,4 +127,14 @@ inference_connectors:
       # is the deliberate, disclosed exception: we WANT to measure how it
       # actually performs on the pseudocolor depth feed, not assume.
       allow_simulated_input: true
+    poll_interval_s: 1.0
+
+  - id: emotion_demo_face_detector_mediapipe
+    plugin: multisens.reference.inference.mediapipe_bridge
+    config:
+      sensor_id: emotion_demo_face_rgb
+      modality: rgb
+      task: face_detection
+      worker_url: http://host.docker.internal:9400
+      stale_after_s: 8.0
     poll_interval_s: 1.0

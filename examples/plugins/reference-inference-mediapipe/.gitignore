@@ -1,0 +1,12 @@
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Downloaded model weights - never committed, same "don't leak/bloat the
+# repo with model files" convention as yolov8n.pt/emotion-ferplus-8.onnx.
+# See worker/README.md for the download command.
+*.tflite

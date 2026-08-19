@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-reference-inference-mediapipe-worker"
+version = "0.1.0"
+description = "Reference face-detection inference worker (MediaPipe Tasks API, blaze_face_short_range) - standalone process, own RTSP reader, serves detections over a small local HTTP endpoint. NOT a MultiSens plugin (no entry_points, never installed into the backend image) - install its own requirements.txt separately to actually run it; `pip install -e .[testing]` alone installs only the pure-logic detections.py module, with zero heavy dependencies, which is all `tests/` needs."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MultiSens Project" }]
+requires-python = ">=3.10"
+# multisens-worker-kit (issue #141): unlike the sibling yolo_worker/
+# emotion_worker packages, this one was written *after* worker-kit
+# existed, so it never had its own state.py/server.py/log.py to begin
+# with - capture.py/__main__.py import SharedState/serve/make_logger
+# directly. Install the sibling worker-kit/ directory first (see
+# README.md), same two-step local-package pattern the reference
+# bridges already use for multisens-sdk.
+dependencies = ["multisens-worker-kit"]
+
+[project.optional-dependencies]
+testing = ["multisens-worker-kit[testing]", "pytest>=8.0"]
+# The actual runtime deps (mediapipe/opencv) live in requirements.txt,
+# not here - deliberately not pip-installable as a project extra, so
+# `pip install -e .[testing]` for the pure-logic test suite never drags
+# mediapipe in.
+
+[tool.setuptools.packages.find]
+include = ["mediapipe_worker*"]

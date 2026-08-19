@@ -1,0 +1,41 @@
+# Opt-in overlay that installs all three reference inference bridge
+# plugins (YOLO vehicle detection, FER+ emotion, MediaPipe face
+# detection) on top of the ordinary backend image - proves N independent
+# inference producers per sensor (issue #141/#142) with a single backend
+# image, no combination-specific code. Same self-contained structure as
+# the other Dockerfile.<demo> overlays (deliberately NOT `FROM
+# multisense-backend`, since docker compose tags this overlay's own
+# output as that exact name - see Dockerfile.ridesafe's own comment for
+# the real bug this avoids).
+FROM ros:humble-ros-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ros-humble-rmw-cyclonedds-cpp \
+        python3-pip \
+        ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir --upgrade pip
+
+COPY sdk /sdk
+RUN pip3 install --no-cache-dir /sdk
+
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY backend/app ./app
+
+COPY examples/plugins/reference-inference /tmp/reference-inference
+RUN pip3 install --no-cache-dir /tmp/reference-inference
+
+COPY examples/plugins/reference-inference-emotion /tmp/reference-inference-emotion
+RUN pip3 install --no-cache-dir /tmp/reference-inference-emotion
+
+COPY examples/plugins/reference-inference-mediapipe /tmp/reference-inference-mediapipe
+RUN pip3 install --no-cache-dir /tmp/reference-inference-mediapipe
+
+COPY backend/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

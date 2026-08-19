@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-reference-inference-mediapipe"
+version = "0.1.0"
+description = "Reference MultiSens plugin - a thin PredictionConnector bridge that polls a separately-running MediaPipe face-detection worker (see worker/) and translates its output into canonical Prediction objects. Third sibling to multisens-reference-inference (YOLOv8n vehicle detection) and multisens-reference-inference-emotion (FER+ facial emotion), demonstrating the same architecture wired to a third, independently-developed model family."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MultiSens Project" }]
+requires-python = ">=3.10"
+dependencies = ["multisens-sdk"]
+
+[project.optional-dependencies]
+testing = ["multisens-sdk[testing]", "pytest>=8.0"]
+
+[project.entry-points."multisens.plugins"]
+"multisens.reference.inference.mediapipe_bridge" = "multisens_reference_inference_mediapipe.bridge:create"
+
+[tool.setuptools.packages.find]
+include = ["multisens_reference_inference_mediapipe*"]

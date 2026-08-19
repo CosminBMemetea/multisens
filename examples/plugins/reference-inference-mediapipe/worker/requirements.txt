@@ -1,0 +1,19 @@
+# The inference worker's own dependencies - deliberately never installed
+# into the MultiSens backend image (same process-isolation discipline
+# as the sibling yolo_worker/emotion_worker packages: a native-level
+# crash here must never take down the REST API/Sessions/Evaluation/
+# Dashboard process).
+#
+# mediapipe==0.10.21, pinned exactly, not >=: mediapipe 1.0.1 (the
+# latest at time of writing) crashes with a fatal
+# "Check failed: service_ Service is unavailable" inside
+# TensorsToDetectionsCalculator on this project's own reference
+# development machine (macOS/Apple Silicon) - reproduced twice,
+# including with the CPU delegate explicitly forced, so it is not a
+# GPU-opt-out problem. 0.10.21 does not have this bug - verified
+# end-to-end (real face, real bounding box, real confidence) before
+# this worker package was written. Revisit the pin only after
+# reproducing a fix on the same class of machine, not just reading a
+# changelog.
+mediapipe==0.10.21
+opencv-python-headless>=4.9

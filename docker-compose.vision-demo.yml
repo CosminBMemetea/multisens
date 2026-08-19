@@ -1,0 +1,10 @@
+# Opt-in overlay for the v1.x multi-model vision demo: layers all three
+# reference inference bridge plugins (YOLO, emotion, MediaPipe) onto the
+# backend image (see backend/Dockerfile.vision-demo). The base
+# docker-compose.yml/backend/Dockerfile stay untouched.
+#
+#     docker compose -f docker-compose.yml -f docker-compose.vision-demo.yml up -d --build
+services:
+  backend:
+    build:
+      dockerfile: backend/Dockerfile.vision-demo
