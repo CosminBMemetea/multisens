@@ -1,0 +1,9 @@
+# Opt-in overlay for the emotion demo: layers the reference emotion
+# bridge plugin onto the backend image (see backend/Dockerfile.emotion-demo).
+# The base docker-compose.yml/backend/Dockerfile stay untouched.
+#
+#     docker compose -f docker-compose.yml -f docker-compose.emotion-demo.yml up -d --build
+services:
+  backend:
+    build:
+      dockerfile: backend/Dockerfile.emotion-demo

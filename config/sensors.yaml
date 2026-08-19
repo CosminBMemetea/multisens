@@ -11,113 +11,89 @@
 #               ros container (Docker Desktop for Mac only - not portable to
 #               plain Linux Docker without changing this)
 # expected_fps: optional, nominal capture rate for this sensor, purely for
-#               diagnostics comparison against the measured rate - omit it
-#               if genuinely unknown rather than guessing; diagnostics report
-#               "unavailable" for expected_fps when it's absent, not a made-up
-#               number
+#               diagnostics comparison against the measured rate
 # derived_from_sensor_id: optional, v1.0-RC issue #124 - truthfully declares
 #               this feed is a transform of another declared sensor's signal
-#               (e.g. depth/thermal below are ffmpeg pseudocolor transforms of
+#               (depth/thermal below are ffmpeg pseudocolor transforms of
 #               rgb's own webcam capture, not independent measurements).
-#               source_type: simulated alone can't express *which* real sensor
-#               a simulated feed is standing in for - this can. Must name a
-#               sensor id declared in this same file (validated at launch).
-# display_name, role, recorded: optional, additive passthrough fields already
-#               declared in frontend/src/types.ts (v1.0-RC issue #124) but
-#               never actually populated by any shipped config until now.
-#               display_name is a human label (dashboard only, never part of
-#               topic/node identity). role is a free-text position label
-#               (e.g. "front"/"rear") - not validated/enumerated anywhere,
-#               same open-vocabulary posture as modality. recorded: true
-#               truthfully distinguishes "physical camera, but replaying a
-#               prior recording in real time" from true live acquisition -
-#               source_type alone only says physical vs simulated, it can't
-#               express this; see docs/development.md for how the replay
-#               itself works (ffmpeg -re -stream_loop -1 into mediamtx).
+# display_name, role, recorded: optional, additive passthrough fields (see
+#               frontend/src/types.ts). recorded is deliberately omitted
+#               below - this is genuine live capture, not a replay.
 #
-# The RideSafe reference webcam-simulator demo config (rgb/depth/thermal)
-# this replaced is preserved at HEAD - restore it with
-# `git show HEAD:config/sensors.yaml` if the regression test in a later
-# phase needs it back; not duplicated here in-repo per "smallest correct
-# configuration."
+# This is the Emotion Demo config: a live webcam feeds one physical RGB
+# sensor plus two derived simulated feeds (depth/thermal pseudocolor
+# transforms of the same capture - scripts/stream_macos.sh in the
+# sibling multirtsp repo does the 3-way split). Inference (face
+# detection + FER+ emotion classification) is wired to RGB only -
+# running the RGB-trained face/emotion model against the simulated
+# depth/thermal pseudocolor feeds and presenting that as meaningful
+# would be exactly the kind of fabricated claim this project's own
+# "never fabricate" discipline forbids (same rule the RideSafe demo's
+# own three-sensor regression test already established).
+#
+# The RideSafe demo config (ridesafe_front_rgb/ridesafe_rear_rgb) this
+# replaced is preserved in git history - `git log --oneline -- config/
+# sensors.yaml` to find the commit, then `git show <commit>:config/
+# sensors.yaml` - not duplicated here per "smallest correct configuration."
 
 sensors:
-  - id: ridesafe_front_rgb
+  - id: emotion_demo_face_rgb
     modality: rgb
     source_type: physical
     transport: rtsp
-    url: rtsp://host.docker.internal:8554/ridesafe_front
+    url: rtsp://host.docker.internal:8554/rgb
     expected_fps: 30
-    display_name: 70mai Front
-    role: front
-    recorded: true
+    display_name: Emotion Demo (Face)
+    role: face
 
-  - id: ridesafe_rear_rgb
-    modality: rgb
-    source_type: physical
+  - id: emotion_demo_face_depth
+    modality: depth
+    source_type: simulated
     transport: rtsp
-    url: rtsp://host.docker.internal:8554/ridesafe_rear
+    url: rtsp://host.docker.internal:8554/depth
     expected_fps: 30
-    display_name: 70mai Rear
-    role: rear
-    recorded: true
+    derived_from_sensor_id: emotion_demo_face_rgb
+    display_name: Emotion Demo (Depth, simulated)
+
+  - id: emotion_demo_face_thermal
+    modality: thermal
+    source_type: simulated
+    transport: rtsp
+    url: rtsp://host.docker.internal:8554/thermal
+    expected_fps: 30
+    derived_from_sensor_id: emotion_demo_face_rgb
+    display_name: Emotion Demo (Thermal, simulated)
 
 # platform_id: this machine's declared identity for live resource
-# observations (v0.9.1, issue #111) - ExecutionPlatform's own docstring
-# (backend/app/domain/resources.py) is explicit that this is "declared,
-# never auto-detected by magic." Falls back to 'unknown' if omitted.
+# observations (v0.9.1, issue #111) - never auto-detected by magic.
 platform_id: reference-dev-macbook
 
 # resource_collectors: activates live, session-bound resource collection
-# (v0.9.1, issue #111 - see docs/resources.md#live-collection). Each
-# entry mirrors poll_connectors' own id/plugin/config/poll_interval_s
-# shape. The built-in system-metrics collector needs no separate
-# `pip install` - it's always discovered alongside the RTSP connector
-# (app/plugins/builtin_resource_collector.py) - naming it here is what
-# turns "discovered" into "actually sampling while a session runs."
+# (v0.9.1, issue #111).
 resource_collectors:
   - id: system-metrics
     plugin: multisens.builtin.resource.system-metrics
     poll_interval_s: 5.0
 
 # inference_connectors: session-bound background inference (v1.0-RC issue
-# #122) - discovered/constructed at backend boot, but only actually
-# configure()d/start()ed between a session's start and complete (see
-# app/plugins/manager.py's build_inference_connector_instances()/
-# start_inference_connectors() docstrings). One entry per sensor, matching
-# the Phase 8 decision (one yolo_worker process per sensor) - each names
-# exactly one sensor_id, never a fusion of both.
+# #122). RGB only - see the module-level note above on why depth/thermal
+# are deliberately excluded.
 #
-# task: vehicle_detection, not vehicle_presence - this bridge's poll()
-# genuinely emits value: {detections: [...]} (raw class/confidence/bbox
-# list, see examples/plugins/reference-inference/README.md), so labeling
-# it vehicle_presence would claim a value shape it doesn't carry and
-# silently break evaluate_classification. The present/absent judgement
-# (>=1 configured vehicle class >= confidence_threshold) is a derived
-# summary computed at controlled-sampling time, not the live task itself
-# - see the RideSafe bring-up notes for where that derivation lives.
+# task: facial_emotion, not a derived present/absent-style label - this
+# bridge's poll() genuinely emits value: {detections: [...]} (raw
+# class/confidence/bbox, 0-or-1 entries), matching the RideSafe demo's
+# own "task name must match the value shape it actually carries" rule.
 #
-# worker_url: host.docker.internal because the reference yolo_worker
-# processes run on the host (outside docker compose, one per sensor - see
-# examples/plugins/reference-inference/worker/README.md), same reachability
-# pattern as each sensor's own url above.
+# worker_url: host.docker.internal because the reference emotion_worker
+# process runs on the host (outside docker compose - see
+# examples/plugins/reference-inference-emotion/worker/README.md).
 inference_connectors:
-  - id: ridesafe_front_vehicle_detector
-    plugin: multisens.reference.inference.yolo_bridge
+  - id: emotion_demo_face_detector
+    plugin: multisens.reference.inference.emotion_bridge
     config:
-      sensor_id: ridesafe_front_rgb
+      sensor_id: emotion_demo_face_rgb
       modality: rgb
-      task: vehicle_detection
-      worker_url: http://host.docker.internal:9100
-      stale_after_s: 8.0
-    poll_interval_s: 1.0
-
-  - id: ridesafe_rear_vehicle_detector
-    plugin: multisens.reference.inference.yolo_bridge
-    config:
-      sensor_id: ridesafe_rear_rgb
-      modality: rgb
-      task: vehicle_detection
-      worker_url: http://host.docker.internal:9101
+      task: facial_emotion
+      worker_url: http://host.docker.internal:9200
       stale_after_s: 8.0
     poll_interval_s: 1.0
