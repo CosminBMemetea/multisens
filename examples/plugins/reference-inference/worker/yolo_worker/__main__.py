@@ -9,6 +9,7 @@ import threading
 
 from yolo_worker.capture import run_capture_loop
 from yolo_worker.detections import DEFAULT_CONFIDENCE_THRESHOLD
+from yolo_worker.log import log
 from yolo_worker.server import serve
 from yolo_worker.state import SharedState
 
@@ -26,20 +27,25 @@ def main() -> None:
     parser.add_argument('--confidence-threshold', type=float, default=DEFAULT_CONFIDENCE_THRESHOLD)
     args = parser.parse_args()
 
+    # One worker per sensor (Phase 8 decision) - derived, not a separate
+    # flag, since there's currently no case where the two would differ.
+    worker_id = f'yolo-worker:{args.sensor_id}'
+
     state = SharedState(sensor_id=args.sensor_id)
     stop_event = threading.Event()
     capture_thread = threading.Thread(
         target=run_capture_loop,
         kwargs=dict(
-            rtsp_url=args.rtsp_url, state=state, model_path=args.model,
-            confidence_threshold=args.confidence_threshold, stop_event=stop_event,
+            rtsp_url=args.rtsp_url, state=state, worker_id=worker_id, sensor_id=args.sensor_id,
+            model_path=args.model, confidence_threshold=args.confidence_threshold, stop_event=stop_event,
         ),
         daemon=True,
     )
     capture_thread.start()
 
     server = serve(state, args.host, args.port)
-    print(f'yolo-worker: sensor_id={args.sensor_id!r} serving on http://{args.host}:{args.port} (Ctrl+C to stop)')
+    log('info', 'startup', worker_id=worker_id, sensor_id=args.sensor_id, model=args.model,
+        rtsp_url=args.rtsp_url, host=args.host, port=args.port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

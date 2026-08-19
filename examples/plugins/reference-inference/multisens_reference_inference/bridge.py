@@ -200,6 +200,14 @@ class YoloBridgeConnector:
             # was never touched by a propagated exception), silently overwriting the wrapper's own
             # correctly-DEGRADED state the next time health() happened to be called.
             self._last_error = str(e)
+            # RideSafe bring-up, Phase 28 - _poll_raw() (backend/app/plugins/
+            # poll_connector_instance.py) catches this and moves the connector
+            # to FAILED, but never itself prints anything - without this line,
+            # an operator watching the backend's own logs would see nothing
+            # at all when inference silently goes DEGRADED/FAILED. Natural
+            # rate limit already comes from poll_interval_s (1/s here), no
+            # separate throttling needed on top.
+            print(f'yolo_bridge: sensor_id={self._sensor_id!r} poll failed: {type(e).__name__}: {e}')
             raise
         self._last_error = None
 
