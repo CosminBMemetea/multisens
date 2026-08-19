@@ -10,6 +10,13 @@ __pycache__/
 # macOS
 .DS_Store
 
+# mediamtx's own auto-generated TLS cert, dropped wherever it happens to
+# be started from when no mediamtx.yml is found in the cwd - local dev
+# noise, never project content (found twice landing inside example
+# plugin directories, accidentally committed once - see git history).
+auto.crt
+auto.key
+
 # Claude Code session-local state, not project content
 .claude/
 
