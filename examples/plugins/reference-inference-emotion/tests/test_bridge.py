@@ -273,6 +273,9 @@ def test_health_details_report_face_present_and_top_emotion(fake_worker):
     assert details['face_present'] is True
     assert details['top_emotion'] == 'surprise'
     assert details['top_confidence'] == pytest.approx(0.72)
+    assert details['detections'] == [
+        {'label': 'surprise', 'confidence': 0.72, 'bbox': {'x': 0, 'y': 0, 'width': 0.5, 'height': 0.5}},
+    ]
 
 
 def test_health_details_report_no_face_when_detections_are_empty(fake_worker):

@@ -281,6 +281,7 @@ def test_health_details_report_face_present_and_count(fake_worker):
     assert details['face_present'] is True
     assert details['face_count'] == 2
     assert details['top_confidence'] == pytest.approx(0.91)
+    assert len(details['detections']) == 2
 
 
 def test_health_details_report_no_face_when_detections_are_empty(fake_worker):

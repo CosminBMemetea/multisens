@@ -49,6 +49,11 @@ export interface StatusSnapshot {
   sensors: Record<string, SensorDiagnostics>;
   system: SystemDiagnostics | null;
   sync: SyncStatus | null;
+  // v1.x, issue #144 - inference connector state/health now rides the
+  // same live WS push as sensors/system/sync, not a separate one-shot
+  // REST fetch on connect (the one thing on the dashboard that
+  // previously never actually updated live).
+  inference: InferenceConnectorDetail[];
 }
 
 export interface SensorConfig {
@@ -790,4 +795,17 @@ export interface InferenceConnectorSummary {
 
 export interface InferenceConnectorDetail extends InferenceConnectorSummary {
   health: ConnectorHealth;
+}
+
+// v1.x, issue #144 - the same class/confidence/bbox shape every
+// reference bridge's own detections list already carries (bbox
+// normalized to [0, 1], see backend/app/domain/detection.py's
+// BoundingBox). Not a typed field on ConnectorHealth itself - it lives
+// inside the open `details` bag (`details.detections`), same posture as
+// `top_confidence`/`vehicle_present`/etc., so reading it is a runtime
+// check, not a trusted field.
+export interface Detection {
+  label: string;
+  confidence: number;
+  bbox: { x: number; y: number; width: number; height: number };
 }

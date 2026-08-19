@@ -282,6 +282,18 @@ def test_health_reflects_last_sample_age_after_a_successful_poll(fake_worker):
     assert health.last_sample_age_s is not None
 
 
+def test_health_details_expose_full_detections_for_a_live_overlay(fake_worker):
+    worker_url, responses = fake_worker
+    detections = [{'label': 'car', 'confidence': 0.87, 'bbox': {'x': 0.1, 'y': 0.2, 'width': 0.3, 'height': 0.4}}]
+    responses['/latest'] = (200, {'frame_timestamp_ms': 1.0, 'detections': detections})
+    connector = YoloBridgeConnector()
+    connector.configure(_valid_config(worker_url))
+    connector.start()
+    connector.poll()
+
+    assert connector.health().details['detections'] == detections
+
+
 # --- staleness (v1.0-RC, issue #127) ------------------------------------------
 
 def test_health_stays_running_while_the_frame_keeps_advancing_within_the_threshold(fake_worker):

@@ -143,6 +143,12 @@ class EmotionBridgeConnector:
             'face_present': top is not None,
             'top_emotion': top['label'] if top else None,
             'top_confidence': top['confidence'] if top else None,
+            # Full detections (0-or-1-length: label/confidence/bbox), not
+            # just the summary fields above - lets a live viewer
+            # (dashboard overlay) draw the actual box, not just a
+            # present/absent badge. Same already-filtered list poll()
+            # itself emits as Prediction.value['detections'].
+            'detections': self._last_detections,
         }
         if self._last_advance_monotonic is None:
             return ConnectorHealth(state=ConnectorState.RUNNING, last_sample_age_s=None, details=details)

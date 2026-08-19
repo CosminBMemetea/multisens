@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchInferenceConnectors, fetchSensors } from "../api";
+import { fetchSensors } from "../api";
 import { useStatusSocket } from "../useStatusSocket";
 import type { InferenceConnectorDetail, SensorConfig } from "../types";
 import { TopBar } from "../components/TopBar";
@@ -36,7 +36,6 @@ export function groupInferenceBySensorId(
 export function Dashboard() {
   const [sensors, setSensors] = useState<SensorConfig[]>([]);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [inferenceConnectors, setInferenceConnectors] = useState<InferenceConnectorDetail[]>([]);
   const { snapshot, connected } = useStatusSocket();
 
   useEffect(() => {
@@ -52,15 +51,14 @@ export function Dashboard() {
         setConfigError(null);
       })
       .catch((err) => setConfigError(String(err)));
-    // v1.0-RC, issue #124: a fetch failure here must never block the
-    // sensor grid itself from rendering - inference status is additive
-    // per-card decoration, not a dependency of the core dashboard.
-    fetchInferenceConnectors()
-      .then(setInferenceConnectors)
-      .catch(() => setInferenceConnectors([]));
   }, [connected]);
 
-  const inferenceBySensorId = groupInferenceBySensorId(inferenceConnectors);
+  // v1.x, issue #144: inference connector state now rides the live WS
+  // snapshot (same push as sensors/system/sync), not a one-shot REST
+  // fetch on connect - it was previously the one thing on the dashboard
+  // that never actually updated live, and detection overlays need fresh
+  // data on every push to be worth drawing at all.
+  const inferenceBySensorId = groupInferenceBySensorId(snapshot?.inference ?? []);
 
   const connectedCount = Object.values(snapshot?.sensors ?? {}).filter(
     (s) => s.connection_state === "connected",

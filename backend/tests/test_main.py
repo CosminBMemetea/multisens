@@ -65,6 +65,18 @@ def test_status_returns_empty_snapshot_before_any_ros_data():
     assert response.json() == {'sensors': {}, 'system': None, 'sync': None}
 
 
+def test_ws_status_includes_inference_connectors_live_not_just_on_connect(monkeypatch, tmp_path):
+    """issue #144: inference connector state used to be a one-shot REST
+    fetch on the frontend's WebSocket-connect handler - the one thing on
+    the dashboard that never actually updated live. It now rides the
+    same push as sensors/system/sync."""
+    monkeypatch.setenv('MULTISENS_SENSORS_CONFIG', str(tmp_path / 'missing.yaml'))
+    client = TestClient(app)
+    with client.websocket_connect('/ws/status') as websocket:
+        payload = websocket.receive_json()
+    assert payload == {'sensors': {}, 'system': None, 'sync': None, 'inference': []}
+
+
 # --- v0.9 bug hunt (issue #116): GET /api/resource-metrics --------------------
 
 @pytest.fixture

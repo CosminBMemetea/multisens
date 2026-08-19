@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from app.api.comparison import router as comparison_router
 from app.api.evaluation import router as evaluation_router
+from app.api.plugins import list_inference_connectors
 from app.api.plugins import router as plugins_router
 from app.api.profiles import router as profiles_router
 from app.api.scenarios import router as scenarios_router
@@ -192,7 +193,16 @@ async def ws_status(websocket: WebSocket) -> None:
     await websocket.accept()
     try:
         while True:
-            await websocket.send_json(bridge.snapshot())
+            snapshot = bridge.snapshot()
+            # Inference connector state/health (issue #144) rides the
+            # same live push as sensors/system/sync, not a separate
+            # one-shot REST fetch on connect - it was previously the one
+            # thing on the dashboard that never actually updated live.
+            # Cheap: list_inference_connectors() only reads in-process
+            # plugin_state and calls each connector's own health() (pure
+            # computation, no I/O), safe at this push rate.
+            snapshot['inference'] = [c.model_dump() for c in list_inference_connectors()]
+            await websocket.send_json(snapshot)
             await asyncio.sleep(WS_PUSH_INTERVAL_SEC)
     except WebSocketDisconnect:
         pass

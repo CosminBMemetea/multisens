@@ -1,6 +1,7 @@
 import { sensorStreamUrl } from "../api";
 import { formatAgeSeconds, formatMs } from "../format";
 import type { InferenceConnectorDetail, SensorConfig, SensorDiagnostics } from "../types";
+import { DetectionOverlay } from "./DetectionOverlay";
 import { InferenceStatusBadge, LevelBadge, SourceTypeBadge, type InferenceStatus } from "./Badge";
 
 interface SensorCardProps {
@@ -36,15 +37,24 @@ export function SensorCard({ config, diagnostics, inference }: SensorCardProps) 
     <div className="flex flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-950/60">
       <div className="relative aspect-[4/3] w-full bg-black">
         {connected ? (
-          // key forces a fresh <img> (and fresh MJPEG connection) if the
-          // sensor drops and reconnects, rather than trying to resume a
-          // dead stream.
-          <img
-            key={`${config.id}-${diagnostics?.reconnect_count ?? "0"}`}
-            src={sensorStreamUrl(config.id)}
-            alt={`${config.id} live view`}
-            className="h-full w-full object-cover"
-          />
+          <>
+            {/* key forces a fresh <img> (and fresh MJPEG connection) if
+                the sensor drops and reconnects, rather than trying to
+                resume a dead stream. Never keyed on inference/overlay
+                data - the video must never restart just because a new
+                detection arrived. */}
+            <img
+              key={`${config.id}-${diagnostics?.reconnect_count ?? "0"}`}
+              src={sensorStreamUrl(config.id)}
+              alt={`${config.id} live view`}
+              className="h-full w-full object-cover"
+            />
+            {/* Percentage-positioned boxes assume the video fills this
+                container without letterboxing - true for this project's
+                own 4:3 (640x480) reference sensors under object-cover,
+                not guaranteed for every possible source resolution. */}
+            <DetectionOverlay connectors={inference} />
+          </>
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <span className="font-mono-data text-sm uppercase tracking-widest text-slate-600">

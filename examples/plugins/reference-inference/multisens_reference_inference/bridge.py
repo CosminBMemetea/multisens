@@ -166,6 +166,14 @@ class YoloBridgeConnector:
             'worker_url': self._worker_url or '',
             'vehicle_present': len(self._last_detections) > 0,
             'top_confidence': max((d.get('confidence', 0.0) for d in self._last_detections), default=None),
+            # Full detections (label/confidence/bbox), not just the
+            # summary fields above - lets a live viewer (dashboard
+            # overlay) draw the actual boxes, not just a present/absent
+            # badge. Same already-filtered list poll() itself emits as
+            # Prediction.value['detections'] - no second copy of any
+            # threshold logic, just also surfaced here for anyone polling
+            # health() instead of the prediction stream.
+            'detections': self._last_detections,
         }
         if self._last_advance_monotonic is None:
             # Never seen a real frame yet - genuinely unknown, not "0s old."

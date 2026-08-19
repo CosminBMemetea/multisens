@@ -141,6 +141,11 @@ class MediaPipeBridgeConnector:
             'face_present': top is not None,
             'face_count': len(self._last_detections),
             'top_confidence': top['confidence'] if top else None,
+            # Full detections (label/confidence/bbox, one per face) - lets
+            # a live viewer (dashboard overlay) draw the actual boxes, not
+            # just a count. Same already-filtered list poll() itself
+            # emits as Prediction.value['detections'].
+            'detections': self._last_detections,
         }
         if self._last_advance_monotonic is None:
             return ConnectorHealth(state=ConnectorState.RUNNING, last_sample_age_s=None, details=details)
