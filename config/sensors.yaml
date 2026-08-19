@@ -32,13 +32,16 @@
 # Thermal stays inference-free for now - three live workers is already a
 # real CPU/swap cost on this machine; a fourth is a follow-up, not free.
 #
-# emotion_demo_face_rgb also now runs a SECOND, independent producer
-# (issue #142's own v1.x multi-model architecture work): MediaPipe face
-# detection, alongside the FER+ emotion connector already there - two
-# completely separate worker processes, two completely separate
-# PollRunner threads, neither aware the other exists, both polling the
-# exact same sensor. This is the concrete proof that "N inference
-# producers per sensor" needed no core code change - only this file.
+# emotion_demo_face_rgb now runs THREE independent producers (issue
+# #143, Phase D of the v1.x multi-model architecture work): the FER+
+# emotion connector, MediaPipe face detection (#142), and YOLOv8n vehicle
+# detection (the original RideSafe model, reused unchanged - it finding
+# zero vehicles in a face photo is itself an honest, correct result, not
+# a bug to hide). Three completely separate worker processes, three
+# completely separate PollRunner threads, none aware the others exist,
+# all polling the exact same sensor. This is the concrete proof that "N
+# inference producers per sensor" needed no core code change - only this
+# file - for a third and now fourth independent producer in a row.
 #
 # The RideSafe demo config (ridesafe_front_rgb/ridesafe_rear_rgb) this
 # replaced is preserved in git history - `git log --oneline -- config/
@@ -136,5 +139,15 @@ inference_connectors:
       modality: rgb
       task: face_detection
       worker_url: http://host.docker.internal:9400
+      stale_after_s: 8.0
+    poll_interval_s: 1.0
+
+  - id: emotion_demo_face_detector_yolo
+    plugin: multisens.reference.inference.yolo_bridge
+    config:
+      sensor_id: emotion_demo_face_rgb
+      modality: rgb
+      task: vehicle_detection
+      worker_url: http://host.docker.internal:9100
       stale_after_s: 8.0
     poll_interval_s: 1.0
