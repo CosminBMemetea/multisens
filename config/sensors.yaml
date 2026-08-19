@@ -24,12 +24,13 @@
 # sensor plus two derived simulated feeds (depth/thermal pseudocolor
 # transforms of the same capture - scripts/stream_macos.sh in the
 # sibling multirtsp repo does the 3-way split). Inference (face
-# detection + FER+ emotion classification) is wired to RGB only -
-# running the RGB-trained face/emotion model against the simulated
-# depth/thermal pseudocolor feeds and presenting that as meaningful
-# would be exactly the kind of fabricated claim this project's own
-# "never fabricate" discipline forbids (same rule the RideSafe demo's
-# own three-sensor regression test already established).
+# detection + FER+ emotion classification) now runs on RGB *and* depth
+# (issue #139) - deliberately, as an honest cross-source comparison, not
+# a claim that the RGB-trained model "works" on a pseudocolor transform.
+# The whole point is to let Evidence Playback show what actually happens
+# (AGREE/DISAGREE per source) rather than asserting it in a doc comment.
+# Thermal stays inference-free for now - two live workers is already a
+# real CPU/swap cost on this machine; a third is a follow-up, not free.
 #
 # The RideSafe demo config (ridesafe_front_rgb/ridesafe_rear_rgb) this
 # replaced is preserved in git history - `git log --oneline -- config/
@@ -76,16 +77,22 @@ resource_collectors:
     poll_interval_s: 5.0
 
 # inference_connectors: session-bound background inference (v1.0-RC issue
-# #122). RGB only - see the module-level note above on why depth/thermal
-# are deliberately excluded.
+# #122). RGB and depth (issue #139) - see the module-level note above.
+# Each entry is its own emotion_worker process on its own port; the
+# bridge plugin itself is unchanged and unaware there's more than one
+# instance - "add a sensor's worth of inference" is a config-only change,
+# same "no code change, no rebuild" property sensors: above already has.
 #
 # task: facial_emotion, not a derived present/absent-style label - this
 # bridge's poll() genuinely emits value: {detections: [...]} (raw
 # class/confidence/bbox, 0-or-1 entries), matching the RideSafe demo's
 # own "task name must match the value shape it actually carries" rule.
+# Both connectors share the same task name deliberately, so Evidence
+# Playback treats RGB and depth as two comparable sources for one task
+# rather than two unrelated tasks.
 #
 # worker_url: host.docker.internal because the reference emotion_worker
-# process runs on the host (outside docker compose - see
+# processes run on the host (outside docker compose - see
 # examples/plugins/reference-inference-emotion/worker/README.md).
 inference_connectors:
   - id: emotion_demo_face_detector
@@ -96,4 +103,20 @@ inference_connectors:
       task: facial_emotion
       worker_url: http://host.docker.internal:9200
       stale_after_s: 8.0
+    poll_interval_s: 1.0
+
+  - id: emotion_demo_depth_detector
+    plugin: multisens.reference.inference.emotion_bridge
+    config:
+      sensor_id: emotion_demo_face_depth
+      modality: depth
+      task: facial_emotion
+      worker_url: http://host.docker.internal:9201
+      stale_after_s: 8.0
+      # The bridge refuses a non-RGB modality by default (an RGB-trained
+      # model against a simulated feed is exactly the "meaningful without
+      # evidence" claim this project won't make silently) - this override
+      # is the deliberate, disclosed exception: we WANT to measure how it
+      # actually performs on the pseudocolor depth feed, not assume.
+      allow_simulated_input: true
     poll_interval_s: 1.0
