@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-reference-inference-emotion"
+version = "0.1.0"
+description = "Reference MultiSens plugin - a thin PredictionConnector bridge that polls a separately-running face-detection + FER+ emotion-classification worker (see worker/) and translates its output into canonical Prediction objects. Sibling to multisens-reference-inference (the YOLOv8n vehicle-detection one), demonstrating the same architecture wired to a different model and sensor. Not a driver-monitoring system, not an NCAP/DMS compliance claim."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MultiSens Project" }]
+requires-python = ">=3.10"
+dependencies = ["multisens-sdk"]
+
+[project.optional-dependencies]
+testing = ["multisens-sdk[testing]", "pytest>=8.0"]
+
+[project.entry-points."multisens.plugins"]
+"multisens.reference.inference.emotion_bridge" = "multisens_reference_inference_emotion.bridge:create"
+
+[tool.setuptools.packages.find]
+include = ["multisens_reference_inference_emotion*"]

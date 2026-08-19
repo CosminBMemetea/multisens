@@ -1,0 +1,7 @@
+# The inference worker's own dependencies - deliberately never installed
+# into the MultiSens backend image (same process-isolation discipline
+# as the sibling yolo_worker package: a native-level crash here must
+# never take down the REST API/Sessions/Evaluation/Dashboard process).
+opencv-python-headless>=4.9
+onnxruntime>=1.17
+numpy>=1.24
