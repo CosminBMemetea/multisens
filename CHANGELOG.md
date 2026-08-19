@@ -7,8 +7,16 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ## [Unreleased]
 
-Not yet tagged - every item below is real, tested, and merged to
-`main`, awaiting a deliberate release decision.
+## [1.1.0] — Multi-model live inference & detection overlay
+
+Purely additive on top of v1.0.0 - no breaking changes to any existing
+API, config shape, or plugin contract. Proves the v1.0.0 background-
+inference architecture generalizes beyond one model: N independent
+inference producers can now target one sensor simultaneously
+(config-only, no core change), demonstrated with three
+independently-developed reference plugins (YOLOv8n, FER+ emotion,
+MediaPipe face detection) rather than just the original one, plus a
+live detection overlay on the dashboard itself.
 
 ### Added
 

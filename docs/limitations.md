@@ -38,7 +38,7 @@ release, not silently worked around now.
   example code an operator runs and wires in via config, exactly like any
   other third-party plugin, never something the backend depends on or
   ships enabled by default.
-  **Since v1.0.0, unreleased (issues #136/#141/#142/#143): now three**
+  **v1.1.0 (issues #136/#141/#142/#143): now three**
   independently-developed reference workers (YOLOv8n, FER+ emotion,
   MediaPipe face detection), sharing a small extracted toolkit
   (`multisens-worker-kit`) but each its own OS process - and any number

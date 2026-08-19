@@ -4,7 +4,7 @@
 diagnosing, evaluating, and visualizing multi-sensor streams** — RGB,
 depth, thermal, and whatever else speaks RTSP.
 
-[![release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v1.0.0)
+[![release](https://img.shields.io/badge/release-v1.1.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v1.1.0)
 [![license](https://img.shields.io/badge/license-Apache--2.0-informational)](LICENSE)
 [![backend tests](https://img.shields.io/badge/backend%20tests-1084%20passing-brightgreen)](docs/development.md)
 [![ROS](https://img.shields.io/badge/ROS%202-Humble-22314E)](ros2_ws)
@@ -345,7 +345,7 @@ process-isolated, self-healing on failure) running end to end on your
 own machine? Full copy-pasteable walkthrough in
 [docs/development.md](docs/development.md).
 
-### Multi-model live inference (since v1.0.0, unreleased)
+### Multi-model live inference (v1.1.0)
 
 The single-worker path above generalizes to **N independent inference
 producers on one sensor** — no core code change, config-only. Three
@@ -372,9 +372,8 @@ MediaPipe plugin ([#142](https://github.com/CosminBMemetea/multisens/issues/142)
 all three model families on one sensor with a full failure-isolation
 matrix ([#143](https://github.com/CosminBMemetea/multisens/issues/143)),
 and the live detection overlay
-([#144](https://github.com/CosminBMemetea/multisens/issues/144)). Not
-yet released under a version tag — everything above is real, tested,
-and merged to `main`, awaiting a deliberate release decision.
+([#144](https://github.com/CosminBMemetea/multisens/issues/144)). Full
+detail: [CHANGELOG.md](CHANGELOG.md#110--multi-model-live-inference--detection-overlay).
 
 ## Docker requirements
 
@@ -447,7 +446,8 @@ away in a later version.
 | v0.7 | Resource observation & deployment trade-offs | [docs/resources.md](docs/resources.md) / [docs/deployment-tradeoffs.md](docs/deployment-tradeoffs.md) |
 | v0.8 | Object detection & regression evaluators | [docs/evaluators.md](docs/evaluators.md) |
 | v0.9 | Plugin SDK — external integration via `pip install` | [docs/plugin-sdk.md](docs/plugin-sdk.md) |
-| **v1.0.0** | **`sensor_id`-keyed topics + live, self-healing background inference** | [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125) |
+| v1.0.0 | `sensor_id`-keyed topics + live, self-healing background inference | [docs/limitations.md](docs/limitations.md#live-verified-failurerecovery--multi-sensor-matrix-v10-rc-issue-125) |
+| **v1.1.0** | **Multi-model live inference — N producers per sensor, live detection overlay** | [CHANGELOG.md](CHANGELOG.md#110--multi-model-live-inference--detection-overlay) |
 
 v1.0.0 closed the two gaps the v0.9 architecture surfaced: sensor
 identity was keyed by `modality` (two same-modality live cameras
