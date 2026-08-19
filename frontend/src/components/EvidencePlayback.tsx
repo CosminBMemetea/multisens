@@ -15,6 +15,20 @@ function rawValueLabel(value: Record<string, unknown> | null): string {
   return JSON.stringify(value);
 }
 
+// Raw epoch ms is unreadable in a table ("1755590000000" tells you
+// nothing). Shown instead as elapsed time from the table's own first row
+// - self-consistent regardless of which clock produced the timestamps -
+// with the full wall-clock time and raw ms kept in the tooltip for
+// anyone who needs to cross-reference against logs.
+function formatElapsed(timestampMs: number, t0Ms: number): string {
+  const deltaS = (timestampMs - t0Ms) / 1000;
+  return `t+${deltaS.toFixed(1)}s`;
+}
+
+function formatTimestampTitle(timestampMs: number): string {
+  return `${new Date(timestampMs).toLocaleTimeString()} (${timestampMs} ms)`;
+}
+
 // Evidence Playback needs an explicit "which label is the event of
 // interest" choice to classify TP/FP/FN/TN and AGREE_POSITIVE/NEGATIVE -
 // the backend refuses to guess (positive_label has no default), so this
@@ -98,6 +112,10 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
     source_id: s.source_id,
   })) ?? [];
 
+  const t0Ms = evidence && evidence.length > 0
+    ? Math.min(...evidence.map((s) => s.gt_timestamp_ms))
+    : 0;
+
   return (
     <section className="flex flex-col gap-4 rounded border border-slate-800 bg-slate-900/40 p-4">
       <div className="flex items-center justify-between">
@@ -161,7 +179,7 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-800 bg-slate-950/60 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2 font-medium">t (ms)</th>
+                <th className="px-3 py-2 font-medium">t</th>
                 <th className="px-3 py-2 font-medium">GT</th>
                 {columns.map((c) => (
                   <th key={`${c.configuration_id}::${c.source_id}`} className="px-3 py-2 font-medium">
@@ -175,7 +193,12 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
             <tbody>
               {evidence.map((sample) => (
                 <tr key={sample.gt_sample_id} className="border-b border-slate-800/60 last:border-0">
-                  <td className="px-3 py-2 font-mono-data text-slate-400">{sample.gt_timestamp_ms}</td>
+                  <td
+                    className="px-3 py-2 font-mono-data text-slate-400"
+                    title={formatTimestampTitle(sample.gt_timestamp_ms)}
+                  >
+                    {formatElapsed(sample.gt_timestamp_ms, t0Ms)}
+                  </td>
                   <td className="px-3 py-2 font-mono-data text-slate-200">{rawValueLabel(sample.gt_value)}</td>
                   {columns.map((c) => {
                     const src = sample.sources.find(
@@ -235,7 +258,9 @@ export function EvidencePlayback({ sessionId, tasks, groundTruth }: EvidencePlay
             <div className="flex items-start justify-between gap-4">
               <div className="font-mono-data text-xs text-slate-400">
                 <div className="text-slate-200">{inspecting.src.source_id}</div>
-                <div>t = {inspecting.sample.gt_timestamp_ms} ms</div>
+                <div title={formatTimestampTitle(inspecting.sample.gt_timestamp_ms)}>
+                  {formatElapsed(inspecting.sample.gt_timestamp_ms, t0Ms)}
+                </div>
               </div>
               <button
                 type="button"

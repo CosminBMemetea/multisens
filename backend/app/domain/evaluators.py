@@ -49,6 +49,7 @@ from app.domain.detection import DetectionEvaluator
 from app.domain.evaluator_output import Evaluator, EvaluatorOutput
 from app.domain.matching import MatchResult
 from app.domain.metrics import evaluate_classification
+from app.domain.models import MetricValue
 from app.domain.regression import RegressionEvaluator
 from multisens_sdk import MULTISENS_PLUGIN_API_VERSION, MetricDescriptor, PluginDescriptor, PluginType
 
@@ -93,20 +94,32 @@ class ClassificationEvaluator:
 
     def evaluate(self, match_result: MatchResult, parameters: dict[str, Any]) -> EvaluatorOutput:
         cm = evaluate_classification(match_result)
+        metrics: dict[str, MetricValue] = {
+            'accuracy': cm.accuracy,
+            'precision_macro': cm.precision_macro,
+            'recall_macro': cm.recall_macro,
+            'f1_macro': cm.f1_macro,
+            'precision_micro': cm.precision_micro,
+            'recall_micro': cm.recall_micro,
+            'f1_micro': cm.f1_micro,
+        }
+        # Per-class breakdown (v0.9.2), e.g. "recall:happiness" - a
+        # `:` separator that can never collide with the fixed keys above,
+        # since none of them contain one. Lets a Requirement target one
+        # specific class ("recall:happiness >= 0.6") instead of only the
+        # aggregate across every class in the task.
+        for label, value in cm.precision_per_class.items():
+            metrics[f'precision:{label}'] = value
+        for label, value in cm.recall_per_class.items():
+            metrics[f'recall:{label}'] = value
+        for label, value in cm.f1_per_class.items():
+            metrics[f'f1:{label}'] = value
         return EvaluatorOutput(
             sample_count=cm.sample_count,
             matched_samples=cm.matched_samples,
             unmatched_predictions=cm.unmatched_predictions,
             unmatched_ground_truth=cm.unmatched_ground_truth,
-            metrics={
-                'accuracy': cm.accuracy,
-                'precision_macro': cm.precision_macro,
-                'recall_macro': cm.recall_macro,
-                'f1_macro': cm.f1_macro,
-                'precision_micro': cm.precision_micro,
-                'recall_micro': cm.recall_micro,
-                'f1_micro': cm.f1_micro,
-            },
+            metrics=metrics,
             details={'confusion_matrix': {'labels': cm.confusion_matrix.labels, 'counts': cm.confusion_matrix.counts}},
         )
 

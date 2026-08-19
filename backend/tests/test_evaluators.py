@@ -89,7 +89,7 @@ def test_classification_evaluator_matches_evaluate_classification_byte_for_byte(
     assert output.matched_samples == direct.matched_samples
     assert output.unmatched_predictions == direct.unmatched_predictions
     assert output.unmatched_ground_truth == direct.unmatched_ground_truth
-    assert output.metrics == {
+    expected_metrics = {
         'accuracy': direct.accuracy,
         'precision_macro': direct.precision_macro,
         'recall_macro': direct.recall_macro,
@@ -98,6 +98,13 @@ def test_classification_evaluator_matches_evaluate_classification_byte_for_byte(
         'recall_micro': direct.recall_micro,
         'f1_micro': direct.f1_micro,
     }
+    for label, value in direct.precision_per_class.items():
+        expected_metrics[f'precision:{label}'] = value
+    for label, value in direct.recall_per_class.items():
+        expected_metrics[f'recall:{label}'] = value
+    for label, value in direct.f1_per_class.items():
+        expected_metrics[f'f1:{label}'] = value
+    assert output.metrics == expected_metrics
     assert output.details == {
         'confusion_matrix': {'labels': direct.confusion_matrix.labels, 'counts': direct.confusion_matrix.counts},
     }

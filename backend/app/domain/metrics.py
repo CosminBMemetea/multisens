@@ -40,6 +40,14 @@ class ClassificationMetrics:
     precision_micro: MetricValue
     recall_micro: MetricValue
     f1_micro: MetricValue
+    # Per-class breakdown (e.g. "how well does this model actually do on
+    # 'happiness' specifically" - macro/micro alone can't answer that).
+    # Keyed by label, not flattened into precision_macro-style names here,
+    # to keep this dataclass's own shape independent of what labels a
+    # given task happens to have.
+    precision_per_class: dict[str, MetricValue]
+    recall_per_class: dict[str, MetricValue]
+    f1_per_class: dict[str, MetricValue]
     confusion_matrix: ConfusionMatrix
 
 
@@ -69,8 +77,11 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
     precisions: list[float] = []
     recalls: list[float] = []
     f1s: list[float] = []
+    precision_per_class: dict[str, MetricValue] = {}
+    recall_per_class: dict[str, MetricValue] = {}
+    f1_per_class: dict[str, MetricValue] = {}
     tp_total = fp_total = fn_total = 0
-    for i in range(len(label_set)):
+    for i, label in enumerate(label_set):
         tp = counts[i][i]
         fp = sum(counts[r][i] for r in range(len(label_set)) if r != i)
         fn = sum(counts[i][c] for c in range(len(label_set)) if c != i)
@@ -81,6 +92,9 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
         precision = (tp / (tp + fp)) if (tp + fp) > 0 else None
         recall = (tp / (tp + fn)) if (tp + fn) > 0 else None
         f1 = compute_f1(precision, recall)
+        precision_per_class[label] = precision
+        recall_per_class[label] = recall
+        f1_per_class[label] = f1
 
         # Macro average is a mean over classes where the metric is
         # actually defined - a class excluded here (never predicted, or
@@ -114,6 +128,9 @@ def evaluate_classification(match_result: MatchResult, label_key: str = 'label')
         precision_micro=precision_micro,
         recall_micro=recall_micro,
         f1_micro=f1_micro,
+        precision_per_class=precision_per_class,
+        recall_per_class=recall_per_class,
+        f1_per_class=f1_per_class,
         confusion_matrix=ConfusionMatrix(labels=label_set, counts=counts),
     )
 

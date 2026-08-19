@@ -81,6 +81,22 @@ def test_precision_undefined_for_never_predicted_class():
     assert metrics.recall_macro == pytest.approx((1.0 + 0.0 + 0.0) / 3)
 
 
+def test_per_class_breakdown_matches_hand_computed_values():
+    # Same fixture/hand-computation as test_precision_undefined_for_never_
+    # predicted_class above - this test only adds the per-class dict
+    # assertions macro/micro alone can't express.
+    result = _match_result([('a', 'a'), ('b', 'a'), ('c', 'a')])
+    metrics = evaluate_classification(result)
+
+    assert metrics.precision_per_class == {'a': pytest.approx(1 / 3), 'b': None, 'c': None}
+    assert metrics.recall_per_class == {'a': 1.0, 'b': 0.0, 'c': 0.0}
+    assert metrics.f1_per_class['a'] == pytest.approx(2 * (1 / 3) * 1.0 / (1 / 3 + 1.0))
+    # b/c: precision is None (0/0), so f1 is undefined too - never a
+    # fabricated 0.0 despite recall itself being well-defined at 0.0.
+    assert metrics.f1_per_class['b'] is None
+    assert metrics.f1_per_class['c'] is None
+
+
 def test_micro_metrics_equal_accuracy_for_single_label_multiclass():
     result = _match_result([('a', 'a'), ('a', 'b'), ('b', 'b'), ('c', 'a'), ('c', 'c')])
     metrics = evaluate_classification(result)
