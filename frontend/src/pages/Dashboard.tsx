@@ -7,6 +7,32 @@ import { SensorCard } from "../components/SensorCard";
 import { SyncHealthPanel } from "../components/SyncHealthPanel";
 import { SystemHealthPanel } from "../components/SystemHealthPanel";
 
+// Grouped by config.sensor_id, matching the backend's own reverse-lookup
+// posture elsewhere (app/api/plugins.py) - the backend never restricts
+// one sensor to one connector (v1.x multi-producer inference, issue
+// #141), so a caller that kept only the first match would silently hide
+// any second connector on the same sensor from the dashboard. Every
+// matching connector is kept, in discovery order. Exported (not inlined
+// in the component) so this grouping behavior has its own test,
+// independent of rendering.
+export function groupInferenceBySensorId(
+  connectors: InferenceConnectorDetail[],
+): Map<string, InferenceConnectorDetail[]> {
+  const bySensorId = new Map<string, InferenceConnectorDetail[]>();
+  for (const connector of connectors) {
+    const sensorId = connector.config["sensor_id"];
+    if (typeof sensorId === "string") {
+      const existing = bySensorId.get(sensorId);
+      if (existing) {
+        existing.push(connector);
+      } else {
+        bySensorId.set(sensorId, [connector]);
+      }
+    }
+  }
+  return bySensorId;
+}
+
 export function Dashboard() {
   const [sensors, setSensors] = useState<SensorConfig[]>([]);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -34,17 +60,7 @@ export function Dashboard() {
       .catch(() => setInferenceConnectors([]));
   }, [connected]);
 
-  // First match by config.sensor_id, mirroring the backend's own
-  // reverse-lookup posture elsewhere (app/api/plugins.py) - nothing
-  // prevents two connectors from targeting one sensor, but exactly one
-  // is genuinely meaningful to show per card.
-  const inferenceBySensorId = new Map<string, InferenceConnectorDetail>();
-  for (const connector of inferenceConnectors) {
-    const sensorId = connector.config["sensor_id"];
-    if (typeof sensorId === "string" && !inferenceBySensorId.has(sensorId)) {
-      inferenceBySensorId.set(sensorId, connector);
-    }
-  }
+  const inferenceBySensorId = groupInferenceBySensorId(inferenceConnectors);
 
   const connectedCount = Object.values(snapshot?.sensors ?? {}).filter(
     (s) => s.connection_state === "connected",
@@ -96,7 +112,7 @@ export function Dashboard() {
               key={s.id}
               config={s}
               diagnostics={snapshot?.sensors[s.id]}
-              inference={inferenceBySensorId.get(s.id)}
+              inference={inferenceBySensorId.get(s.id) ?? []}
             />
           ))}
         </div>

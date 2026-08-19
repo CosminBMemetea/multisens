@@ -24,6 +24,7 @@ default as the vehicle-detection demo, for direct comparability.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
+pip install -e ../../../../worker-kit  # multisens-worker-kit (issue #141) - local path, not on PyPI
 pip install -r requirements.txt
 python3 -m emotion_worker \
   --rtsp-url rtsp://host.docker.internal:8554/emotion_demo_face \
@@ -86,6 +87,7 @@ backend restart needed.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
+pip install -e ../../../../worker-kit  # multisens-worker-kit - local path, not on PyPI
 pip install -e .[testing]
 pytest tests/
 ```

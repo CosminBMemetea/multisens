@@ -10,10 +10,15 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "MultiSens Project" }]
 requires-python = ">=3.10"
-dependencies = []
+# multisens-worker-kit (issue #141): the small, dependency-free HTTP/
+# state/logging toolkit this package's own state.py/server.py/log.py now
+# re-export - install the sibling worker-kit/ directory first (see this
+# package's own README), same two-step local-package pattern the
+# reference bridges already use for multisens-sdk.
+dependencies = ["multisens-worker-kit"]
 
 [project.optional-dependencies]
-testing = ["pytest>=8.0"]
+testing = ["multisens-worker-kit[testing]", "pytest>=8.0"]
 # The actual runtime deps (ultralytics/opencv) live in requirements.txt,
 # not here - deliberately not pip-installable as a project extra, so
 # `pip install -e .[testing]` for the pure-logic test suite never drags

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multisens-worker-kit"
+version = "0.1.0"
+description = "Small, dependency-free HTTP/state/logging toolkit shared by MultiSens reference inference worker processes (YOLO, emotion, and future presets). Not a MultiSens plugin, never installed into the backend image - see README.md."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "MultiSens Project" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+testing = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["multisens_worker_kit*"]

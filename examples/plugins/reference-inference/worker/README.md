@@ -14,6 +14,7 @@ latest detection over a small local HTTP endpoint.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
+pip install -e ../../../../worker-kit  # multisens-worker-kit (issue #141) - local path, not on PyPI
 pip install -r requirements.txt
 python3 -m yolo_worker \
   --rtsp-url rtsp://host.docker.internal:8554/ridesafe_front_rgb \
@@ -82,6 +83,7 @@ pure-logic test suite runs without `requirements.txt` installed at all:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
+pip install -e ../../../../worker-kit  # multisens-worker-kit - local path, not on PyPI
 pip install -e .[testing]
 pytest tests/
 ```
