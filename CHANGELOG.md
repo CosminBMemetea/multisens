@@ -7,6 +7,88 @@ build — that's a project-wide rule, not editorial flourish; see
 
 ## [Unreleased]
 
+Not yet tagged - every item below is real, tested, and merged to
+`main`, awaiting a deliberate release decision.
+
+### Added
+
+- **RideSafe reference demo** (issues #128-#132) - front/rear RTSP
+  dashcam replay through the real YOLOv8n reference plugin into one
+  clean session, with a dedicated controlled evaluation sampler
+  (decoupled from live inference's own polling frequency) and
+  cascade-safe session/scenario/profile deletion for dev-database
+  housekeeping.
+- **Emotion classification reference demo** (issues #136, #137, #139,
+  #140) - the second proof-of-generality this arc builds on: FER+
+  facial emotion wired into a live 3-sensor config (physical RGB +
+  simulated depth/thermal pseudocolor transforms, truthfully declared
+  via `derived_from_sensor_id`), a real Requirement Profile with a
+  disclosed, non-rigged pass/fail split, and posed live-capture ground
+  truth (not just casual footage) once per-emotion metrics existed to
+  make it meaningful.
+- **A second and third reference inference plugin, proving the
+  architecture is model-agnostic, not YOLO-specific** (issues #136,
+  #142). `reference-inference-emotion` (OpenCV Haar cascade + the
+  `emotion-ferplus` ONNX model, 8-class facial emotion) and
+  `reference-inference-mediapipe` (MediaPipe Tasks API face detection)
+  are each a genuinely separate, process-isolated worker + thin bridge,
+  same shape as the original YOLOv8n reference plugin. A real
+  environment bug was found and disclosed along the way: `mediapipe`
+  1.0.1 crashes with a fatal `Check failed: service_ Service is
+  unavailable` on this project's own macOS/Apple Silicon reference
+  machine, reproduced with the CPU delegate explicitly forced - pinned
+  to `0.10.21` instead, verified working end to end before the plugin
+  was written.
+- **`multisens-worker-kit`** (issue #141) - the `state.py`/`server.py`/
+  `log.py` toolkit shared by every reference worker's small local HTTP
+  endpoint, extracted after being byte-identical (docstrings aside)
+  across two independently-written workers. A third worker
+  (`mediapipe_worker`) depends on it from the start, with no local
+  copy at all - the concrete payoff of extracting it before a third
+  model family, not after.
+- **N independent inference producers on one sensor** (issue #141),
+  live-verified with all three reference plugins running simultaneously
+  against the same RGB sensor (issue #143), plus the emotion plugin a
+  second time against a derived depth feed. No core code change -
+  config-only. The dashboard previously showed only the first matching
+  connector per sensor, silently hiding any second one; `SensorCard`
+  now renders one status block per connector. Full failure-isolation
+  matrix re-verified per worker, not just once: killing any one of the
+  four independently degrades only that connector - confirmed for
+  same-sensor connectors (MediaPipe vs. emotion on the same feed) and
+  cross-process connectors (RGB vs. depth emotion workers) alike, each
+  recovering independently on restart with zero backend/session
+  restart.
+- **Per-class classification metrics** (`recall:<label>`,
+  `precision:<label>`, `f1:<label>` - issue #138), additive to the
+  existing `accuracy`/`*_macro`/`*_micro` metrics. Exists because
+  aggregate accuracy alone can hide a degenerate classifier: verified
+  live against a real dual-source (RGB vs. simulated-depth) emotion
+  comparison where both sources passed an `accuracy >= 0.65`
+  requirement while failing every per-emotion recall requirement
+  identically - the depth source's own confusion matrix showed it had
+  collapsed to predicting "neutral" for every sample, a fact raw
+  accuracy alone concealed.
+- **Live detection overlay on the dashboard** (issue #144) - bounding
+  boxes, previously computed by every worker but never sent past a
+  present/absent summary, now ride each connector's `health().details`
+  and the existing 0.5s status WebSocket push (which inference
+  connector state didn't actually use before this - it was fetched
+  once via REST on connect and never updated again). Verified against
+  a real WebSocket message, not just unit-tested: two independent
+  models drew two genuinely different bounding boxes for the same real
+  face at the same moment.
+- **Readable Evidence Playback timestamps** (issue #138) - raw epoch
+  milliseconds replaced with elapsed time from the table's own first
+  row, full wall-clock time kept in a tooltip.
+- Reproducibility/reliability fixes found live while building the
+  above: a PID-lock guard against a double-started replay script
+  (#135), a Docker-overlay self-reference bug where an overlay
+  Dockerfile's own build output silently overwrote the base image tag
+  it was `FROM` (#133), a missing exception handler around a worker's
+  inference call that could silently kill its capture thread (#134),
+  and structured, rate-limited worker logging (#134).
+
 ## [1.0.0] — Live background inference & multi-sensor identity
 
 Closes the two gaps the v0.9.0/v0.9.1 roadmap left open, both under the

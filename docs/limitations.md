@@ -38,6 +38,15 @@ release, not silently worked around now.
   example code an operator runs and wires in via config, exactly like any
   other third-party plugin, never something the backend depends on or
   ships enabled by default.
+  **Since v1.0.0, unreleased (issues #136/#141/#142/#143): now three**
+  independently-developed reference workers (YOLOv8n, FER+ emotion,
+  MediaPipe face detection), sharing a small extracted toolkit
+  (`multisens-worker-kit`) but each its own OS process - and any number
+  of them can target the same sensor simultaneously (config-only, no
+  core change), live-verified with all three plus a fourth on a second
+  sensor at once, each failing and recovering independently. The scope
+  boundary itself is unchanged: still zero built-in inference, still
+  opt-in example code, still never something the backend depends on.
 - **Comparison validity does not check matched-label-set divergence.**
   Two configurations whose matched samples span different label sets
   (e.g. one config's matched set never saw the "absent" class) would

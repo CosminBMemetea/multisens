@@ -6,7 +6,7 @@ depth, thermal, and whatever else speaks RTSP.
 
 [![release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/CosminBMemetea/multisens/releases/tag/v1.0.0)
 [![license](https://img.shields.io/badge/license-Apache--2.0-informational)](LICENSE)
-[![backend tests](https://img.shields.io/badge/backend%20tests-1082%20passing-brightgreen)](docs/development.md)
+[![backend tests](https://img.shields.io/badge/backend%20tests-1084%20passing-brightgreen)](docs/development.md)
 [![ROS](https://img.shields.io/badge/ROS%202-Humble-22314E)](ros2_ws)
 [![Python](https://img.shields.io/badge/Python-FastAPI-009688)](backend)
 [![React](https://img.shields.io/badge/React-19-61DAFB)](frontend)
@@ -19,9 +19,9 @@ freshly-captured screenshots and verified test counts instead of prose
 claims.
 
 <p align="center">
-  <img src="docs/images/demodashboardv1.png" alt="MultiSens live dashboard — reference webcam simulator, one physical RGB feed plus two simulated depth/thermal transforms, sync and system health both OK" width="820">
+  <img src="docs/images/multimodel_overlay_dashboard.png" alt="MultiSens live dashboard — one physical RGB webcam feed with two independent, simultaneously-running inference models (emotion classification, MediaPipe face detection) drawing distinctly colored, genuinely overlapping bounding boxes live, plus the same emotion model also running on a derived simulated depth feed; sync and system health both live" width="820">
   <br>
-  <sub>The live dashboard, connected to the reference simulator — one physical webcam feed plus two <code>SIMULATED</code> pseudocolor transforms of it, each truthfully declared as <code>derived_from_sensor_id: rgb</code>, never mistaken for real depth/thermal measurement.</sub>
+  <sub>Three independent inference producers on one physical sensor, live: emotion classification and MediaPipe face detection each draw their own bounding box for the same real face at the same moment (visibly different coordinates/confidence, distinct colors) — plus the same emotion model running a second time against a derived, truthfully-labeled <code>SIMULATED</code> depth transform of that feed. Nothing here is staged; this is one real WebSocket push.</sub>
 </p>
 
 ## Contents
@@ -344,6 +344,37 @@ Want to see the v1.0.0 live-inference path (a real YOLOv8n worker,
 process-isolated, self-healing on failure) running end to end on your
 own machine? Full copy-pasteable walkthrough in
 [docs/development.md](docs/development.md).
+
+### Multi-model live inference (since v1.0.0, unreleased)
+
+The single-worker path above generalizes to **N independent inference
+producers on one sensor** — no core code change, config-only. Three
+reference plugins now exist, each a genuinely separate, process-isolated
+worker: [YOLOv8n vehicle detection](examples/plugins/reference-inference),
+[FER+ facial emotion classification](examples/plugins/reference-inference-emotion),
+and [MediaPipe face detection](examples/plugins/reference-inference-mediapipe).
+Live-verified running all three on the same RGB sensor simultaneously,
+plus the emotion model a second time on a derived depth feed — killing
+any one of the four independently degrades only that connector, never
+the others, and each recovers on restart with zero backend/session
+disruption.
+
+<p align="center">
+  <img src="docs/images/multimodel_overlay_closeup.png" alt="Close-up of one sensor card: a live face with two overlapping detection boxes (emotion classification and MediaPipe face detection, different colors) and three ACTIVE inference status blocks below it" width="360">
+  <br>
+  <sub>Detection bounding boxes are drawn live on the dashboard itself — decoupled from the video's own frame rate (a slow detection cycle never stalls playback), reading real box/label/confidence data pushed over the existing status WebSocket, not a separate polling loop.</sub>
+</p>
+
+Built and verified in order (each phase live-tested before the next):
+shared worker toolkit + N-producers-per-sensor dashboard support
+([#141](https://github.com/CosminBMemetea/multisens/issues/141)), the
+MediaPipe plugin ([#142](https://github.com/CosminBMemetea/multisens/issues/142)),
+all three model families on one sensor with a full failure-isolation
+matrix ([#143](https://github.com/CosminBMemetea/multisens/issues/143)),
+and the live detection overlay
+([#144](https://github.com/CosminBMemetea/multisens/issues/144)). Not
+yet released under a version tag — everything above is real, tested,
+and merged to `main`, awaiting a deliberate release decision.
 
 ## Docker requirements
 
